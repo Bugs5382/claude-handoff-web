@@ -1,0 +1,4 @@
+{
+  "page-types.md": {"state": "reference", "note": "The design and a working skeleton for every page type."},
+  "handoff-web.md": {"state": "reference", "note": "The memory file a session copies into its memory folder."}
+}

@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Example app 1.4.0: sign-off checklist</title>
+<link rel="stylesheet" href="/_site/site.css?v=10">
+</head>
+<body class="site" data-review-h2="off" data-review-skip="on" data-build="1.4.0-rc.2"
+      data-review-blocked="t3=t2 (sign-in must pass first)">
+<header class="top"><div class="wrap">
+<h1>Example app 1.4.0: sign-off checklist</h1>
+<p>Build 1.4.0-rc.2. Test in order; mark Yes, No, Changes or Skipped.</p>
+</div></header>
+<main class="wrap">
+<section data-review-question="t1" data-title="Install">
+  <h2>1. Install</h2>
+  <p>The installer finishes and the service starts.</p>
+  <template data-howto>
+    <ol><li>Run the installer:</li></ol>
+    <pre>./install.sh --prefix /opt/example-app</pre>
+    <ol start="2"><li>Check the service is up:</li></ol>
+    <pre>curl -s http://localhost:8080/healthz</pre>
+  </template>
+</section>
+<section data-review-question="t2" data-title="Sign in">
+  <h2>2. Sign in</h2>
+  <p>A new user can sign in and lands on the dashboard.</p>
+  <template data-howto><p>Open the app, sign in as <code>demo-user</code>, check the dashboard loads.</p></template>
+</section>
+<section data-review-question="t3" data-title="Export a report">
+  <h2>3. Export a report</h2>
+  <p>Exporting the weekly report downloads a CSV with today's rows.</p>
+</section>
+</main>
+<script src="/_site/review.js?v=10"></script>
+</body></html>

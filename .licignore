@@ -1,0 +1,14 @@
+# GoLic ignore file -- https://github.com/Bugs5382/golic
+# Deny everything, then allow the source extensions golic should header.
+*
+# Recurse into subdirectories (so the package source is reached).
+!*/
+# ...inject into Python sources:
+!*.py
+# Never virtualenvs, build output, caches, or generated docs:
+.venv/**
+venv/**
+dist/**
+build/**
+**/__pycache__/**
+docs/**

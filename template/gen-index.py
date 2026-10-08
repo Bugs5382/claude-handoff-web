@@ -195,11 +195,94 @@ def shell(title, sub, live, extra=""):
             f"<script src='{asset('live.js')}'></script>" + (f"<script src='{asset('filter.js')}'></script>" if extra else "") + "</body></html>\n")
 
 
+def page_key(k):
+    """Port of review.js's pageKey() (see _site/serve.py, which must match it too): the name a
+    page's answers, and now its round history, are stored under."""
+    s = re.sub(r"[^a-z0-9._-]+", "-", k.lower())
+    s = re.sub(r"^[-.]+|-+$", "", s)
+    if len(s) > 120:
+        digits, h = "0123456789abcdefghijklmnopqrstuvwxyz", 0
+        for c in k:
+            h = (h * 31 + ord(c)) & 0xFFFFFFFF
+        n, out = h, []
+        while n:
+            n, r = divmod(n, 36)
+            out.append(digits[r])
+        s = s[:111] + "-" + ("".join(reversed(out)) or "0")
+    return s or "page"
+
+
+def history_rounds(folder, key):
+    """Every archived round for one page, newest first (see _saved/history/<page-key>/ in serve.py)."""
+    name = page_key(CONFIG.get("key_prefix", "review:") + f"/{folder}/{key}")
+    hdir = os.path.join(ROOT, "_saved", "history", name)
+    rounds = []
+    if os.path.isdir(hdir):
+        for fn in sorted(os.listdir(hdir)):
+            if not fn.endswith(".json"):
+                continue
+            try:
+                rounds.append(json.load(open(os.path.join(hdir, fn))))
+            except (OSError, ValueError):
+                continue
+    rounds.sort(key=lambda e: e.get("round", 0), reverse=True)
+    return rounds
+
+
+def round_count_line(answers):
+    counted = [k for k, v in (answers or {}).items() if isinstance(v, dict) and not k.startswith(("_", "import:")) and not v.get("locked")]
+    yes = sum(1 for k in counted if answers[k].get("v") == "yes")
+    return f"{yes} of {len(counted)} Yes" if counted else "no items"
+
+
+def history_page(folder, pages):
+    """Write <folder>/history/: every page's rounds, each page collapsed, newest round first."""
+    groups = []
+    for p in pages:
+        if p["key"] == "history/":
+            continue
+        rounds = history_rounds(folder, p["key"])
+        if not rounds:
+            continue
+        items = []
+        for e in rounds:
+            summary = (f'Round {esc(str(e.get("round", "")))}'
+                       + (f' &middot; build {esc(e.get("build", ""))}' if e.get("build") else "")
+                       + f' &middot; {esc((e.get("opened") or "")[:10])} to {esc((e.get("closed") or "")[:10])}'
+                       + f' &middot; {esc(round_count_line(e.get("answers")))}')
+            items.append(f'<details class="rvhist-round"><summary>{summary}</summary>'
+                         f'<pre class="hist-text">{esc(e.get("results_text", ""))}</pre></details>')
+        n = len(rounds)
+        groups.append(f'<details class="rvhist"><summary>{esc(p["title"])} ({n} round{"" if n == 1 else "s"})</summary>'
+                      f'<p class="m"><a href="{esc(p["href"])}">Full page</a></p>{"".join(items)}</details>')
+    body = "".join(groups) or '<p class="empty">No rounds yet.</p>'
+    hdir = os.path.join(ROOT, folder, "history")
+    os.makedirs(hdir, exist_ok=True)
+    with open(os.path.join(hdir, "index.html"), "w") as f:
+        f.write(shell(f"{FOLDERS[folder]}: history", f"<a href='/{folder}/'>{esc(FOLDERS[folder])}</a> &middot; past review and sign-off rounds", body))
+
+
+def ensure_reference_entry(folder, key, note):
+    """Seed a manifest entry that must never default to needs-you (gen-index.py's own pages)."""
+    mpath = os.path.join(ROOT, folder, "_status.json")
+    try:
+        manifest = json.load(open(mpath))
+    except (OSError, ValueError):
+        manifest = {}
+    if key not in manifest:
+        manifest[key] = {"state": "reference", "note": note}
+        with open(mpath, "w") as f:
+            json.dump(manifest, f, indent=2, ensure_ascii=False)
+            f.write("\n")
+
+
 def main():
     everything = {}
     for d, name in FOLDERS.items():
         pages = collect(d)
         everything[d] = pages
+        history_page(d, pages)
+        ensure_reference_entry(d, "history/", "Past review and sign-off rounds for this folder.")
         by = {s: [p for p in pages if p["state"] == s] for s, _ in SECTIONS}
         summary = (f'<p class="muted">{len(by["needs-you"])} need you &middot; {len(by["reference"])} reference '
                    f'&middot; {len(by["done"])} completed</p>')
@@ -233,7 +316,7 @@ def main():
         f'<li class="card{" needs" if n else ""}" data-project="{d}" data-key="folder/{d}" data-sig="{n}|{len(everything[d])}" '
         f'data-mtime="{int(max([p["mtime"] for p in everything[d]] or [0]))}" data-first="0">'
         f'<p class="t"><a href="/{d}/">{esc(FOLDERS[d])}</a></p><p class="n">{esc(BLURB[d])}</p>'
-        f'<p class="big{"" if n else " zero"}">{n}</p><p class="m"><span>need you</span></p>'
+        f'<p class="big{"" if n else " zero"}">{n}</p><p class="m"><span>need you</span><a href="/{d}/history/">History</a></p>'
         f'<div class="chips"></div></li>'
         for d in order for n in [counts[d]])
     live = (f'<section class="sect" data-sect="now"><h2>Needs you now <span class="count" id="now-count">{total}</span></h2>'

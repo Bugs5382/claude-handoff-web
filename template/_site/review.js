@@ -13,6 +13,12 @@
 //   data-review-reset     "v2:s1,s2" clears those answers (and reopened ones) once per version;
 //                         "tag@v2:a.s1|tag2@v1:b.s2" does the same per tag. Cleared answers are
 //                         kept under state._prev, never dropped.
+// Round history: a round is this page's run under one data-build value or data-review-reset
+// version. The server archives a round's answers (serve.py) the moment either one changes, or on
+// More, "Save round now". Past rounds show at GET /_history/<page-key>/ (see SAVE-API.md): a
+// collapsed "History (n rounds)" block at the bottom of the page, each round its own collapsed
+// item with a one-line summary and the same Copy results text, never expanded automatically and
+// never ahead of the page's own content.
 // The page also polls itself (/_site/live.js) and soft-reloads when it changes.
 // "How to test": an item's test steps open in their own pop-out window (named "howto", reused so it
 // stays where he put it), never inline with the answers. Sources, per item:
@@ -27,7 +33,7 @@ document.addEventListener("toggle", e => { if (e.target.open) e.target.querySele
 (function () {
   // Pages that render their own items (and their own pop-out) opt out.
   if (document.body.getAttribute("data-review-controls") === "off") return;
-  const V = "10";
+  const V = "11";
   function itemOf(el) {
     const box = el.closest("[data-review-question], .item");
     if (box) {
@@ -101,6 +107,8 @@ document.addEventListener("toggle", e => { if (e.target.open) e.target.querySele
     return s || "page";
   }
   const SAVE_URL = "/_save/" + pageKey(KEY) + ".json";
+  const HIST_NAME = pageKey(KEY);
+  const HIST_URL = "/_history/" + HIST_NAME + "/";
   const TZ = body.getAttribute("data-tz") || undefined;
   const hhmm = d => d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hourCycle: "h23", timeZone: TZ });
   const store = { seq: 0, sent: 0, timer: null, busy: false, fails: 0, loadPending: false, migrate: false, touched: new Set(), msg: "", bad: false, lastMod: null };
@@ -235,7 +243,7 @@ document.addEventListener("toggle", e => { if (e.target.open) e.target.querySele
   }
 
   if (!document.querySelector('link[href*="/_site/site.css"]')) {
-    const l = document.createElement("link"); l.rel = "stylesheet"; l.href = "/_site/site.css?v=10"; document.head.appendChild(l);
+    const l = document.createElement("link"); l.rel = "stylesheet"; l.href = "/_site/site.css?v=11"; document.head.appendChild(l);
   }
 
   // data-review-skip="on" (test checklists): adds Skipped; a skipped item is locked.
@@ -332,7 +340,10 @@ document.addEventListener("toggle", e => { if (e.target.open) e.target.querySele
     '<button class="prev" type="button" title="Previous open item (p)">Previous</button><button class="next" type="button" title="Next open item (n)">Next</button>' +
     '<button class="ids" type="button" aria-expanded="false" title="Show the open item ids">Open ids</button>' +
     '<span class="more"><button class="more-btn" type="button" aria-haspopup="menu" aria-expanded="false">More</button>' +
-    '<span class="menu" role="menu" hidden><button class="copy" type="button" role="menuitem">Copy results</button><button class="clear" type="button" role="menuitem">Clear my answers</button></span></span>' +
+    '<span class="menu" role="menu" hidden><button class="copy" type="button" role="menuitem">Copy results</button>' +
+    '<button class="history" type="button" role="menuitem" disabled>History</button>' +
+    '<button class="round-close" type="button" role="menuitem">Save round now</button>' +
+    '<button class="clear" type="button" role="menuitem">Clear my answers</button></span></span>' +
     '<span class="jump" hidden></span>';
   body.appendChild(bar);
   const menu = bar.querySelector(".menu"), moreBtn = bar.querySelector(".more-btn"), jumpEl = bar.querySelector(".jump"), idsBtn = bar.querySelector(".ids");
@@ -441,6 +452,74 @@ document.addEventListener("toggle", e => { if (e.target.open) e.target.querySele
     if (await flushNow()) location.reload();
     else { paint(); alert("Cleared here, but the box can't be reached yet. It keeps retrying; don't close the page until it says Saved."); }
   });
+  // ---------- round history (/_history/<page-key>/, see SAVE-API.md) ----------
+  // Collapsed everywhere: the block itself starts closed, and so does every round inside it.
+  // Nothing here is ever expanded automatically, and it always sits after the page's own content,
+  // so it never pushes the current round's open items down.
+  let histBlock = null;
+  const historyBtn = bar.querySelector(".history");
+  function renderHistory(data) {
+    const outer = document.createElement("details"); outer.className = "rvhist";
+    const n = data.rounds.length;
+    const summary = document.createElement("summary");
+    summary.textContent = "History (" + n + (n === 1 ? " round" : " rounds") + ")" + (data.page_removed ? " · page removed" : "");
+    outer.appendChild(summary);
+    for (const r of data.rounds) {
+      const d = document.createElement("details"); d.className = "rvhist-round";
+      const s = document.createElement("summary");
+      s.textContent = "Round " + r.round + (r.build ? " · build " + r.build : "") + " · " + (r.closed || "").slice(0, 10) + " · " + r.count;
+      d.appendChild(s);
+      const pre = document.createElement("pre"); pre.className = "hist-text";
+      const cp = document.createElement("button"); cp.type = "button"; cp.className = "hist-copy"; cp.textContent = "Copy results"; cp.disabled = true;
+      d.append(pre, cp);
+      d.addEventListener("toggle", async () => {
+        if (!d.open || d.dataset.loaded) return;
+        d.dataset.loaded = "1"; pre.textContent = "Loading...";
+        try {
+          const resp = await fetch(HIST_URL + r.file, { cache: "no-store" });
+          const entry = await resp.json();
+          pre.textContent = entry.results_text || "";
+          cp.disabled = false;
+          cp.addEventListener("click", async () => {
+            const t = entry.results_text || "";
+            try { await navigator.clipboard.writeText(t); } catch (e) { const ta = document.createElement("textarea"); ta.value = t; body.appendChild(ta); ta.select(); document.execCommand("copy"); ta.remove(); }
+            cp.textContent = "Copied"; setTimeout(() => { cp.textContent = "Copy results"; }, 1500);
+          });
+        } catch (e) { pre.textContent = "Couldn't load this round."; }
+      });
+      outer.appendChild(d);
+    }
+    if (histBlock) histBlock.replaceWith(outer); else body.appendChild(outer);
+    histBlock = outer;
+    historyBtn.disabled = !n;
+  }
+  async function loadHistory() {
+    try {
+      const r = await fetch(HIST_URL, { cache: "no-store" });
+      if (r.ok) renderHistory(await r.json());
+    } catch (e) { /* offline: History stays disabled until the next load */ }
+  }
+  loadHistory();
+  historyBtn.addEventListener("click", () => {
+    showMenu(false);
+    if (!histBlock) return;
+    histBlock.open = true;
+    histBlock.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+  bar.querySelector(".round-close").addEventListener("click", async () => {
+    showMenu(false);
+    if (!confirm("Save this round to history now? The next change starts a new round.")) return;
+    if (!(await flushNow())) { alert("Can't save yet: the box can't be reached. Try again once it says Saved."); return; }
+    try {
+      const r = await fetch("/_round-close", { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: HIST_NAME, results_text: results() }), cache: "no-store" });
+      const out = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(out.error || ("HTTP " + r.status));
+      await loadHistory();
+      alert("Saved as Round " + out.round + ".");
+    } catch (e) { alert("Couldn't save the round: " + e.message); }
+  });
+
   window.siteReview = { results, unsaved, saveUrl: SAVE_URL };
   const target = location.hash && document.getElementById(location.hash.slice(1));
   if (target) for (let d = target.closest("details"); d; d = d.parentElement && d.parentElement.closest("details")) d.open = true;
@@ -450,6 +529,6 @@ document.addEventListener("toggle", e => { if (e.target.open) e.target.querySele
 
   function loadLive() {
     if (document.querySelector('script[src*="/_site/live.js"]')) return;
-    const sc = document.createElement("script"); sc.src = "/_site/live.js?v=10"; sc.setAttribute("data-mode", "page"); body.appendChild(sc);
+    const sc = document.createElement("script"); sc.src = "/_site/live.js?v=11"; sc.setAttribute("data-mode", "page"); body.appendChild(sc);
   }
 })();

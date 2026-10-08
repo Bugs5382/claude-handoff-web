@@ -37,8 +37,11 @@ This repository holds only the generic template and the fake `example/`. Never c
 | `GET` | any static path | files, like `python3 -m http.server`; `_saved/` is never served |
 | `GET`, `PUT` | `/_save/<name>.json` | answers (see `_site/SAVE-API.md`) |
 | `POST` | `/_stale` | `{folder, page}`: Stale |
+| `GET` | `/_history/<name>/`, `/_history/<name>/<file>` | round history, read-only (see `_site/SAVE-API.md`) |
+| `POST` | `/_round-close` | `{name, results_text?}`: close a round by hand |
 
-Nothing else is writable. `Cache-Control: no-store` is sent on `/_save/`, `.html` files and folder URLs.
+Nothing else is writable. `Cache-Control: no-store` is sent on `/_save/`, `/_history/`, `.html` files and
+folder URLs.
 
 ## Stale
 
@@ -47,13 +50,26 @@ page for good after a confirm. The server only accepts a page that is listed in 
 `_status.json` and lies inside that folder: never `_site/`, `_old/`, a folder root, `review/` or a
 `protected` page. It then marks the entry `done` with `Stale (<owner>, <date> <tz>)`, appends a line to
 `_saved/stale-log.json`, and reruns the folder's builder and `gen-index.py`. Copy results on the unified page
-lists recent ones as `STALE: <page>`.
+lists recent ones as `STALE: <page>`. A page's round history is never deleted by Stale; `/_history/` reports
+`page_removed: true` for it afterwards.
 
 ## _old/ pruning
 
 Before replacing a file, copy it to its folder's `_old/`. The server deletes files under any `_old/` folder
 older than `prune_old_days` (default 7) once an hour and lists them in `_saved/prune-log.json`. Set
-`"prune_old": false` to keep everything.
+`"prune_old": false` to keep everything. `_saved/` itself (round history included) is never walked by the
+pruner.
+
+## Round history
+
+A round is one pass of answers under one `data-build` value or one `data-review-reset` version. Every
+`PUT /_save/<name>.json` compares the page's current `data-build` and `data-review-reset` with what the
+server last saw for it; when either changed, the answers from before this `PUT` are archived to
+`_saved/history/<name>/<stamp>__<label>.json` first (see `_site/SAVE-API.md` for the entry's shape and the
+`GET /_history/` endpoints). The round number is a sequential integer per page, computed in order, never
+the build or version string. More, "Save round now" calls `POST /_round-close` to close a round by hand.
+Every page shows its own rounds in one collapsed `<details>` at the bottom; `gen-index.py` builds the same,
+grouped by page, at `/<folder>/history/`, linked from the root index as a small "History" per folder.
 
 ## Restarting
 

@@ -48,6 +48,21 @@ body.site code { background: var(--accent-soft); padding: .05rem .3rem; border-r
 .sect > details[open] > summary::before { content: "\25BE"; }
 .sect > details[open] > summary { margin-bottom: .8rem; }
 .empty { color: var(--muted); font-style: italic; margin: .2rem 0 0; }
+
+/* Round history: always collapsed, always last, never pushes the current round down */
+.rvhist { margin: 2rem 0 5.5rem; border: 1px solid var(--line); border-radius: var(--radius); background: var(--card); }
+.rvhist > summary { cursor: pointer; list-style: none; padding: .55rem .8rem; font-weight: 700; color: var(--accent-dark); }
+.rvhist > summary::-webkit-details-marker { display: none; }
+.rvhist > summary::before { content: "\25B8"; color: var(--accent); margin-right: .4rem; }
+.rvhist[open] > summary::before { content: "\25BE"; }
+.rvhist-round { margin: 0 .8rem .6rem; border-top: 1px solid var(--line); padding-top: .5rem; }
+.rvhist-round > summary { cursor: pointer; list-style: none; font-size: .92rem; color: var(--muted); }
+.rvhist-round > summary::-webkit-details-marker { display: none; }
+.rvhist-round > summary::before { content: "\25B8"; color: var(--accent); margin-right: .4rem; }
+.rvhist-round[open] > summary::before { content: "\25BE"; }
+.hist-text { margin: .5rem 0; padding: .6rem .8rem; background: #fff; border: 1px solid var(--line); border-radius: var(--radius); font: 13px/1.5 ui-monospace, monospace; white-space: pre-wrap; max-height: 40vh; overflow: auto; }
+.hist-copy { font: 600 13px system-ui, sans-serif; padding: .3rem .8rem; border: 1px solid var(--accent); color: var(--accent); background: #fff; border-radius: 6px; cursor: pointer; }
+.hist-copy:disabled { opacity: .5; cursor: default; }
 .cards { display: grid; gap: .75rem; margin: 0; padding: 0; list-style: none; }
 .card { display: block; position: relative; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: .95rem 1.1rem; box-shadow: var(--shadow); transition: box-shadow .2s, border-color .2s; }
 .card:hover { border-color: #b7c3cb; box-shadow: 0 2px 4px rgba(29,38,45,.08), 0 6px 18px rgba(29,38,45,.08); }
@@ -154,8 +169,10 @@ body.site.howto-win .howto-body { background: var(--card); border: 1px solid var
 .rvbar .more { position: relative; }
 .rvbar .menu { position: absolute; right: 0; bottom: calc(100% + .6rem); display: flex; flex-direction: column; min-width: 12rem; padding: .3rem; background: #fff; border-radius: 8px; box-shadow: 0 6px 20px rgba(0,0,0,.25); }
 .rvbar .menu[hidden], .rvbar .jump[hidden] { display: none; }
-.rvbar .menu .copy, .rvbar .menu .clear { background: transparent; color: #1C2230; border: 0; text-align: left; white-space: nowrap; }
+.rvbar .menu .copy, .rvbar .menu .clear, .rvbar .menu .history, .rvbar .menu .round-close { background: transparent; color: #1C2230; border: 0; text-align: left; white-space: nowrap; }
 .rvbar .menu button:hover { background: #eef1f3; }
+.rvbar .menu button:disabled { color: var(--muted); cursor: default; }
+.rvbar .menu button:disabled:hover { background: transparent; }
 .rvbar .jump { position: absolute; left: 50%; bottom: 100%; transform: translateX(-50%); display: flex; flex-wrap: wrap; gap: .3rem; width: max-content; max-width: min(90vw, 720px); max-height: 40vh; overflow: auto; padding: .6rem .8rem; background: var(--accent-dark); border-radius: 8px 8px 0 0; box-shadow: 0 -4px 12px rgba(0,0,0,.15); }
 @media (max-width: 640px) { .rvbar { flex-wrap: wrap; } }
 .rvbar .jump .chip { text-decoration: none; cursor: pointer; }

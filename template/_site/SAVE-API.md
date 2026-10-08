@@ -17,6 +17,36 @@ browser. `_site/review.js` already does this. A page with its own answer script 
 - `stale-log` and `prune-log` are reserved names (read-only).
 - Responses carry `Cache-Control: no-store`. The `_saved/` folder itself is never served.
 
+## Round history
+
+A round is one pass of answers under one `data-build` value or `data-review-reset` version. Every
+`PUT` to `/_save/<name>.json` is checked against the page's current `data-build` and
+`data-review-reset` (read from its HTML by the server); when either changed since the last `PUT`
+for that name, the answers that were stored *before* this `PUT` are archived first, to
+`_saved/history/<name>/<UTC-stamp>__<label>.json`, as:
+
+```json
+{"page": "demo/signoff-checklist.html", "title": "...", "round": 1, "build": "1.4.0-rc.2",
+ "opened": "2026-10-07T08:00:00-04:00", "closed": "2026-10-08T10:00:00-04:00",
+ "answers": {"t1": {"v": "yes", "n": ""}}, "results_text": "..."}
+```
+
+`round` is a sequential integer per page (1, 2, 3, ...). A page that only tracks `data-build` (no
+`data-review-reset`), or the other way round, still rounds over whenever the one it uses changes.
+This needs nothing extra from a page that already follows this spec: just keep `data-build` and/or
+`data-review-reset` current in the HTML, and `PUT` as normal.
+
+| Method | Path | Body | Result |
+|---|---|---|---|
+| `GET` | `/_history/<name>/` | none | `200`, `{"page_removed": bool, "rounds": [{"file", "round", "build", "opened", "closed", "count"}, ...]}`, newest round first |
+| `GET` | `/_history/<name>/<file>` | none | `200` with that round's full entry, or `404` |
+| `POST` | `/_round-close` | `{"name": "<name>", "results_text": "..." (optional)}` | `200` `{"round", "file"}`: archives the current round by hand, under its current build, then opens the next round |
+
+`page_removed` is `true` once Stale has deleted the page the history belongs to; the rounds stay.
+Without a `results_text` in the body, `/_round-close` builds one itself from the page's current
+items and the saved answers; sending the page's own `results()` output is more exact and is what
+review.js's "Save round now" does.
+
 ## Page key
 
 Use the page's existing localStorage key so answers carry over, sanitised to the name rule:

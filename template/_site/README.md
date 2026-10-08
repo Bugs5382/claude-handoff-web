@@ -21,9 +21,9 @@ completes, set it to `done` and it moves to "Completed". To retire a page, the o
 ## Hook a page in
 
 ```html
-<link rel="stylesheet" href="/_site/site.css?v=10">
+<link rel="stylesheet" href="/_site/site.css?v=11">
 ...
-<script src="/_site/review.js?v=10"></script>   <!-- review pages: just before </body> -->
+<script src="/_site/review.js?v=11"></script>   <!-- review pages: just before </body> -->
 ```
 
 - `review.js` turns every `<h2>` section (and every `[data-review-question="id" data-title="..."]`) into an
@@ -51,11 +51,27 @@ completes, set it to `done` and it moves to "Completed". To retire a page, the o
 - Pages without review.js (checklists, indexes) load `/_site/live.js` (`data-mode="page"` on non-index pages).
 - Element styles apply only under `<body class="site">`; design mocks can load site.css without losing their look.
 
+## Rounds and history
+
+A round is one pass of answers under one `data-build` value or `data-review-reset` version.
+Whenever either one changes, `serve.py` archives the answers that were on the box before the
+change (about to be cleared or reopened) to `_saved/history/<page-key>/`, before writing the new
+round's state; see `SAVE-API.md`. More, "Save round now" closes the current round by hand, without
+waiting for a build or version change.
+
+Every page collects its own rounds in one closed `<details>` at the very bottom, "History
+(n rounds)", never expanded automatically and never ahead of the page's current content; each
+round inside is its own closed `<details>` with a one-line summary (round, build, dates, a count
+like "21 of 34 Yes") and the same Copy results text that round had. The More menu's History item
+opens (and scrolls to) that block. `/<folder>/history/` (built by `gen-index.py`) lists every
+page's rounds the same way, one closed group per page. Stale keeps a page's history; the folder's
+history page then notes it as removed.
+
 ## Bottom bar (lean, for now)
 
 One line: the count and the Saved status, Previous / Next, "Open ids (n)" (the open-id chips fold behind it)
-and More (Copy results, Clear my answers). The n and p keys jump between open items. A fuller redesign of
-the bar is planned; keep changes here small until then.
+and More (Copy results, History, Save round now, Clear my answers). The n and p keys jump between open
+items. A fuller redesign of the bar is planned; keep changes here small until then.
 
 ## Live
 
@@ -83,6 +99,7 @@ review.js with `<body data-review-controls="off">`: review.js then only starts l
 - Copy results lines: `- [id] ANSWER: title` and `    Note: ...`; `STALE: <page>`; footer
   `APPROVED: every item is Yes.` or `Not approved yet: <n> of <m> are Yes.`
 - Index sections: Needs you, Reference, Completed (collapsed). Root: Needs you now.
+- History: "History (n rounds)", "Round N", "Save round now", "page removed".
 - Chips: New (first seen in the last 24 h), Updated, To review, Reopened, Approved, Reference, Done,
   Not classified, plus custom chips from `"chips"`.
 
@@ -92,14 +109,17 @@ review.js with `<body data-review-controls="off">`: review.js then only starts l
   folders (id, name, blurb), `key_prefix`, `blocker_to`, protected pages, per-folder builders and the prune
   settings. Every name on the site comes from it.
 - **Server:** `nohup python3 -u _site/serve.py --directory . >> server.log 2>&1 &` (host and port from
-  `site.json`; flags override). Writable endpoints: `PUT /_save/<name>.json` and `POST /_stale`; nothing
-  else. `_saved/` is never served directly.
+  `site.json`; flags override). Writable endpoints: `PUT /_save/<name>.json` and `POST /_stale`,
+  `POST /_round-close`; nothing else. `_saved/` (history included) is never served directly, only read
+  through `GET /_history/<page-key>/` and `GET /_history/<page-key>/<file>`.
 - **Stale deletes for real:** after the owner's confirm, `POST /_stale {folder, page}` checks the page is
   listed in that folder's `_status.json` and lies inside that folder (never `_site/`, `_old/`, a folder
   root, `review/` or a `protected` page), deletes it, marks it `done` with `Stale (<owner>, <date> <tz>)`,
-  logs it in `_saved/stale-log.json`, and reruns the builders.
+  logs it in `_saved/stale-log.json`, and reruns the builders. Its round history stays; `/_history/` reports
+  `page_removed: true` once the page is gone.
 - **`_old/` pruning:** files under any `_old/` folder older than `prune_old_days` (default 7) are deleted
-  hourly and listed in `_saved/prune-log.json`. Set `"prune_old": false` to keep them.
+  hourly and listed in `_saved/prune-log.json`. Set `"prune_old": false` to keep them. `_saved/` itself,
+  including round history, is never walked by the pruner.
 - **Never a git repo:** this folder is working memory and is never committed. `serve.py` refuses to start
   inside a git work tree, and `install.sh` refuses to install into one.
 - **Root filter:** one "Projects" dropdown (checkboxes with needs-you counts, All, None). The choice stays in

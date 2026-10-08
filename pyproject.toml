@@ -1,6 +1,6 @@
 [project]
 name = "claude-handoff-web"
-version = "0.0.0"
+version = "1.0.0"
 description = "A small self-updating review and sign-off site for handing work to a human: chips, live updates, Yes/No/Changes reviews, checklists with blockers"
 readme = "README.md"
 requires-python = ">=3.10"

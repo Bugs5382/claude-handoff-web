@@ -1,7 +1,3 @@
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
-
 [project]
 name = "claude-handoff-web"
 version = "0.0.0"
@@ -19,17 +15,18 @@ Issues = "https://github.com/Bugs5382/claude-handoff-web/issues"
 [dependency-groups]
 dev = [
     "pytest>=8",
-    "pytest-cov>=5",
     "ruff>=0.8",
     "mypy>=1.13",
 ]
 
-[tool.hatch.build.targets.wheel]
-packages = ["src/claude_handoff_web"]
+# The template is copied into a working folder by install.sh, not installed as a package.
+[tool.uv]
+package = false
 
 [tool.ruff]
-line-length = 100
-src = ["src", "tests"]
+line-length = 140
+target-version = "py310"
+src = ["template", "tests"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
@@ -37,9 +34,13 @@ select = ["E", "F", "I", "UP", "B"]
 [tool.pytest.ini_options]
 addopts = "-q"
 testpaths = ["tests"]
-pythonpath = ["src"]
 
 [tool.mypy]
 python_version = "3.10"
-strict = true
-files = ["src"]
+files = ["template/_site/serve.py"]
+ignore_missing_imports = true
+
+[tool.ruff.lint.per-file-ignores]
+# The builders write HTML in long f-strings; keep them as written.
+"template/gen-index.py" = ["E501", "E731"]
+"template/_site/build-review.py" = ["E501", "E741"]

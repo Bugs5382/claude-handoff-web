@@ -16,3 +16,10 @@ plan/
 .DS_Store
 .idea/
 .vscode/
+
+# A running site is working memory: never commit an instance's state.
+_saved/
+_old/
+**/_status.json
+!example/**/_status.json
+server.log

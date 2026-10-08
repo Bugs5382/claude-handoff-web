@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Settings screen: design review</title>
+<meta name="description" content="Three sections to approve before the settings screen of the demo app is built.">
+<link rel="stylesheet" href="/_site/site.css?v=10">
+</head>
+<body class="site">
+<header class="top"><div class="wrap">
+<h1>Settings screen: design review</h1>
+<p>Answer each section Yes, No or Changes, then More, Copy results, and paste it back.</p>
+</div></header>
+<main class="wrap">
+<h2>Purpose and behaviour</h2>
+<p>The settings screen lets a signed-in user change their display name, notification e-mails and theme.
+Every change saves on its own, with a short "Saved" note next to the field.</p>
+<h2>Layout</h2>
+<pre>+--------------------------------------------+
+| Settings                                   |
+| [ Profile ]  [ Notifications ]  [ Theme ]  |
+|--------------------------------------------|
+| Display name   [ Sam Example        ]      |
+| E-mail         sam@example.org             |
+|                                            |
+|                             [ Sign out ]   |
++--------------------------------------------+</pre>
+<p>Tabs across the top; each tab is one short form.</p>
+<h2>Errors and empty states</h2>
+<p>A failed save keeps the typed value, turns the field border red and shows "Couldn't save, retrying".
+With no notification rules yet, the tab shows one line and an "Add a rule" button.</p>
+</main>
+<script src="/_site/review.js?v=10"></script>
+</body></html>

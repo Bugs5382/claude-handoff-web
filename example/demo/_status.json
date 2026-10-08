@@ -1,0 +1,5 @@
+{
+  "review/": {"state": "needs-you", "note": "The one place to answer: every open item from this folder."},
+  "design-review.html": {"state": "needs-you", "note": "Three sections of the settings screen design.", "chips": ["Decision needed"]},
+  "signoff-checklist.html": {"state": "needs-you", "note": "Test build 1.4.0-rc.2 in order."}
+}

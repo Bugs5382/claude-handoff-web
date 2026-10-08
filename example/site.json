@@ -1,0 +1,21 @@
+{
+  "title": "Pages for Alex",
+  "owner": "Alex",
+  "subtitle": "Everything waiting on you is at the top. Pages update themselves.",
+  "host": "127.0.0.1",
+  "port": 8000,
+  "timezone": "UTC",
+  "tz_label": "UTC",
+  "review_windows": ["09:00", "16:00"],
+  "key_prefix": "review:",
+  "blocker_to": "the operator session",
+  "folders": [
+    {"id": "demo", "name": "Demo project", "blurb": "A fake project: one review page and one checklist"},
+    {"id": "guide", "name": "Guide", "blurb": "Page types and the agent memory file"}
+  ],
+  "order": ["demo", "guide"],
+  "protected": [],
+  "builders": {},
+  "prune_old": true,
+  "prune_old_days": 7
+}

@@ -5,7 +5,7 @@ description = "A small self-updating review and sign-off site for handing work t
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
-authors = [{ name = "The claude-handoff-web Authors" }]
+authors = [{ name = "Shane" }]
 dependencies = []
 
 [project.urls]

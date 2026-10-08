@@ -61,4 +61,4 @@ Originally written by [@Bugs5382](https://github.com/Bugs5382).
 
 ## ⚖️ License
 
-MIT (c) 2026 The claude-handoff-web Authors
+MIT © 2026 Shane

@@ -160,6 +160,11 @@ body.site.howto-win .howto-body { background: var(--card); border: 1px solid var
 .howto-win .copy-cmd { margin: 0 0 .8rem; padding: .2rem .7rem; border: 1.5px solid var(--accent); border-radius: 999px; background: #fff; color: var(--accent-dark); font: inherit; font-size: .85rem; cursor: pointer; }
 .rv.blocked { opacity: .62; border-left-color: #8a6d00; }
 .rv .st.blk { color: #6b5300; background: #fff4cc; }
+.rv.question { border-left-color: var(--accent); }
+.rv .qrow { display: flex; align-items: center; justify-content: space-between; gap: .6rem; }
+.rv .qans { resize: none; overflow: hidden; }
+.rv .suggest-btn { padding: .25rem .7rem; border: 1.5px solid var(--accent); border-radius: 999px; background: #fff; color: var(--accent-dark); font: inherit; font-size: .85rem; font-weight: 650; cursor: pointer; }
+.rv .suggest-btn:hover { background: var(--accent-soft); }
 .rvbar { flex-wrap: nowrap; gap: .6rem; }
 .rvbar .cnt { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .rvbar .svst { font-size: 13px; opacity: .8; white-space: nowrap; }

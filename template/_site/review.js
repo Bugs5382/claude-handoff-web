@@ -33,7 +33,7 @@ document.addEventListener("toggle", e => { if (e.target.open) e.target.querySele
 (function () {
   // Pages that render their own items (and their own pop-out) opt out.
   if (document.body.getAttribute("data-review-controls") === "off") return;
-  const V = "11";
+  const V = "12";
   function itemOf(el) {
     const box = el.closest("[data-review-question], .item");
     if (box) {
@@ -243,7 +243,7 @@ document.addEventListener("toggle", e => { if (e.target.open) e.target.querySele
   }
 
   if (!document.querySelector('link[href*="/_site/site.css"]')) {
-    const l = document.createElement("link"); l.rel = "stylesheet"; l.href = "/_site/site.css?v=11"; document.head.appendChild(l);
+    const l = document.createElement("link"); l.rel = "stylesheet"; l.href = "/_site/site.css?v=12"; document.head.appendChild(l);
   }
 
   // data-review-skip="on" (test checklists): adds Skipped; a skipped item is locked.
@@ -257,11 +257,12 @@ document.addEventListener("toggle", e => { if (e.target.open) e.target.querySele
     const nodes = [h];
     while (n && n.tagName !== "H2" && !n.hasAttribute("data-review-question") && n.tagName !== "SCRIPT") { anchor = n; nodes.push(n); n = n.nextElementSibling; }
     const hc = h.cloneNode(true); hc.querySelectorAll(".howto-btn").forEach(x => x.remove());
-    items.push({ id, title: hc.textContent.trim(), after: anchor, nodes });
+    items.push({ id, title: hc.textContent.trim(), after: anchor, nodes, type: h.getAttribute("data-review-type") || "", suggested: h.getAttribute("data-suggested") || "" });
   });
   document.querySelectorAll("[data-review-question]").forEach(el => {
-    items.push({ id: el.getAttribute("data-review-question"), title: el.getAttribute("data-title") || el.textContent.trim(), at: el, nodes: [el] });
+    items.push({ id: el.getAttribute("data-review-question"), title: el.getAttribute("data-title") || el.textContent.trim(), at: el, nodes: [el], type: el.getAttribute("data-review-type") || "", suggested: el.getAttribute("data-suggested") || "" });
   });
+  const isQ = it => it.type === "question";
   // data-review-import="oldKey|prefix": one-time import of answers an older checklist saved in this
   // browser as { id: { status: "pass"|"fail"|"skip", notes } }. The old key is left untouched.
   const imp = body.getAttribute("data-review-import");
@@ -284,10 +285,35 @@ document.addEventListener("toggle", e => { if (e.target.open) e.target.querySele
   for (const id of approved) state[id] = { v: "yes", n: (state[id] || {}).n || "" };
   const hidden = new Set(items.filter(it => !reopen[it.id] && (approved.includes(it.id) || (reset && (state[it.id] || {}).v === "yes"))).map(it => it.id));
 
+  function saveQuestion(id, answer) {
+    state[id] = Object.assign({}, state[id] || {}, { a: answer });
+    persist(id); paint();
+  }
+  function grow(ta) { ta.style.height = "auto"; ta.style.height = (ta.scrollHeight + 2) + "px"; }
+
   for (const it of items) {
     const box = document.createElement("div"); box.className = "rv"; box.id = "rv-" + it.id;
     const s = state[it.id] || {};
     const st = document.createElement("span"); st.className = "st";
+    if (isQ(it)) {
+      box.classList.add("question");
+      if (blocked[it.id]) { st.classList.add("blk"); st.textContent = "Blocked by " + blocked[it.id]; }
+      else if (reopen[it.id]) { st.classList.add("reo"); st.textContent = "Reopened: " + reopen[it.id]; } else st.textContent = "Question";
+      box.appendChild(st);
+      const qrow = document.createElement("div"); qrow.className = "qrow";
+      qrow.innerHTML = '<span class="ask">Your answer:</span>' + (it.suggested ? '<button type="button" class="suggest-btn">Use suggestion</button>' : "");
+      box.appendChild(qrow);
+      const qa = document.createElement("textarea"); qa.className = "qans"; qa.placeholder = "Type your answer"; qa.value = s.a || "";
+      box.appendChild(qa);
+      qa.addEventListener("input", () => { grow(qa); saveQuestion(it.id, qa.value); });
+      if (it.suggested) qrow.querySelector(".suggest-btn").addEventListener("click", () => { qa.value = it.suggested; grow(qa); saveQuestion(it.id, qa.value); qa.focus(); });
+      const qdet = it.at && it.at.querySelector(":scope > .rv-details");
+      if (qdet) qdet.before(box); else if (it.at) it.at.appendChild(box); else it.after.insertAdjacentElement("afterend", box);
+      it.box = box;
+      if (blocked[it.id]) box.classList.add("blocked");
+      requestAnimationFrame(() => grow(qa));
+      continue;
+    }
     if (blocked[it.id]) { st.classList.add("blk"); st.textContent = "Blocked by " + blocked[it.id]; }
     else if (reopen[it.id]) { st.classList.add("reo"); st.textContent = "Reopened: " + reopen[it.id]; } else st.textContent = s.locked ? "Skipped (locked)" : "Open";
     box.appendChild(st);
@@ -364,7 +390,7 @@ document.addEventListener("toggle", e => { if (e.target.open) e.target.querySele
   }
   function save(id) {
     for (const it of items) {
-      if (hidden.has(it.id) || (state[it.id] || {}).locked) continue;
+      if (isQ(it) || hidden.has(it.id) || (state[it.id] || {}).locked) continue;
       const v = (it.box.querySelector("input:checked") || {}).value || "";
       const n = it.box.querySelector("textarea").value;
       state[it.id] = Object.assign({ v, n }, (state[it.id] || {}).blocker ? { blocker: true } : {});
@@ -381,13 +407,15 @@ document.addEventListener("toggle", e => { if (e.target.open) e.target.querySele
       if (s.v === "chg" && !(s.n || "").trim()) it.box.classList.add("empty");
       if (!hidden.has(it.id) && !s.locked && s.v && !(s.v === "chg" && !(s.n || "").trim())) done++;
     }
-    const open = items.filter(it => !hidden.has(it.id) && !(state[it.id] || {}).locked && !blocked[it.id]).length;
-    const nb = items.filter(it => !hidden.has(it.id) && blocked[it.id]).length;
-    const yesAll = items.filter(it => !hidden.has(it.id) && !blocked[it.id] && !(state[it.id] || {}).locked).every(it => (state[it.id] || {}).v === "yes");
+    const open = items.filter(it => !isQ(it) && !hidden.has(it.id) && !(state[it.id] || {}).locked && !blocked[it.id]).length;
+    const nb = items.filter(it => !isQ(it) && !hidden.has(it.id) && blocked[it.id]).length;
+    const yesAll = items.filter(it => !isQ(it) && !hidden.has(it.id) && !blocked[it.id] && !(state[it.id] || {}).locked).every(it => (state[it.id] || {}).v === "yes");
+    const qOpen = items.filter(it => isQ(it) && !((state[it.id] || {}).a || "").trim()).length;
+    const qTail = qOpen ? " · " + qOpen + " question" + (qOpen === 1 ? "" : "s") + " unanswered" : "";
     bar.classList.toggle("all-done", open > 0 && done === open);
     bar.classList.toggle("approved", open > 0 && done === open && yesAll);
-    if (open > 0 && done === open) { bar.querySelector(".cnt").textContent = (yesAll ? "APPROVED: " : "") + "All " + open + " done" + (nb ? " · " + nb + " blocked" : "") + (hidden.size ? " · " + hidden.size + " approved and hidden" : ""); }
-    else bar.querySelector(".cnt").textContent = done + " of " + open + " open items answered" + (nb ? " · " + nb + " blocked" : "") + (hidden.size ? " · " + hidden.size + " approved and hidden" : "");
+    if (open > 0 && done === open) { bar.querySelector(".cnt").textContent = (yesAll ? "APPROVED: " : "") + "All " + open + " done" + (nb ? " · " + nb + " blocked" : "") + (hidden.size ? " · " + hidden.size + " approved and hidden" : "") + qTail; }
+    else bar.querySelector(".cnt").textContent = done + " of " + open + " open items answered" + (nb ? " · " + nb + " blocked" : "") + (hidden.size ? " · " + hidden.size + " approved and hidden" : "") + qTail;
     jumpEl.innerHTML = "";
     const list = openList();
     for (const it of list) { const a = document.createElement("a"); a.href = "#rv-" + it.id; a.className = "chip c-review"; a.textContent = it.id; a.addEventListener("click", e => { e.preventDefault(); showIds(false); go(it); }); jumpEl.appendChild(a); }
@@ -395,7 +423,7 @@ document.addEventListener("toggle", e => { if (e.target.open) e.target.querySele
     if (!list.length) showIds(false);
   }
   function openList() {
-    return items.filter(it => { const s = state[it.id] || {}; return !hidden.has(it.id) && !s.locked && !blocked[it.id] && (!s.v || (s.v === "chg" && !(s.n || "").trim())); });
+    return items.filter(it => { const s = state[it.id] || {}; return !isQ(it) && !hidden.has(it.id) && !s.locked && !blocked[it.id] && (!s.v || (s.v === "chg" && !(s.n || "").trim())); });
   }
   function go(it) {
     const el = it.nodes[0] || it.box;
@@ -423,19 +451,26 @@ document.addEventListener("toggle", e => { if (e.target.open) e.target.querySele
   const session = (location.pathname.split("/")[1] || "the").toUpperCase();
   function results() {
     let out = "Review: " + document.title + " (" + page + ")\n";
-    for (const it of items) {
+    const yncItems = items.filter(it => !isQ(it)), qItems = items.filter(isQ);
+    for (const it of yncItems) {
       const s = state[it.id] || {};
       out += "- [" + it.id + "] " + (blocked[it.id] ? "BLOCKED by " + blocked[it.id] + ", " : "") + (s.blocker ? "BLOCKER, " : "") + (label[s.v] || "NOT ANSWERED") + ": " + it.title + (s.n ? "\n    Note: " + s.n.replace(/\n/g, " ") : "") + "\n";
     }
     for (const p of stalePages) out += "STALE: " + p + "\n";
-    const counted = items.filter(it => !(state[it.id] || {}).locked);
+    const counted = yncItems.filter(it => !(state[it.id] || {}).locked);
     const yes = counted.filter(it => (state[it.id] || {}).v === "yes").length;
     out += "\n" + (yes === counted.length ? "APPROVED: every item is Yes." : "Not approved yet: " + yes + " of " + counted.length + " are Yes.") + "\n";
+    const qOpen = qItems.filter(it => !((state[it.id] || {}).a || "").trim()).length;
+    if (qOpen) out += qOpen + " open question" + (qOpen === 1 ? "" : "s") + "\n";
     // Unified pages prefix ids with their source page ("built.s2"); report each page's approval too.
     const groups = {};
-    for (const it of items) { const g = it.id.includes(".") ? it.id.split(".")[0] : ""; if (!g) continue;
+    for (const it of yncItems) { const g = it.id.includes(".") ? it.id.split(".")[0] : ""; if (!g) continue;
       (groups[g] = groups[g] || { n: 0, yes: 0 }).n++; if ((state[it.id] || {}).v === "yes") groups[g].yes++; }
     for (const [g, c] of Object.entries(groups)) out += "  " + g + ": " + (c.yes === c.n ? "APPROVED" : c.yes + " of " + c.n + " Yes") + "\n";
+    if (qItems.length) {
+      out += "\n";
+      for (const it of qItems) { const a = ((state[it.id] || {}).a || "").trim(); out += "Q " + it.id + ": " + (a ? a.replace(/\n/g, " ") : "(no answer)") + "\n"; }
+    }
     return out;
   }
   bar.querySelector(".copy").addEventListener("click", async () => {
@@ -529,6 +564,6 @@ document.addEventListener("toggle", e => { if (e.target.open) e.target.querySele
 
   function loadLive() {
     if (document.querySelector('script[src*="/_site/live.js"]')) return;
-    const sc = document.createElement("script"); sc.src = "/_site/live.js?v=11"; sc.setAttribute("data-mode", "page"); body.appendChild(sc);
+    const sc = document.createElement("script"); sc.src = "/_site/live.js?v=12"; sc.setAttribute("data-mode", "page"); body.appendChild(sc);
   }
 })();

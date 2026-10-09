@@ -21,9 +21,9 @@ completes, set it to `done` and it moves to "Completed". To retire a page, the o
 ## Hook a page in
 
 ```html
-<link rel="stylesheet" href="/_site/site.css?v=11">
+<link rel="stylesheet" href="/_site/site.css?v=12">
 ...
-<script src="/_site/review.js?v=11"></script>   <!-- review pages: just before </body> -->
+<script src="/_site/review.js?v=12"></script>   <!-- review pages: just before </body> -->
 ```
 
 - `review.js` turns every `<h2>` section (and every `[data-review-question="id" data-title="..."]`) into an
@@ -48,6 +48,9 @@ completes, set it to `done` and it moves to "Completed". To retire a page, the o
   for test checklists; `data-review-import="oldKey|prefix"` imports answers an older checklist saved.
 - `data-review-stale="a.html|b/"` (set by build-review.py from `_saved/stale-log.json`, last 7 days) lists
   those pages as `STALE: <page>` in Copy results.
+- `data-review-type="question"` on an `<h2>` or `[data-review-question]` item makes it an open question: a
+  free-text box instead of Yes / No / Changes, with `data-suggested="..."` adding a "Use suggestion" button.
+  See "Operating the site" below.
 - Pages without review.js (checklists, indexes) load `/_site/live.js` (`data-mode="page"` on non-index pages).
 - Element styles apply only under `<body class="site">`; design mocks can load site.css without losing their look.
 
@@ -95,9 +98,11 @@ review.js with `<body data-review-controls="off">`: review.js then only starts l
 - Item states: Open, Reopened: <reason>, Approved, Skipped (locked), Blocked by <id>.
 - Buttons: Copy results, Clear my answers (never clears approved or locked items), Blocker: copy now,
   Stale: remove this page.
-- Progress: `<n> of <m> open items answered`, plus ` · <k> approved and hidden` when k > 0.
+- Progress: `<n> of <m> open items answered`, plus ` · <k> approved and hidden` when k > 0, plus
+  ` · <j> questions unanswered` when j > 0 (open questions never count toward `<n>` or `<m>`).
 - Copy results lines: `- [id] ANSWER: title` and `    Note: ...`; `STALE: <page>`; footer
-  `APPROVED: every item is Yes.` or `Not approved yet: <n> of <m> are Yes.`
+  `APPROVED: every item is Yes.` or `Not approved yet: <n> of <m> are Yes.`, then `<j> open questions`
+  when j > 0, then each question as its own `Q <id>: <answer>` (or `Q <id>: (no answer)`) line.
 - Index sections: Needs you, Reference, Completed (collapsed). Root: Needs you now.
 - History: "History (n rounds)", "Round N", "Save round now", "page removed".
 - Chips: New (first seen in the last 24 h), Updated, To review, Reopened, Approved, Reference, Done,
@@ -126,3 +131,8 @@ review.js with `<body data-review-controls="off">`: review.js then only starts l
   the browser (`localStorage` `site-filter`).
 - **Focus and order:** optional `_site/focus.json` `{"order": [...], "focus": [...]}` overrides `site.json`
   `order`. Within a project, cards sort by `priority`, then `review/`, then the newest.
+- **Open questions:** review and design pages may also carry open-ended questions, as their own item type:
+  a free-text answer box (no Yes / No / Changes), shown with the question, its context and any suggested
+  answer. Copy results lists each as "Q <id>: <answer>". They are not blockers: no Blocker button, and they
+  don't hold up a page's approval. Use one only when the answer isn't a choice; choices with options still
+  go to AskUserQuestion. Questions are never left as plain text inline on a page.

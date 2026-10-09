@@ -8,8 +8,8 @@ Common rules:
 
 - `<body class="site">` turns on the shared look; `<header class="top"><div class="wrap">` and
   `<main class="wrap">` give the standard frame.
-- Review pages load `/_site/review.js?v=11` just before `</body>`; it brings `live.js` itself. Other pages
-  load `/_site/live.js?v=11` with `data-mode="page"`.
+- Review pages load `/_site/review.js?v=12` just before `</body>`; it brings `live.js` itself. Other pages
+  load `/_site/live.js?v=12` with `data-mode="page"`.
 - Answers are saved on the server; Copy results is what the owner pastes back to you.
 - A round is one pass of answers under one `data-build` value or `data-review-reset` version. Bump either
   one and the server archives the round it replaces on its own (see `_site/SAVE-API.md` "Round history");
@@ -44,7 +44,8 @@ Reopened, plus yours), the open item count for review pages, and a Stale button 
 
 **When:** the owner has to approve content section by section: a design, a plan, screens, a walk-through.
 
-**Required:** one `<h2>` per item (each becomes Yes / No / Changes), content under it, review.js.
+**Required:** one `<h2>` per item (each becomes Yes / No / Changes), content under it, review.js. A section
+is instead an open question (see (i)) when the answer isn't a choice between options.
 **Body attributes:** `data-review-approved`, `data-review-reopen`, `data-review-reset` (see `_site/README.md`).
 
 ```html
@@ -52,7 +53,7 @@ Reopened, plus yours), the open item count for review pages, and a Stale button 
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Settings screen: design review</title>
 <meta name="description" content="Three sections to approve before the settings screen is built.">
-<link rel="stylesheet" href="/_site/site.css?v=11">
+<link rel="stylesheet" href="/_site/site.css?v=12">
 </head>
 <body class="site" data-review-approved="" data-review-reopen="">
 <header class="top"><div class="wrap">
@@ -69,7 +70,7 @@ Reopened, plus yours), the open item count for review pages, and a Stale button 
 <h2>Errors and empty states</h2>
 <p>What the owner sees when a save fails or there is nothing to show.</p>
 </main>
-<script src="/_site/review.js?v=11"></script>
+<script src="/_site/review.js?v=12"></script>
 </body></html>
 ```
 
@@ -111,7 +112,7 @@ When every open item is answered the bottom bar turns green; all Yes shows APPRO
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Example app 1.4.0: sign-off checklist</title>
-<link rel="stylesheet" href="/_site/site.css?v=11">
+<link rel="stylesheet" href="/_site/site.css?v=12">
 </head>
 <body class="site" data-review-h2="off" data-review-skip="on" data-build="1.4.0-rc.2"
       data-review-blocked="t3=t2 (sign-in must pass first)">
@@ -140,7 +141,7 @@ When every open item is answered the bottom bar turns green; all Yes shows APPRO
   <p>Exporting the weekly report downloads a CSV with today's rows.</p>
 </section>
 </main>
-<script src="/_site/review.js?v=11"></script>
+<script src="/_site/review.js?v=12"></script>
 </body></html>
 ```
 
@@ -156,7 +157,7 @@ section.
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Decision: where exports are stored</title>
-<link rel="stylesheet" href="/_site/site.css?v=11">
+<link rel="stylesheet" href="/_site/site.css?v=12">
 </head>
 <body class="site">
 <header class="top"><div class="wrap"><h1>Decision: where exports are stored</h1>
@@ -171,7 +172,7 @@ section.
 </table>
 <p class="muted">Yes = A. No = none of these (say why). Changes = B or C (say which).</p>
 </main>
-<script src="/_site/review.js?v=11"></script>
+<script src="/_site/review.js?v=12"></script>
 </body></html>
 ```
 
@@ -185,7 +186,7 @@ section.
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>First-run setup: walk-through</title>
-<link rel="stylesheet" href="/_site/site.css?v=11">
+<link rel="stylesheet" href="/_site/site.css?v=12">
 </head>
 <body class="site">
 <header class="top"><div class="wrap"><h1>First-run setup: walk-through</h1>
@@ -205,7 +206,7 @@ section.
 +----------------------------------+</pre>
 <p>Next checks the password rules, then goes to the network screen.</p>
 </main>
-<script src="/_site/review.js?v=11"></script>
+<script src="/_site/review.js?v=12"></script>
 </body></html>
 ```
 
@@ -220,7 +221,7 @@ section.
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Email draft: maintenance window</title>
-<link rel="stylesheet" href="/_site/site.css?v=11">
+<link rel="stylesheet" href="/_site/site.css?v=12">
 </head>
 <body class="site">
 <header class="top"><div class="wrap"><h1>Email draft: maintenance window</h1>
@@ -242,7 +243,7 @@ document.getElementById("copy").addEventListener("click", async e => {
   e.target.textContent = "Copied";
 });
 </script>
-<script src="/_site/live.js?v=11" data-mode="page"></script>
+<script src="/_site/live.js?v=12" data-mode="page"></script>
 </body></html>
 ```
 
@@ -258,7 +259,7 @@ the owner is typing) and keeps the scroll position.
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Rollout status: example app 1.4.0</title>
-<link rel="stylesheet" href="/_site/site.css?v=11">
+<link rel="stylesheet" href="/_site/site.css?v=12">
 </head>
 <body class="site">
 <header class="top"><div class="wrap"><h1>Rollout status: example app 1.4.0</h1>
@@ -272,6 +273,25 @@ the owner is typing) and keeps the scroll position.
   <tr><td>Deploy to production</td><td><span class="chip">Waiting</span></td><td></td></tr>
 </table>
 </main>
-<script src="/_site/live.js?v=11" data-mode="page"></script>
+<script src="/_site/live.js?v=12" data-mode="page"></script>
 </body></html>
+```
+
+## (i) Open question
+
+**When:** something an item on a review or design page needs from the owner isn't a choice between
+options: a free-text answer. Use one only for that; a choice with options is still Yes / No / Changes or
+an `AskUserQuestion`-style decision, never this.
+
+**Required:** `data-review-type="question"` on the `<h2>` (or the `[data-review-question]` element on a
+converted page), the question as its title, context in the content under it. Optional: `data-suggested`
+with a suggested answer; review.js adds a "Use suggestion" button that fills it in.
+
+**Not a blocker:** a question has no Blocker button, is never counted in the open-items count and never
+holds up the page's approval. It gets its own small count ("n questions unanswered") and, in Copy
+results, its own `Q <id>: <answer>` line in a block at the end, after the approval line.
+
+```html
+<h2 data-review-type="question" data-suggested="Nightly, 02:00 US/Eastern">When should the sync job run?</h2>
+<p>Pick a schedule that doesn't land in the middle of the backup window.</p>
 ```

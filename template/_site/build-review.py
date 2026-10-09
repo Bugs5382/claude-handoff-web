@@ -60,13 +60,14 @@ def load(prefix, path):
     if found:
         for tag, chunk in found:
             sid, t = attr(tag, "data-review-question"), attr(tag, "data-title")
-            items.append((sid, t, chunk))
+            items.append((sid, t, chunk, attr(tag, "data-review-type"), attr(tag, "data-suggested")))
     elif attr(body, "data-review-h2") != "off":
         for i, ch in enumerate([c for c in re.split(r"(?=<h2[\s>])", inner) if c.startswith("<h2")], 1):
+            h2tag = re.match(r"<h2[^>]*>", ch).group(0)
             t = re.sub(r"<[^>]+>", "", re.match(r"<h2[^>]*>(.*?)</h2>", ch, re.S).group(1)).strip()
-            items.append((f"s{i}", html.unescape(t), ch))
+            items.append((f"s{i}", html.unescape(t), ch, attr(h2tag, "data-review-type"), attr(h2tag, "data-suggested")))
     out = [dict(id=f"{prefix}.{sid}", title=t, html=ch, approved=sid in approved and sid not in reopen,
-                reopen=reopen.get(sid, "")) for sid, t, ch in items]
+                reopen=reopen.get(sid, ""), type=typ, suggested=sug) for sid, t, ch, typ, sug in items]
     reset = attr(body, "data-review-reset")
     ver, _, ids = reset.partition(":")
     rids = [i.strip() for i in ids.split(",") if i.strip()] + [k for k in reopen if k not in ids.split(",")]
@@ -159,29 +160,35 @@ def main(folder):
         if tagged:
             resets.append(tagged)
         base = f"/{folder}/" + (key if key.endswith("/") else (key.rsplit("/", 1)[0] + "/" if "/" in key else ""))
-        n_open = sum(not i["approved"] for i in items)
-        n_reo = sum(bool(i["reopen"]) for i in items)
+        ync = [i for i in items if i.get("type") != "question"]
+        n_open = sum(not i["approved"] for i in ync)
+        n_reo = sum(bool(i["reopen"]) for i in ync)
         chips = chip(f"{n_open} open", "c-review" if n_open else "c-approved")
         chips += chip("Reopened", "c-reopened") if n_reo else ""
-        chips += chip(f"{len(items) - n_open} approved", "c-approved") if len(items) - n_open and n_open else ""
+        chips += chip(f"{len(ync) - n_open} approved", "c-approved") if len(ync) - n_open and n_open else ""
         chips += "".join(chip(c) for c in manifest[key].get("chips", []) if c)
         stale = "" if f"{folder}/{key}" in protected else (
             f'<button type="button" class="stale-btn" data-stale-folder="{html.escape(folder, quote=True)}" '
             f'data-stale-page="{html.escape(key, quote=True)}" data-stale-title="{html.escape(title, quote=True)}">Stale: remove this page</button>')
         body = []
         for it in items:
-            if it["approved"]:
+            is_q = it.get("type") == "question"
+            if is_q:
+                pass  # never counted in approved/open/reopen: it is a free-text question, not Yes/No/Changes
+            elif it["approved"]:
                 approved.append(it["id"])
             else:
                 open_n += 1
-            if it["reopen"]:
+            if not is_q and it["reopen"]:
                 reopen.append(f'{it["id"]}={it["reopen"]}')
             chunk = clean(it["html"], it["title"])
             small = len(text_of(chunk)) <= 400 and not BULKY.search(chunk)
             detail = (f'<div class="lead">{chunk}</div>' if small and text_of(chunk) else "") if small else \
                 f'<details class="rv-details"><summary>Show details</summary>{frame(styles, chunk, base)}</details>'
+            type_attr = f' data-review-type="{html.escape(it["type"], quote=True)}"' if it.get("type") else ""
+            sugg_attr = f' data-suggested="{html.escape(it["suggested"], quote=True)}"' if it.get("suggested") else ""
             body.append(f'<div class="item" data-review-question="{html.escape(it["id"], quote=True)}" '
-                        f'data-title="{html.escape(title + ": " + it["title"], quote=True)}">'
+                        f'data-title="{html.escape(title + ": " + it["title"], quote=True)}"{type_attr}{sugg_attr}>'
                         f'<div class="ih">{html.escape(it["title"])} <code>{html.escape(it["id"])}</code></div>'
                         f'{detail}</div>')
         groups.append((n_open == 0, f'<details class="grp" name="rvgrp" data-src="{html.escape(key, quote=True)}">'
@@ -199,7 +206,7 @@ def main(folder):
     page = f'''<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{html.escape(name)}: everything open for review</title>
-<link rel="stylesheet" href="/_site/site.css?v=11">
+<link rel="stylesheet" href="/_site/site.css?v=12">
 </head>
 <body class="site unified" data-tz="{html.escape(SITE.get("timezone", ""), quote=True)}" data-review-page="/{folder}/review/" data-review-h2="off" data-review-reset="{html.escape("|".join(resets), quote=True)}" data-review-approved="{",".join(approved)}" data-review-reopen="{html.escape("|".join(reopen), quote=True)}"{extra_attrs}>
 <header class="top"><div class="wrap">
@@ -209,7 +216,7 @@ def main(folder):
 <main class="wrap">
 {"".join(out) or '<p class="empty">Nothing open.</p>'}
 </main>
-<script src="/_site/review.js?v=11"></script>
+<script src="/_site/review.js?v=12"></script>
 </body></html>
 '''
     (fdir / "review").mkdir(exist_ok=True)

@@ -11,6 +11,8 @@ Common rules:
 - Review pages load `/_site/review.js?v=15` just before `</body>`; it brings `live.js` itself. Other pages
   load `/_site/live.js?v=15` with `data-mode="page"`.
 - Answers are saved on the server; Copy results is what the owner pastes back to you.
+- Pictures: wrap each `<img>` in a link to its own file. A click shows it in one reused pop-out window,
+  and the next picture swaps into that window (see `_site/README.md` "Pictures (pop-out)").
 - A round is one pass of answers under one `data-build` value or `data-review-reset` version. Bump either
   one and the server archives the round it replaces on its own (see `_site/SAVE-API.md` "Round history");
   nothing else is needed. Past rounds show in a collapsed "History" block at the page's bottom, in the More
@@ -67,6 +69,7 @@ is instead an open question (see (i)) when the answer isn't a choice between opt
 <pre>+-----------------------------+
 | Profile | Security | Alerts  |
 +-----------------------------+</pre>
+<p><a href="img/layout.png" target="_blank" rel="noopener"><img src="img/layout.png" alt="Layout mock" width="320"></a></p>
 <h2>Errors and empty states</h2>
 <p>What the owner sees when a save fails or there is nothing to show.</p>
 </main>
@@ -91,8 +94,9 @@ python3 _site/build-review.py <folder>      # writes <folder>/review/index.html
 
 Each source page becomes a collapsed group (one open at a time): title, summary, open count, chips,
 "Full page" and Stale. Item ids are prefixed with the page (`design-review.s2`), and the source page's
-approved, reopened and reset attributes carry through. Each group's Copy button copies only that page's
-results, in the same format as Copy results.
+approved, reopened, blocked and reset attributes carry through. Each group's "N open" chip and the header
+total update as the owner answers, counting the same items as the bottom bar.
+Each group's Copy button copies only that page's results, in the same format as Copy results.
 
 ## (d) Sign-off checklist
 

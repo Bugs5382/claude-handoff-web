@@ -61,3 +61,43 @@ def test_question_item_excluded_from_open_count(site, capsys):
     printed = capsys.readouterr().out
     # one Yes/No/Changes item (s1) open; the question (s2) must not inflate the open count.
     assert "open=1" in printed
+
+
+BLOCKED_HTML = """<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Checks</title></head>
+<body class="site" data-review-blocked="s3=s1">
+<h2>Sign in works</h2>
+<p>Sign in.</p>
+<h2>Profile saves</h2>
+<p>Save it.</p>
+<h2>Sign out works</h2>
+<p>Needs sign in first.</p>
+</body></html>
+"""
+
+
+def build_blocked(site):
+    (site / "qdemo" / "_status.json").write_text(json.dumps({
+        "design.html": {"state": "needs-you", "note": "A design with one choice and one question."},
+        "checks.html": {"state": "needs-you", "note": "Three checks, one blocked."},
+    }))
+    (site / "qdemo" / "checks.html").write_text(BLOCKED_HTML)
+    return build(site)
+
+
+def test_blocked_items_carried_into_unified_page(site):
+    out = build_blocked(site)
+    assert 'data-review-blocked="checks.s3=checks.s1"' in out
+
+
+def test_blocked_items_not_counted_open(site, capsys):
+    out = build_blocked(site)
+    # design: s1 open (s2 is a question); checks: s1 and s2 open, s3 blocked.
+    assert "open=3" in capsys.readouterr().out
+    assert '<span class="chip c-review" data-open-chip>2 open</span>' in out
+    assert '<span class="chip c-review" data-open-chip>1 open</span>' in out
+
+
+def test_header_total_is_marked_for_live_updates(site):
+    out = build_blocked(site)
+    assert '<span class="open-total">3</span> open items from 2 pages' in out

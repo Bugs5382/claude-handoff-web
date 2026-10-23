@@ -42,9 +42,13 @@ completes, set it to `done` and it moves to "Completed". To retire a page, the o
   collapsed group (one open at a time) whose heading shows the title, a one-line summary
   (`<meta name="description">`, else the first paragraph, else the manifest note), the open count, chips,
   "Full page" and Stale. Each item shows its question and answer controls first; bulky content sits behind
-  "Show details". A folder with its own builder lists it in `site.json` `builders`. A Copy button next to
-  each group's "N open" chip copies just that page's results, in the Copy results format (its own heading,
-  items, STALE line, footer and questions); it doesn't open or close the group.
+  "Show details". A folder with its own builder lists it in `site.json` `builders`. The group's "N open" chip
+  (`data-open-chip`) and the header total (`.open-total`) count what the bar counts: items not answered yet,
+  or Changes without a note; approved and hidden, skipped, blocked and question items don't count. review.js
+  keeps them current as answers change and sets them from the saved answers on every load.
+  `data-review-blocked` carries through from the source pages, prefixed like the ids.
+  A Copy button next to each group's "N open" chip copies just that page's results, in the Copy results
+  format (its own heading, items, STALE line, footer and questions); it doesn't open or close the group.
 - Converted pages wrap each item in `<section data-review-question="id" data-title="...">` and set
   `<body data-review-h2="off">` so only those sections are items. `data-review-skip="on"` adds Skipped (locked)
   for test checklists; `data-review-import="oldKey|prefix"` imports answers an older checklist saved.
@@ -93,6 +97,22 @@ pop-out window (`howto`, 520x720, reused), styled with site.css, showing the ite
 Every `<pre>` and `code.cmd` in it gets a Copy button. Existing `class="howto"` blocks and checklist
 `.item .how` lines are converted automatically. Checklists with their own answer script and pop-out load
 review.js with `<body data-review-controls="off">`: review.js then only starts live updates.
+
+## Pictures (pop-out)
+
+Link each picture to its own file and put the `<img>` inside the link:
+
+```html
+<a href="img/login-built.png" target="_blank" rel="noopener"><img src="img/login-built.png" alt="Login as built" width="320"></a>
+```
+
+`live.js` (on every page, and inside the unified page's detail frames) turns a plain click on such a link
+into one named pop-out window (`picture`, 1000x760, reused): the picture fitted to the window, its `alt` text
+as the caption, and a "Full size" link. Clicking another picture swaps it into the same window and brings
+the window to the front. Only links that wrap an `<img>` and point at a `.png`, `.jpg`, `.jpeg`, `.gif`,
+`.webp` or `.svg` file count. Middle-click, Cmd- or Ctrl-click, a `download` link, a blocked pop-up or a
+browser without JavaScript keep the plain link (a new tab). Keep pictures in a subfolder such as `img/` and
+list it in `_status.json` as `reference`, so the index doesn't show it as an unclassified page.
 
 ## Wording
 

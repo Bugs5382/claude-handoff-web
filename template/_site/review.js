@@ -421,6 +421,24 @@ document.addEventListener("toggle", e => { if (e.target.open) e.target.querySele
     for (const it of list) { const a = document.createElement("a"); a.href = "#rv-" + it.id; a.className = "chip c-review"; a.textContent = it.id; a.addEventListener("click", e => { e.preventDefault(); showIds(false); go(it); }); jumpEl.appendChild(a); }
     idsBtn.textContent = "Open ids (" + list.length + ")"; idsBtn.disabled = !list.length;
     if (!list.length) showIds(false);
+    paintGroupCounts(list);
+  }
+  // Unified pages: each group's "N open" chip and the header total count what openList() counts, so
+  // they agree with the bar. Pages built before the chips were marked are matched by their text.
+  function paintGroupCounts(list) {
+    if (!body.classList.contains("unified")) return;
+    for (const g of document.querySelectorAll("details.grp")) {
+      const chip = g.querySelector("summary [data-open-chip]") ||
+        Array.from(g.querySelectorAll("summary .chip")).find(c => /^\d+ open$/.test(c.textContent.trim()));
+      if (!chip) continue;
+      const n = list.filter(it => it.box.closest("details.grp") === g).length;
+      chip.textContent = n + " open";
+      chip.classList.toggle("c-review", n > 0); chip.classList.toggle("c-approved", n === 0);
+    }
+    const tot = document.querySelector("header.top .open-total");
+    if (tot) { tot.textContent = list.length; return; }
+    const p = document.querySelector("header.top p"), t = p && p.firstChild;
+    if (t && t.nodeType === 3 && /^\d+ open items/.test(t.nodeValue)) t.nodeValue = t.nodeValue.replace(/^\d+/, list.length);
   }
   function openList() {
     return items.filter(it => { const s = state[it.id] || {}; return !isQ(it) && !hidden.has(it.id) && !s.locked && !blocked[it.id] && (!s.v || (s.v === "chg" && !(s.n || "").trim())); });

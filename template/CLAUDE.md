@@ -29,7 +29,8 @@ these rules. Full how-to: `_site/README.md`; page designs: the template's `docs/
 
 ## Reviews
 
-- Every item gets Yes / No / Changes (notes required for Changes); test checklists add Skipped (locked).
+- Every item gets Yes / No / Changes unless the page sets its own choices (data-review-options, data-review-default).
+  Notes are required for Changes; test checklists add Skipped (locked).
 - Approved items are hidden (set them from the owner's pasted results with `data-review-approved`) and stay
   in Copy results. An answered item comes back only when a change alters it, marked Reopened with the reason
   (`data-review-reopen`).

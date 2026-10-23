@@ -19,7 +19,8 @@ type: reference
   and an optional comment box, count as the default until picked, and never block approval; Copy results
   lists `- [id] HOLD: title` and ends with the counts (`1 start · 2 hold`).
 - Pictures: `<a href="img/x.png" target="_blank"><img src="img/x.png" alt="caption"></a>`. A click opens one
-  reused pop-out that swaps to each picture clicked; list the `img/` folder as `reference` in `_status.json`.
+  reused pop-out that swaps to each picture clicked. An `img/` folder (any subfolder with no `.html` file)
+  is never a card, so it needs no `_status.json` entry.
 - Keep one unified page per session: `python3 _site/build-review.py <folder>` builds `/<folder>/review/`.
 - Never ask twice: if a checklist answered it, close the review item from that answer.
 - The owner's Stale button deletes a page for good; `_old/` copies are pruned after 7 days. A page's round

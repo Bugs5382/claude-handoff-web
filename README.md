@@ -29,7 +29,8 @@ git clone https://github.com/Bugs5382/claude-handoff-web.git
 ```
 
 `install.sh` asks for anything you leave out, writes `site.json`, and refuses to install inside a git work
-tree. Add `--example` for the fake demo folders.
+tree. Add `--example` for the fake demo folders; it starts from the example `site.json` and applies any
+option you give on top.
 
 ## 🚀 Run
 

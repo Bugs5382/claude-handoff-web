@@ -82,7 +82,8 @@ def test_history_entry_never_forced_needs_you(site):
     r = subprocess.run([sys.executable, str(site / "gen-index.py")], cwd=site, capture_output=True, text=True)
     assert r.returncode == 0, r.stderr
     manifest = json.loads((site / "demo" / "_status.json").read_text())
-    assert manifest["history/"] == {"state": "reference", "note": "custom note"}
+    # first_seen is added like for any page gen-index.py lists; the state and note stay as they were.
+    assert {k: v for k, v in manifest["history/"].items() if k != "first_seen"} == {"state": "reference", "note": "custom note"}
 
 
 def card_html(page_html, key):
@@ -174,3 +175,10 @@ def test_history_card_never_left_under_needs_you(site, entry):
     card = card_html((site / "demo" / "index.html").read_text(), "demo/history/")
     assert 'class="card needs"' not in card and "Not classified" not in card
     assert 'data-key="demo/history/"' not in (site / "index.html").read_text()
+
+
+def test_history_page_listed_on_the_first_run(site):
+    assert not (site / "demo" / "history").exists()
+    run_script(site, site / "gen-index.py")
+    card = card_html((site / "demo" / "index.html").read_text(), "demo/history/")
+    assert ">Demo project: history</a>" in card

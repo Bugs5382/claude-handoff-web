@@ -154,3 +154,23 @@ def test_page_of_only_questions_shows_no_count_or_approved(site):
     card = card_html((site / "demo" / "index.html").read_text(), "demo/questions.html")
     assert "open item" not in card
     assert ">Approved<" not in card
+
+
+@pytest.mark.parametrize("entry", [None, {"first_seen": "2026-10-01T09:00:00+00:00"}])
+def test_history_card_never_left_under_needs_you(site, entry):
+    """history/ already on disk with no manifest state (an older instance, a rewritten manifest) becomes reference."""
+    run_script(site, site / "gen-index.py")
+    manifest = json.loads((site / "demo" / "_status.json").read_text())
+    if entry is None:
+        del manifest["history/"]
+    else:
+        manifest["history/"] = entry
+    (site / "demo" / "_status.json").write_text(json.dumps(manifest))
+    run_script(site, site / "gen-index.py")
+    manifest = json.loads((site / "demo" / "_status.json").read_text())
+    assert manifest["history/"]["state"] == "reference"
+    if entry:
+        assert manifest["history/"]["first_seen"] == entry["first_seen"]
+    card = card_html((site / "demo" / "index.html").read_text(), "demo/history/")
+    assert 'class="card needs"' not in card and "Not classified" not in card
+    assert 'data-key="demo/history/"' not in (site / "index.html").read_text()

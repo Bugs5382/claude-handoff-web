@@ -274,14 +274,19 @@ def history_page(folder, pages):
 
 
 def ensure_reference_entry(folder, key, note):
-    """Seed a manifest entry that must never default to needs-you (gen-index.py's own pages)."""
+    """Seed a manifest entry that must never default to needs-you (gen-index.py's own pages). Runs before
+    collect(), which would otherwise record the page as unclassified; an entry with no state gets one,
+    and a state already set is left alone."""
     mpath = os.path.join(ROOT, folder, "_status.json")
     try:
         manifest = json.load(open(mpath))
     except (OSError, ValueError):
         manifest = {}
-    if key not in manifest:
-        manifest[key] = {"state": "reference", "note": note}
+    ent = manifest.setdefault(key, {})
+    if "state" not in ent:
+        ent["state"] = "reference"
+        ent.setdefault("note", note)
+        os.makedirs(os.path.dirname(mpath), exist_ok=True)
         with open(mpath, "w") as f:
             json.dump(manifest, f, indent=2, ensure_ascii=False)
             f.write("\n")
@@ -290,10 +295,10 @@ def ensure_reference_entry(folder, key, note):
 def main():
     everything = {}
     for d, name in FOLDERS.items():
+        ensure_reference_entry(d, "history/", "Past review and sign-off rounds for this folder.")
         pages = collect(d)
         everything[d] = pages
         history_page(d, pages)
-        ensure_reference_entry(d, "history/", "Past review and sign-off rounds for this folder.")
         by = {s: [p for p in pages if p["state"] == s] for s, _ in SECTIONS}
         summary = (f'<p class="muted">{len(by["needs-you"])} need you &middot; {len(by["reference"])} reference '
                    f'&middot; {len(by["done"])} completed</p>')

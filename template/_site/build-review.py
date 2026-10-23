@@ -5,6 +5,7 @@ its heading shows the page title, a one-line summary, the open count, its chips 
 Each item shows its question and answer controls first; bulky content sits behind "Show details" in an
 iframe with its page's CSS. Items come from [data-review-question] sections, or from <h2> sections on plain pages.
 Approved, reopened, blocked and reset attributes on the source pages carry through, prefixed by page.
+A page's own answer choices (data-review-options / data-review-default) are copied onto each of its items.
 
 Usage: build-review.py <folder>    (rerun after any source page or manifest change)
 """
@@ -42,6 +43,38 @@ def sections(inner):
                 break
 
 
+def parse_options(spec):
+    pairs = [p.split(":", 1) for p in spec.split(",") if ":" in p]
+    return [(v.strip(), lab.strip()) for v, lab in pairs if v.strip() and lab.strip()]
+
+
+def choices_of(tag, body):
+    """An item's answer choices, by the rule review.js uses: the item's own data-review-options, else
+    the page's. The default is dropped when it isn't one of the choices. None for Yes / No / Changes."""
+    own = parse_options(attr(tag, "data-review-options"))
+    opts = own or parse_options(attr(body, "data-review-options"))
+    if not opts:
+        return None
+    d = attr(tag, "data-review-default") or attr(body, "data-review-default")
+    return {"options": opts, "default": d if any(v == d for v, _ in opts) else ""}
+
+
+def options_attr(choice):
+    return ",".join(f"{v}:{lab}" for v, lab in choice["options"])
+
+
+def tally(choices):
+    """'0 start · 3 hold': the per-choice counts a choices group shows until review.js has the saved answers."""
+    counts = {}
+    for c in choices:
+        for _, lab in c["options"]:
+            counts.setdefault(lab.lower(), 0)
+        lab = dict(c["options"]).get(c["default"])
+        if lab:
+            counts[lab.lower()] += 1
+    return " · ".join(f"{n} {k}" for k, n in counts.items())
+
+
 def load(prefix, path):
     src = path.read_text(errors="ignore")
     body = re.search(r"<body[^>]*>", src).group(0)
@@ -60,14 +93,16 @@ def load(prefix, path):
     if found:
         for tag, chunk in found:
             sid, t = attr(tag, "data-review-question"), attr(tag, "data-title")
-            items.append((sid, t, chunk, attr(tag, "data-review-type"), attr(tag, "data-suggested")))
+            items.append((sid, t, chunk, attr(tag, "data-review-type"), attr(tag, "data-suggested"), choices_of(tag, body)))
     elif attr(body, "data-review-h2") != "off":
         for i, ch in enumerate([c for c in re.split(r"(?=<h2[\s>])", inner) if c.startswith("<h2")], 1):
             h2tag = re.match(r"<h2[^>]*>", ch).group(0)
             t = re.sub(r"<[^>]+>", "", re.match(r"<h2[^>]*>(.*?)</h2>", ch, re.S).group(1)).strip()
-            items.append((f"s{i}", html.unescape(t), ch, attr(h2tag, "data-review-type"), attr(h2tag, "data-suggested")))
-    out = [dict(id=f"{prefix}.{sid}", title=t, html=ch, approved=sid in approved and sid not in reopen,
-                reopen=reopen.get(sid, ""), type=typ, suggested=sug) for sid, t, ch, typ, sug in items]
+            items.append((f"s{i}", html.unescape(t), ch, attr(h2tag, "data-review-type"), attr(h2tag, "data-suggested"), choices_of(h2tag, body)))
+    # Choice items (the page's own answer choices) are never approved or open; questions never take choices.
+    items = [(sid, t, ch, typ, sug, None if typ == "question" else cho) for sid, t, ch, typ, sug, cho in items]
+    out = [dict(id=f"{prefix}.{sid}", title=t, html=ch, approved=sid in approved and sid not in reopen and not cho,
+                reopen=reopen.get(sid, ""), type=typ, suggested=sug, choice=cho) for sid, t, ch, typ, sug, cho in items]
     reset = attr(body, "data-review-reset")
     ver, _, ids = reset.partition(":")
     rids = [i.strip() for i in ids.split(",") if i.strip()] + [k for k in reopen if k not in ids.split(",")]
@@ -163,11 +198,14 @@ def main(folder):
         blocked += [f"{prefix}.{k}={prefix}.{v}" for k, v in extra["blocked"].items()]
         is_blocked = {f"{prefix}.{k}" for k in extra["blocked"]}
         base = f"/{folder}/" + (key if key.endswith("/") else (key.rsplit("/", 1)[0] + "/" if "/" in key else ""))
-        ync = [i for i in items if i.get("type") != "question"]
+        ync = [i for i in items if i.get("type") != "question" and not i["choice"]]
+        choices = [i["choice"] for i in items if i["choice"]]
         n_open = sum(not i["approved"] and i["id"] not in is_blocked for i in ync)
         n_reo = sum(bool(i["reopen"]) for i in ync)
         # review.js finds this chip by data-open-chip and keeps it current as items are answered.
         chips = f'<span class="chip {"c-review" if n_open else "c-approved"}" data-open-chip>{n_open} open</span>'
+        if choices and not ync:
+            chips = f'<span class="chip" data-open-chip data-choice-chip>{html.escape(tally(choices))}</span>'
         chips += chip("Reopened", "c-reopened") if n_reo else ""
         n_appr = sum(bool(i["approved"]) for i in ync)
         chips += chip(f"{n_appr} approved", "c-approved") if n_appr and n_open else ""
@@ -178,8 +216,8 @@ def main(folder):
         body = []
         for it in items:
             is_q = it.get("type") == "question"
-            if is_q:
-                pass  # never counted in approved/open/reopen: it is a free-text question, not Yes/No/Changes
+            if is_q or it["choice"]:
+                pass  # never counted in approved/open: a free-text question or one of the page's own choices
             elif it["approved"]:
                 approved.append(it["id"])
             elif it["id"] not in is_blocked:
@@ -192,6 +230,9 @@ def main(folder):
                 f'<details class="rv-details"><summary>Show details</summary>{frame(styles, chunk, base)}</details>'
             type_attr = f' data-review-type="{html.escape(it["type"], quote=True)}"' if it.get("type") else ""
             sugg_attr = f' data-suggested="{html.escape(it["suggested"], quote=True)}"' if it.get("suggested") else ""
+            if it["choice"]:
+                sugg_attr += (f' data-review-options="{html.escape(options_attr(it["choice"]), quote=True)}"'
+                              f' data-review-default="{html.escape(it["choice"]["default"], quote=True)}"')
             body.append(f'<div class="item" data-review-question="{html.escape(it["id"], quote=True)}" '
                         f'data-title="{html.escape(title + ": " + it["title"], quote=True)}"{type_attr}{sugg_attr}>'
                         f'<div class="ih">{html.escape(it["title"])} <code>{html.escape(it["id"])}</code></div>'
@@ -212,7 +253,7 @@ def main(folder):
     page = f'''<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{html.escape(name)}: everything open for review</title>
-<link rel="stylesheet" href="/_site/site.css?v=15">
+<link rel="stylesheet" href="/_site/site.css?v=16">
 </head>
 <body class="site unified" data-tz="{html.escape(SITE.get("timezone", ""), quote=True)}" data-review-page="/{folder}/review/" data-review-h2="off" data-review-reset="{html.escape("|".join(resets), quote=True)}" data-review-approved="{",".join(approved)}" data-review-reopen="{html.escape("|".join(reopen), quote=True)}"{extra_attrs}>
 <header class="top"><div class="wrap">
@@ -222,7 +263,7 @@ def main(folder):
 <main class="wrap">
 {"".join(out) or '<p class="empty">Nothing open.</p>'}
 </main>
-<script src="/_site/review.js?v=15"></script>
+<script src="/_site/review.js?v=16"></script>
 </body></html>
 '''
     (fdir / "review").mkdir(exist_ok=True)

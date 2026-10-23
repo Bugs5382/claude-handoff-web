@@ -204,16 +204,44 @@ def _count_yes(answers):
     return yes, len(counted)
 
 
+def _page_choices(attrs):
+    """The page's own answer choices (body data-review-options and data-review-default), or None
+    for a Yes / No / Changes page: {"labels": {value: label, ...}, "default": value or ""}."""
+    labels = {}
+    for part in attrs.get("data-review-options", "").split(","):
+        value, _, label = part.partition(":")
+        if value.strip() and label.strip():
+            labels[value.strip()] = label.strip()
+    if not labels:
+        return None
+    default = attrs.get("data-review-default", "")
+    return {"labels": labels, "default": default if default in labels else ""}
+
+
 def _results_text(page, title, src, attrs, answers, round_no, build):
     """Best-effort reconstruction of what the page's own Copy results would have shown for this
     round, from the page's current items and the round's saved answers."""
     items = _extract_items(src, attrs)
+    choices = _page_choices(attrs)
     lines = [f"Round {round_no}: {title} (/{page})" + (f", build {build}" if build else "")]
+    tally = {label.lower(): 0 for label in choices["labels"].values()} if choices else {}
     for sid, item_title in items:
         a = answers.get(sid) or {}
-        lines.append(f"- [{sid}] {ANSWER_LABELS.get(a.get('v'), 'NOT ANSWERED')}: {item_title}")
+        if choices:
+            # A page with its own choices: an item with no saved value is on the page's default.
+            label = choices["labels"].get(a.get("v") or choices["default"], "")
+            if label:
+                tally[label.lower()] += 1
+            answer = label.upper() if label else "NOT ANSWERED"
+        else:
+            answer = ANSWER_LABELS.get(a.get("v"), "NOT ANSWERED")
+        lines.append(f"- [{sid}] {answer}: {item_title}")
         if a.get("n"):
             lines.append("    Note: " + str(a["n"]).replace("\n", " "))
+    if choices:
+        lines.append("")
+        lines.append(" · ".join(f"{n} {k}" for k, n in tally.items()))
+        return "\n".join(lines) + "\n"
     yes, counted = _count_yes({sid: answers.get(sid) or {} for sid, _ in items})
     if counted:
         lines.append("")

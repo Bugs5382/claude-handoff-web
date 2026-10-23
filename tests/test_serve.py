@@ -236,6 +236,19 @@ def test_round_archived_on_build_change(site):
                      "opened": meta["opened"]}
 
 
+def test_round_text_for_a_choices_page_uses_its_labels_and_default():
+    serve = load_serve()
+    src = (ROOT / "example" / "demo" / "backlog.html").read_text()
+    attrs = serve._body_attrs(src)
+    text = serve._results_text("demo/backlog.html", "Demo app backlog", src, attrs,
+                               {"s1": {"v": "start", "n": "Next sprint"}, "s2": {"v": "", "n": "Not before Q3"}}, 1, "")
+    assert "- [s1] START: Export reports as PDF\n    Note: Next sprint\n" in text
+    assert "- [s2] HOLD: Dark theme\n    Note: Not before Q3\n" in text
+    assert "- [s3] HOLD: Single sign-on\n" in text
+    assert "NOT ANSWERED" not in text and "approved" not in text.lower()
+    assert text.endswith("\n1 start · 2 hold\n")
+
+
 def test_round_archived_on_reset_version_change(site):
     root, base = site
     page = root / "demo" / "design-review.html"

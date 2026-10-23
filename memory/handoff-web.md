@@ -6,7 +6,7 @@ type: reference
 - The site is a working folder served by `_site/serve.py` at `http://<host>:<port>/` (see its `site.json`); it is scratch memory, never a git repo, never committed.
 - One server, one port, run by the operator session. Never start another server; never open a browser for the owner. Give links as plain text.
 - Publish only into your own folder (`/<folder>/`). Every page gets a `_status.json` entry (`needs-you`, `reference` or `done` plus a one-line note); then run `python3 gen-index.py`.
-- Load `/_site/site.css?v=15` and `/_site/review.js?v=15`; use `<body class="site">`.
+- Load `/_site/site.css?v=16` and `/_site/review.js?v=16`; use `<body class="site">`.
 - Review pages: each `<h2>` or `[data-review-question]` item gets Yes / No / Changes (Changes needs a note); checklists add Skipped with `data-review-skip="on"`.
 - Answers are saved on the server (`/_save/`), never only in the browser; the owner pastes "Copy results" back to you.
 - Set `data-review-approved` from the pasted results (hidden, kept in Copy results); bring items back with `data-review-reopen="id=reason"`.
@@ -14,6 +14,10 @@ type: reference
 - Something that isn't a choice (a free-text answer) is an open question, not a Yes/No/Changes item:
   `data-review-type="question"` (optional `data-suggested="..."`). It never blocks approval and is never
   counted in the open-items count; Copy results lists it as `Q <id>: <answer>`.
+- A page whose items all answer from their own short list (a backlog: Start or Hold) sets
+  `<body data-review-options="start:Start,hold:Hold" data-review-default="hold">`. Items show those choices
+  and an optional comment box, count as the default until picked, and never block approval; Copy results
+  lists `- [id] HOLD: title` and ends with the counts (`1 start · 2 hold`).
 - Pictures: `<a href="img/x.png" target="_blank"><img src="img/x.png" alt="caption"></a>`. A click opens one
   reused pop-out that swaps to each picture clicked; list the `img/` folder as `reference` in `_status.json`.
 - Keep one unified page per session: `python3 _site/build-review.py <folder>` builds `/<folder>/review/`.

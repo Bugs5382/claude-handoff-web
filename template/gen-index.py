@@ -71,7 +71,8 @@ def title_of(src, key):
 
 
 def review_info(src):
-    """Count review.js items on a page: (items, open, reopened). None if the page has no review.js."""
+    """Count review.js items on a page: (items, open, reopened, choice items). None if the page has no review.js.
+    Choice items (the page's own data-review-options) are never open."""
     if "review.js" not in src:
         return None
     m = re.search(r"<body[^>]*>", src)
@@ -82,9 +83,12 @@ def review_info(src):
     if get("data-review-controls") == "off":
         return None
     inner = re.sub(r"<script.*?</script>", "", src[m.end():] if m else src, flags=re.S)
-    h2 = 0 if get("data-review-h2") == "off" else len(re.findall(r"<h2[\s>]", inner))
-    n = h2 + len(re.findall(r'data-review-question="', inner))
-    return n, max(n - len(approved), 0), len(reopen)
+    h2s = [] if get("data-review-h2") == "off" else re.findall(r"<h2(?:\s[^>]*)?>", inner)
+    tags = h2s + re.findall(r'<[a-zA-Z][a-zA-Z0-9]*\b[^>]*\bdata-review-question="[^>]*>', inner)
+    n = len(tags)
+    page_choices = bool(get("data-review-options").strip())
+    choice = sum(1 for t in tags if 'data-review-type="question"' not in t and (page_choices or "data-review-options=" in t))
+    return n, max(n - choice - len(approved), 0), len(reopen), choice
 
 
 def when(ts):
@@ -132,14 +136,15 @@ def collect(folder):
         if state == "needs-you":
             chips.append("To review")
         info = review_info(src)
-        open_items = info[1] if info and state == "needs-you" else None
+        # A page whose items are all its own answer choices has nothing "open" to count.
+        open_items = info[1] if info and state == "needs-you" and info[0] > info[3] else None
         if info and state == "needs-you":
-            n, open_n, reo = info
+            n, open_n, reo, n_choice = info
             if reo:
                 chips.append("Reopened")
             if open_n and "To review" not in chips:
                 chips.append("To review")
-            if n and not open_n:
+            if n > n_choice and not open_n:
                 chips.append("Approved")
         chips.append({"reference": "Reference", "done": "Done"}.get(state, ""))
         chips += [c for c in ent.get("chips", []) if c]

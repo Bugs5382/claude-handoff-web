@@ -21,9 +21,9 @@ completes, set it to `done` and it moves to "Completed". To retire a page, the o
 ## Hook a page in
 
 ```html
-<link rel="stylesheet" href="/_site/site.css?v=14">
+<link rel="stylesheet" href="/_site/site.css?v=15">
 ...
-<script src="/_site/review.js?v=14"></script>   <!-- review pages: just before </body> -->
+<script src="/_site/review.js?v=15"></script>   <!-- review pages: just before </body> -->
 ```
 
 - `review.js` turns every `<h2>` section (and every `[data-review-question="id" data-title="..."]`) into an
@@ -47,6 +47,8 @@ completes, set it to `done` and it moves to "Completed". To retire a page, the o
   or Changes without a note; approved and hidden, skipped, blocked and question items don't count. review.js
   keeps them current as answers change and sets them from the saved answers on every load.
   `data-review-blocked` carries through from the source pages, prefixed like the ids.
+  A Copy button next to each group's "N open" chip copies just that page's results, in the Copy results
+  format (its own heading, items, STALE line, footer and questions); it doesn't open or close the group.
 - Converted pages wrap each item in `<section data-review-question="id" data-title="...">` and set
   `<body data-review-h2="off">` so only those sections are items. `data-review-skip="on"` adds Skipped (locked)
   for test checklists; `data-review-import="oldKey|prefix"` imports answers an older checklist saved.
@@ -116,7 +118,7 @@ list it in `_status.json` as `reference`, so the index doesn't show it as an unc
 
 - Answers, review pages: Yes, No, Changes (notes required for Changes). Test checklists add Skipped.
 - Item states: Open, Reopened: <reason>, Approved, Skipped (locked), Blocked by <id>.
-- Buttons: Copy results, Clear my answers (never clears approved or locked items), Blocker: copy now,
+- Buttons: Copy results, Copy (one unified-page group), Clear my answers (never clears approved or locked items), Blocker: copy now,
   Stale: remove this page.
 - Progress: `<n> of <m> open items answered`, plus ` · <k> approved and hidden` when k > 0, plus
   ` · <j> questions unanswered` when j > 0 (open questions never count toward `<n>` or `<m>`).

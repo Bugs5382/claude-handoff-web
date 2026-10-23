@@ -6,7 +6,7 @@ type: reference
 - The site is a working folder served by `_site/serve.py` at `http://<host>:<port>/` (see its `site.json`); it is scratch memory, never a git repo, never committed.
 - One server, one port, run by the operator session. Never start another server; never open a browser for the owner. Give links as plain text.
 - Publish only into your own folder (`/<folder>/`). Every page gets a `_status.json` entry (`needs-you`, `reference` or `done` plus a one-line note); then run `python3 gen-index.py`.
-- Load `/_site/site.css?v=14` and `/_site/review.js?v=14`; use `<body class="site">`.
+- Load `/_site/site.css?v=15` and `/_site/review.js?v=15`; use `<body class="site">`.
 - Review pages: each `<h2>` or `[data-review-question]` item gets Yes / No / Changes (Changes needs a note); checklists add Skipped with `data-review-skip="on"`.
 - Answers are saved on the server (`/_save/`), never only in the browser; the owner pastes "Copy results" back to you.
 - Set `data-review-approved` from the pasted results (hidden, kept in Copy results); bring items back with `data-review-reopen="id=reason"`.

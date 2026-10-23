@@ -33,7 +33,7 @@ document.addEventListener("toggle", e => { if (e.target.open) e.target.querySele
 (function () {
   // Pages that render their own items (and their own pop-out) opt out.
   if (document.body.getAttribute("data-review-controls") === "off") return;
-  const V = "14";
+  const V = "15";
   function itemOf(el) {
     const box = el.closest("[data-review-question], .item");
     if (box) {
@@ -243,7 +243,7 @@ document.addEventListener("toggle", e => { if (e.target.open) e.target.querySele
   }
 
   if (!document.querySelector('link[href*="/_site/site.css"]')) {
-    const l = document.createElement("link"); l.rel = "stylesheet"; l.href = "/_site/site.css?v=14"; document.head.appendChild(l);
+    const l = document.createElement("link"); l.rel = "stylesheet"; l.href = "/_site/site.css?v=15"; document.head.appendChild(l);
   }
 
   // data-review-skip="on" (test checklists): adds Skipped; a skipped item is locked.
@@ -467,14 +467,20 @@ document.addEventListener("toggle", e => { if (e.target.open) e.target.querySele
   const stalePages = (body.getAttribute("data-review-stale") || "").split("|").map(x => x.trim()).filter(Boolean);
   const label = { yes: "YES", no: "NO", chg: "CHANGES", skip: "SKIPPED (locked)" };
   const session = (location.pathname.split("/")[1] || "the").toUpperCase();
-  function results() {
-    let out = "Review: " + document.title + " (" + page + ")\n";
-    const yncItems = items.filter(it => !isQ(it)), qItems = items.filter(isQ);
+  // results() is the whole page; results(group) is one unified-page group (details.grp): its own
+  // heading, items, stale line, footer and questions, in the same format.
+  function results(group) {
+    const src = group && group.getAttribute("data-src");
+    const gt = group && group.querySelector("summary .gt");
+    const scope = group ? items.filter(it => it.box.closest("details.grp") === group) : items;
+    const head = group ? (gt ? gt.textContent.trim() : src) + " (/" + (location.pathname.split("/")[1] || "") + "/" + src + ")" : document.title + " (" + page + ")";
+    let out = "Review: " + head + "\n";
+    const yncItems = scope.filter(it => !isQ(it)), qItems = scope.filter(isQ);
     for (const it of yncItems) {
       const s = state[it.id] || {};
       out += "- [" + it.id + "] " + (blocked[it.id] ? "BLOCKED by " + blocked[it.id] + ", " : "") + (s.blocker ? "BLOCKER, " : "") + (label[s.v] || "NOT ANSWERED") + ": " + it.title + (s.n ? "\n    Note: " + s.n.replace(/\n/g, " ") : "") + "\n";
     }
-    for (const p of stalePages) out += "STALE: " + p + "\n";
+    for (const p of stalePages) if (!group || p === src) out += "STALE: " + p + "\n";
     const counted = yncItems.filter(it => !(state[it.id] || {}).locked);
     const yes = counted.filter(it => (state[it.id] || {}).v === "yes").length;
     out += "\n" + (yes === counted.length ? "APPROVED: every item is Yes." : "Not approved yet: " + yes + " of " + counted.length + " are Yes.") + "\n";
@@ -491,12 +497,28 @@ document.addEventListener("toggle", e => { if (e.target.open) e.target.querySele
     }
     return out;
   }
+  async function copyText(out) {
+    try { await navigator.clipboard.writeText(out); } catch (e) { const t = document.createElement("textarea"); t.value = out; body.appendChild(t); t.select(); document.execCommand("copy"); t.remove(); }
+  }
   bar.querySelector(".copy").addEventListener("click", async () => {
     showMenu(false);
-    const out = results();
-    try { await navigator.clipboard.writeText(out); } catch (e) { const t = document.createElement("textarea"); t.value = out; body.appendChild(t); t.select(); document.execCommand("copy"); t.remove(); }
+    await copyText(results());
     alert("Copied. Paste it into the " + session + " session.");
   });
+  // Unified pages: a Copy button next to each group's "N open" chip copies just that group. It sits
+  // inside <summary>, so the click must stop there or it would toggle the group.
+  if (body.classList.contains("unified")) for (const g of document.querySelectorAll("details.grp")) {
+    const gm = g.querySelector("summary .gm"); if (!gm || gm.querySelector(".grp-copy")) continue;
+    const chip = gm.querySelector("[data-open-chip]") || Array.from(gm.querySelectorAll(".chip")).find(c => /^\d+ open$/.test(c.textContent.trim()));
+    const b = document.createElement("button"); b.type = "button"; b.className = "grp-copy"; b.textContent = "Copy";
+    b.title = "Copy this page's results only";
+    b.addEventListener("click", async e => {
+      e.preventDefault(); e.stopPropagation();
+      await copyText(results(g));
+      b.textContent = "Copied"; setTimeout(() => { b.textContent = "Copy"; }, 1500);
+    });
+    if (chip) chip.after(b); else gm.prepend(b);
+  }
   bar.querySelector(".clear").addEventListener("click", async () => {
     showMenu(false);
     if (!confirm("Clear your answers on this page? Approved and Skipped (locked) items stay.")) return;
@@ -582,6 +604,6 @@ document.addEventListener("toggle", e => { if (e.target.open) e.target.querySele
 
   function loadLive() {
     if (document.querySelector('script[src*="/_site/live.js"]')) return;
-    const sc = document.createElement("script"); sc.src = "/_site/live.js?v=14"; sc.setAttribute("data-mode", "page"); body.appendChild(sc);
+    const sc = document.createElement("script"); sc.src = "/_site/live.js?v=15"; sc.setAttribute("data-mode", "page"); body.appendChild(sc);
   }
 })();

@@ -150,3 +150,30 @@ def test_item_level_options_override_the_page(site):
         "<h2>Pick a layout</h2>", '<h2 data-review-options="a:Option A,b:Option B" data-review-default="a">Pick a layout</h2>'))
     out = build(site)
     assert re.search(r'data-review-question="design\.s1"[^>]*data-review-options="a:Option A,b:Option B" data-review-default="a"', out)
+
+
+WRAPPED_HTML = """<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Wrapped</title></head>
+<body class="site">
+<header class="top"><h1>Wrapped</h1></header>
+<main class="wrap">
+<h2>One</h2>
+<p>First section.</p>
+<div class="box">
+<h2>Two</h2>
+<p>Second section.</p>
+</div>
+</main>
+<footer>footer</footer>
+</body></html>
+"""
+
+
+def test_plain_page_wrapper_tags_stay_inside_their_items(site):
+    """The last <h2> section runs to the end of the body; the page's </main> must not close the unified page's."""
+    (site / "qdemo" / "_status.json").write_text(json.dumps({"wrapped.html": {"state": "needs-you", "note": "x"}}))
+    (site / "qdemo" / "wrapped.html").write_text(WRAPPED_HTML)
+    out = build(site)
+    assert out.count("<main") == 1 and out.count("</main>") == 1
+    assert out.index("</main>") > out.rindex("</details>")
+    assert out.count("<div") == out.count("</div>")

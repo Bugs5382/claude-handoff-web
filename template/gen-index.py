@@ -71,8 +71,9 @@ def title_of(src, key):
 
 
 def review_info(src):
-    """Count review.js items on a page: (items, open, reopened, choice items). None if the page has no review.js.
-    Choice items (the page's own data-review-options) are never open."""
+    """Count review.js items on a page the way its bottom bar does: (items, open, reopened, choice items).
+    None if the page has no review.js. Open questions are never items; choice items (the page's own
+    data-review-options) are never open, and neither are approved or blocked (data-review-blocked) items."""
     if "review.js" not in src:
         return None
     m = re.search(r"<body[^>]*>", src)
@@ -80,20 +81,33 @@ def review_info(src):
     get = lambda n: html.unescape((re.search(n + r'="([^"]*)"', body) or [None, ""])[1])
     reopen = {p.split("=", 1)[0].strip() for p in get("data-review-reopen").split("|") if "=" in p}
     approved = {a.strip() for a in get("data-review-approved").split(",") if a.strip()} - reopen
+    blocked = {p.split("=", 1)[0].strip() for p in get("data-review-blocked").split("|") if "=" in p}
     if get("data-review-controls") == "off":
         return None
     inner = re.sub(r"<script.*?</script>", "", src[m.end():] if m else src, flags=re.S)
     h2s = [] if get("data-review-h2") == "off" else re.findall(r"<h2(?:\s[^>]*)?>", inner)
-    tags = h2s + re.findall(r'<[a-zA-Z][a-zA-Z0-9]*\b[^>]*\bdata-review-question="[^>]*>', inner)
-    n = len(tags)
+    tags = [(f"s{i}", t) for i, t in enumerate(h2s, 1)]
+    tags += [(html.unescape(q.group(1)), q.group(0))
+             for q in re.finditer(r'<[a-zA-Z][a-zA-Z0-9]*\b[^>]*\bdata-review-question="([^"]*)"[^>]*>', inner)]
+    tags = [(i, t) for i, t in tags if 'data-review-type="question"' not in t]
     page_choices = bool(get("data-review-options").strip())
-    choice = sum(1 for t in tags if 'data-review-type="question"' not in t and (page_choices or "data-review-options=" in t))
-    return n, max(n - choice - len(approved), 0), len(reopen), choice
+    choice = {i for i, t in tags if page_choices or "data-review-options=" in t}
+    ync = [i for i, _ in tags if i not in choice]
+    open_n = sum(1 for i in ync if i not in approved and i not in blocked)
+    return len(tags), open_n, len(reopen), len(choice)
 
 
 def when(ts):
     d = dt.datetime.fromtimestamp(ts, ET)
     return d.strftime("%b %-d, %-I:%M %p ") + TZ_LABEL
+
+
+def is_page_dir(p):
+    """A subfolder is a page only when it holds an .html file; img/ and other asset folders never are."""
+    try:
+        return any(e.endswith(".html") for e in os.listdir(p))
+    except OSError:
+        return False
 
 
 def discover(folder):
@@ -104,7 +118,8 @@ def discover(folder):
             continue
         full = os.path.join(fp, e)
         if os.path.isdir(full):
-            keys.append(e + "/")
+            if is_page_dir(full):
+                keys.append(e + "/")
         elif e.endswith(".html"):
             keys.append(e)
     return keys
@@ -115,7 +130,9 @@ def collect(folder):
     os.makedirs(fp, exist_ok=True)
     mpath = os.path.join(fp, "_status.json")
     manifest = json.load(open(mpath)) if os.path.exists(mpath) else {}
-    keys = discover(folder) + [k for k in manifest if k not in discover(folder) and os.path.exists(target(folder, k))]
+    found = discover(folder)
+    keys = found + [k for k in manifest if k not in found and os.path.exists(target(folder, k))
+                    and not (os.path.isdir(target(folder, k)) and not is_page_dir(target(folder, k)))]
     dirty, pages = False, []
     for k in keys:
         p = target(folder, k)
@@ -234,8 +251,33 @@ def history_rounds(folder, key):
     return rounds
 
 
-def round_count_line(answers):
+def page_choices(src):
+    """The page's own answer choices from its <body> (data-review-options, data-review-default), the rule
+    serve.py's round text uses: ([(value, label), ...], default value or ""), or None for Yes / No / Changes."""
+    m = re.search(r"<body[^>]*>", src)
+    get = lambda n: html.unescape((re.search(n + r'="([^"]*)"', m.group(0) if m else "") or [None, ""])[1])
+    opts = [(v.strip(), lab.strip()) for v, _, lab in (p.partition(":") for p in get("data-review-options").split(","))
+            if v.strip() and lab.strip()]
+    if not opts:
+        return None
+    d = get("data-review-default")
+    return opts, d if any(v == d for v, _ in opts) else ""
+
+
+def round_count_line(answers, choices=None, n_items=0):
+    """A round's count line: "x of y Yes", or on a choices page the per-choice counts ("1 start · 2 hold"), where each of
+    the page's n_items choice items with no saved choice counts as the default."""
     counted = [k for k, v in (answers or {}).items() if isinstance(v, dict) and not k.startswith(("_", "import:")) and not v.get("locked")]
+    if choices:
+        opts, default = choices
+        labels = dict(opts)
+        tally = {lab.lower(): 0 for _, lab in opts}
+        picked = [answers[k]["v"] for k in counted if answers[k].get("v") in labels]
+        for v in picked:
+            tally[labels[v].lower()] += 1
+        if default:
+            tally[labels[default].lower()] += max(n_items - len(picked), 0)
+        return " · ".join(f"{n} {k}" for k, n in tally.items())
     yes = sum(1 for k in counted if answers[k].get("v") == "yes")
     return f"{yes} of {len(counted)} Yes" if counted else "no items"
 
@@ -249,12 +291,16 @@ def history_page(folder, pages):
         rounds = history_rounds(folder, p["key"])
         if not rounds:
             continue
+        src = read(target(folder, p["key"]))
+        choices = page_choices(src)
+        info = review_info(src) if choices else None
+        n_choice = info[3] if info else 0
         items = []
         for e in rounds:
             summary = (f'Round {esc(str(e.get("round", "")))}'
                        + (f' &middot; build {esc(e.get("build", ""))}' if e.get("build") else "")
                        + f' &middot; {esc((e.get("opened") or "")[:10])} to {esc((e.get("closed") or "")[:10])}'
-                       + f' &middot; {esc(round_count_line(e.get("answers")))}')
+                       + f' &middot; {esc(round_count_line(e.get("answers"), choices, n_choice))}')
             items.append(f'<details class="rvhist-round"><summary>{summary}</summary>'
                          f'<pre class="hist-text">{esc(e.get("results_text", ""))}</pre></details>')
         n = len(rounds)
@@ -268,14 +314,19 @@ def history_page(folder, pages):
 
 
 def ensure_reference_entry(folder, key, note):
-    """Seed a manifest entry that must never default to needs-you (gen-index.py's own pages)."""
+    """Seed a manifest entry that must never default to needs-you (gen-index.py's own pages). Runs before
+    collect(), which would otherwise record the page as unclassified; an entry with no state gets one,
+    and a state already set is left alone."""
     mpath = os.path.join(ROOT, folder, "_status.json")
     try:
         manifest = json.load(open(mpath))
     except (OSError, ValueError):
         manifest = {}
-    if key not in manifest:
-        manifest[key] = {"state": "reference", "note": note}
+    ent = manifest.setdefault(key, {})
+    if "state" not in ent:
+        ent["state"] = "reference"
+        ent.setdefault("note", note)
+        os.makedirs(os.path.dirname(mpath), exist_ok=True)
         with open(mpath, "w") as f:
             json.dump(manifest, f, indent=2, ensure_ascii=False)
             f.write("\n")
@@ -284,10 +335,13 @@ def ensure_reference_entry(folder, key, note):
 def main():
     everything = {}
     for d, name in FOLDERS.items():
+        ensure_reference_entry(d, "history/", "Past review and sign-off rounds for this folder.")
+        if not os.path.exists(os.path.join(ROOT, d, "history", "index.html")):
+            # A first version for collect() to find, so the folder's index lists it from the first run.
+            history_page(d, [])
         pages = collect(d)
         everything[d] = pages
         history_page(d, pages)
-        ensure_reference_entry(d, "history/", "Past review and sign-off rounds for this folder.")
         by = {s: [p for p in pages if p["state"] == s] for s, _ in SECTIONS}
         summary = (f'<p class="muted">{len(by["needs-you"])} need you &middot; {len(by["reference"])} reference '
                    f'&middot; {len(by["done"])} completed</p>')
@@ -311,7 +365,8 @@ def main():
         counts[d] = len(now_d)
         if not now_d:
             continue
-        opens = sum(p["open"] or 0 for p in now_d)
+        # The unified review page repeats its source pages' items, so its own count would add them twice.
+        opens = sum(p["open"] or 0 for p in now_d if p["key"] != "review/")
         label = (f'{esc(FOLDERS[d])} <span class="count">{len(now_d)}</span>'
                  + (f' <span class="muted">{opens} open items</span>' if opens else ""))
         groups.append(f'<section class="sect" data-project="{d}" data-sect="now-{d}"><h2>{label}</h2>'

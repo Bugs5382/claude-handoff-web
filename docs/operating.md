@@ -70,6 +70,9 @@ server last saw for it; when either changed, the answers from before this `PUT` 
 the build or version string. More, "Save round now" calls `POST /_round-close` to close a round by hand.
 Every page shows its own rounds in one collapsed `<details>` at the bottom; `gen-index.py` builds the same,
 grouped by page, at `/<folder>/history/`, linked from the root index as a small "History" per folder.
+Its `history/` entry in the folder's `_status.json` is set to `reference` whenever it has no state, so the
+history page never shows under Needs you; a state you set yourself is kept. The history page is written
+before the folder's pages are collected, so the folder index lists it from the first `gen-index.py` run.
 
 ## Restarting
 

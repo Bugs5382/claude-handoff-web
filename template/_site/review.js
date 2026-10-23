@@ -251,7 +251,7 @@ document.addEventListener("toggle", e => { if (e.target.open) e.target.querySele
   }
 
   if (!document.querySelector('link[href*="/_site/site.css"]')) {
-    const l = document.createElement("link"); l.rel = "stylesheet"; l.href = "/_site/site.css?v=16"; document.head.appendChild(l);
+    const l = document.createElement("link"); l.rel = "stylesheet"; l.href = "/_site/site.css?v=17"; document.head.appendChild(l);
   }
 
   // data-review-skip="on" (test checklists): adds Skipped; a skipped item is locked.
@@ -456,7 +456,8 @@ document.addEventListener("toggle", e => { if (e.target.open) e.target.querySele
 
   function lock(it) {
     it.box.querySelectorAll("input, textarea").forEach(x => x.disabled = true);
-    it.box.classList.add("locked"); it.box.querySelector(".st").textContent = "Skipped (locked)";
+    it.box.classList.add("locked");
+    if (!blocked[it.id]) it.box.querySelector(".st").textContent = "Skipped (locked)";
   }
   function save(id) {
     for (const it of items) {
@@ -695,6 +696,6 @@ document.addEventListener("toggle", e => { if (e.target.open) e.target.querySele
 
   function loadLive() {
     if (document.querySelector('script[src*="/_site/live.js"]')) return;
-    const sc = document.createElement("script"); sc.src = "/_site/live.js?v=16"; sc.setAttribute("data-mode", "page"); body.appendChild(sc);
+    const sc = document.createElement("script"); sc.src = "/_site/live.js?v=17"; sc.setAttribute("data-mode", "page"); body.appendChild(sc);
   }
 })();

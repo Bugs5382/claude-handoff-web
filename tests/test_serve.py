@@ -285,6 +285,18 @@ def test_round_history_listing_and_entry(site):
     assert json.loads(body)["round"] == 1
 
 
+def test_history_listing_for_a_choices_page_counts_each_choice(site):
+    root, base = site
+    key = "review-demo-backlog.html"
+    page = root / "demo" / "backlog.html"
+    page.write_text(page.read_text().replace('<body class="site"', '<body class="site" data-build="b1"', 1))
+    request(base + f"/_save/{key}.json", "PUT", '{"s1": {"v": "start", "n": ""}, "s2": {"v": "", "n": "Not before Q3"}}')
+    page.write_text(page.read_text().replace('data-build="b1"', 'data-build="b2"'))
+    request(base + f"/_save/{key}.json", "PUT", '{}')
+    listing = json.loads(request(base + f"/_history/{key}/")[1])
+    assert listing["rounds"][0]["count"] == "1 start · 2 hold"
+
+
 def test_history_listing_for_unknown_page_is_empty(site):
     _, base = site
     status, body, _ = request(base + "/_history/never-saved/")

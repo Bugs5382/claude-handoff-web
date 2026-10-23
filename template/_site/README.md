@@ -21,17 +21,17 @@ completes, set it to `done` and it moves to "Completed". To retire a page, the o
 ## Hook a page in
 
 ```html
-<link rel="stylesheet" href="/_site/site.css?v=16">
+<link rel="stylesheet" href="/_site/site.css?v=17">
 ...
-<script src="/_site/review.js?v=16"></script>   <!-- review pages: just before </body> -->
+<script src="/_site/review.js?v=17"></script>   <!-- review pages: just before </body> -->
 ```
 
 - `review.js` turns every `<h2>` section (and every `[data-review-question="id" data-title="..."]`) into an
   item with Yes / No / Changes. It loads `live.js` itself.
 - Body attributes: `data-review-approved="s1,s3"` (Yes from pasted results: hidden, kept in Copy results),
   `data-review-reopen="s4=reason|s5=reason"`, `data-review-reset="v2:s4,s5"` (bump the version once after a
-  rework; cleared answers are archived in the saved state, not lost), `data-review-blocked="s6=s2"` (greyed
-  until its blocker is fixed), `data-build="1.2.3"` (shown in How to test and blocker copies).
+  rework; cleared answers are archived in the saved state, not lost), `data-review-blocked="s6=s2"` (greyed,
+  locked and shown as "Blocked by s2" until its blocker is fixed), `data-build="1.2.3"` (shown in How to test and blocker copies).
 - Answers live on the server only, in `_saved/<page-key>.json` through `/_save/` (see `SAVE-API.md`). The
   page key is `KEY_PREFIX` (top of `review.js`, from `site.json` `key_prefix`) plus the page path,
   sanitised. Answers an older copy kept in the browser's localStorage under that key are uploaded once,
@@ -42,7 +42,9 @@ completes, set it to `done` and it moves to "Completed". To retire a page, the o
   collapsed group (one open at a time) whose heading shows the title, a one-line summary
   (`<meta name="description">`, else the first paragraph, else the manifest note), the open count, chips,
   "Full page" and Stale. Each item shows its question and answer controls first; bulky content sits behind
-  "Show details". A folder with its own builder lists it in `site.json` `builders`. The group's "N open" chip
+  "Show details". On a plain page an item runs from its `<h2>` to the next one; its HTML is balanced on the
+  way in (a stray `</main>` or `</div>` from the page's wrappers is dropped, anything left open is closed), so
+  every group stays inside the content column. A folder with its own builder lists it in `site.json` `builders`. The group's "N open" chip
   (`data-open-chip`) and the header total (`.open-total`) count what the bar counts: items not answered yet,
   or Changes without a note; approved and hidden, skipped, blocked and question items don't count. review.js
   keeps them current as answers change and sets them from the saved answers on every load.
@@ -83,7 +85,7 @@ waiting for a build or version change.
 Every page collects its own rounds in one closed `<details>` at the very bottom, "History
 (n rounds)", never expanded automatically and never ahead of the page's current content; each
 round inside is its own closed `<details>` with a one-line summary (round, build, dates, a count
-like "21 of 34 Yes") and the same Copy results text that round had. The More menu's History item
+like "21 of 34 Yes", or on a page with its own choices the per-choice counts, "1 start · 2 hold") and the same Copy results text that round had. The More menu's History item
 opens (and scrolls to) that block. `/<folder>/history/` (built by `gen-index.py`) lists every
 page's rounds the same way, one closed group per page. Stale keeps a page's history; the folder's
 history page then notes it as removed.
@@ -123,8 +125,9 @@ into one named pop-out window (`picture`, 1000x760, reused): the picture fitted 
 as the caption, and a "Full size" link. Clicking another picture swaps it into the same window and brings
 the window to the front. Only links that wrap an `<img>` and point at a `.png`, `.jpg`, `.jpeg`, `.gif`,
 `.webp` or `.svg` file count. Middle-click, Cmd- or Ctrl-click, a `download` link, a blocked pop-up or a
-browser without JavaScript keep the plain link (a new tab). Keep pictures in a subfolder such as `img/` and
-list it in `_status.json` as `reference`, so the index doesn't show it as an unclassified page.
+browser without JavaScript keep the plain link (a new tab). Keep pictures in a subfolder such as `img/`.
+A subfolder with no `.html` file in it is never a page, so the index leaves it out; it needs no
+`_status.json` entry.
 
 ## Wording
 
@@ -142,7 +145,8 @@ list it in `_status.json` as `reference`, so the index doesn't show it as an unc
   out when every item is a choice item), then the per-choice counts when there are choice items,
   then `<j> open questions`
   when j > 0, then each question as its own `Q <id>: <answer>` (or `Q <id>: (no answer)`) line.
-- Index sections: Needs you, Reference, Completed (collapsed). Root: Needs you now.
+- Index sections: Needs you, Reference, Completed (collapsed). Root: Needs you now, with each folder's
+  open-item total (the unified `review/` card is left out of it, so no item counts twice).
 - History: "History (n rounds)", "Round N", "Save round now", "page removed".
 - Chips: New (first seen in the last 24 h), Updated, To review, Reopened, Approved, Reference, Done,
   Not classified, plus custom chips from `"chips"`.

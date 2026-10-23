@@ -21,17 +21,17 @@ completes, set it to `done` and it moves to "Completed". To retire a page, the o
 ## Hook a page in
 
 ```html
-<link rel="stylesheet" href="/_site/site.css?v=16">
+<link rel="stylesheet" href="/_site/site.css?v=17">
 ...
-<script src="/_site/review.js?v=16"></script>   <!-- review pages: just before </body> -->
+<script src="/_site/review.js?v=17"></script>   <!-- review pages: just before </body> -->
 ```
 
 - `review.js` turns every `<h2>` section (and every `[data-review-question="id" data-title="..."]`) into an
   item with Yes / No / Changes. It loads `live.js` itself.
 - Body attributes: `data-review-approved="s1,s3"` (Yes from pasted results: hidden, kept in Copy results),
   `data-review-reopen="s4=reason|s5=reason"`, `data-review-reset="v2:s4,s5"` (bump the version once after a
-  rework; cleared answers are archived in the saved state, not lost), `data-review-blocked="s6=s2"` (greyed
-  until its blocker is fixed), `data-build="1.2.3"` (shown in How to test and blocker copies).
+  rework; cleared answers are archived in the saved state, not lost), `data-review-blocked="s6=s2"` (greyed,
+  locked and shown as "Blocked by s2" until its blocker is fixed), `data-build="1.2.3"` (shown in How to test and blocker copies).
 - Answers live on the server only, in `_saved/<page-key>.json` through `/_save/` (see `SAVE-API.md`). The
   page key is `KEY_PREFIX` (top of `review.js`, from `site.json` `key_prefix`) plus the page path,
   sanitised. Answers an older copy kept in the browser's localStorage under that key are uploaded once,

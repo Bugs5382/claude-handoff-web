@@ -71,8 +71,9 @@ def title_of(src, key):
 
 
 def review_info(src):
-    """Count review.js items on a page: (items, open, reopened, choice items). None if the page has no review.js.
-    Choice items (the page's own data-review-options) are never open."""
+    """Count review.js items on a page the way its bottom bar does: (items, open, reopened, choice items).
+    None if the page has no review.js. Open questions are never items; choice items (the page's own
+    data-review-options) are never open, and neither are approved or blocked (data-review-blocked) items."""
     if "review.js" not in src:
         return None
     m = re.search(r"<body[^>]*>", src)
@@ -80,15 +81,20 @@ def review_info(src):
     get = lambda n: html.unescape((re.search(n + r'="([^"]*)"', body) or [None, ""])[1])
     reopen = {p.split("=", 1)[0].strip() for p in get("data-review-reopen").split("|") if "=" in p}
     approved = {a.strip() for a in get("data-review-approved").split(",") if a.strip()} - reopen
+    blocked = {p.split("=", 1)[0].strip() for p in get("data-review-blocked").split("|") if "=" in p}
     if get("data-review-controls") == "off":
         return None
     inner = re.sub(r"<script.*?</script>", "", src[m.end():] if m else src, flags=re.S)
     h2s = [] if get("data-review-h2") == "off" else re.findall(r"<h2(?:\s[^>]*)?>", inner)
-    tags = h2s + re.findall(r'<[a-zA-Z][a-zA-Z0-9]*\b[^>]*\bdata-review-question="[^>]*>', inner)
-    n = len(tags)
+    tags = [(f"s{i}", t) for i, t in enumerate(h2s, 1)]
+    tags += [(html.unescape(q.group(1)), q.group(0))
+             for q in re.finditer(r'<[a-zA-Z][a-zA-Z0-9]*\b[^>]*\bdata-review-question="([^"]*)"[^>]*>', inner)]
+    tags = [(i, t) for i, t in tags if 'data-review-type="question"' not in t]
     page_choices = bool(get("data-review-options").strip())
-    choice = sum(1 for t in tags if 'data-review-type="question"' not in t and (page_choices or "data-review-options=" in t))
-    return n, max(n - choice - len(approved), 0), len(reopen), choice
+    choice = {i for i, t in tags if page_choices or "data-review-options=" in t}
+    ync = [i for i, _ in tags if i not in choice]
+    open_n = sum(1 for i in ync if i not in approved and i not in blocked)
+    return len(tags), open_n, len(reopen), len(choice)
 
 
 def when(ts):

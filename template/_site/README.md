@@ -42,7 +42,9 @@ completes, set it to `done` and it moves to "Completed". To retire a page, the o
   collapsed group (one open at a time) whose heading shows the title, a one-line summary
   (`<meta name="description">`, else the first paragraph, else the manifest note), the open count, chips,
   "Full page" and Stale. Each item shows its question and answer controls first; bulky content sits behind
-  "Show details". A folder with its own builder lists it in `site.json` `builders`. The group's "N open" chip
+  "Show details". On a plain page an item runs from its `<h2>` to the next one; its HTML is balanced on the
+  way in (a stray `</main>` or `</div>` from the page's wrappers is dropped, anything left open is closed), so
+  every group stays inside the content column. A folder with its own builder lists it in `site.json` `builders`. The group's "N open" chip
   (`data-open-chip`) and the header total (`.open-total`) count what the bar counts: items not answered yet,
   or Changes without a note; approved and hidden, skipped, blocked and question items don't count. review.js
   keeps them current as answers change and sets them from the saved answers on every load.

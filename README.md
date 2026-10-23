@@ -12,6 +12,7 @@ library only:** no build step, no framework, no database.
 - 🧭 **One place to look:** folder indexes and a root "Needs you now" list, built from each folder's `_status.json`.
 - ✅ **Reviews that stick:** Yes / No / Changes per section, approved items hidden, reopened ones marked with the reason.
 - 🧪 **Sign-off checklists:** ordered tests, How to test pop-outs with Copy buttons, dependencies, blockers, Skipped.
+- 🖼️ **Pictures in one pop-out:** click a picture and it opens in one reused window; the next one swaps in, no pile of tabs.
 - 🔄 **Live:** pages refresh themselves, never while the owner is typing.
 - 💾 **Saved on the server:** answers go through a tiny save API, so they survive browsers and machines.
 - 🧹 **Stale:** the owner removes a page that no longer matters with one button.

@@ -132,6 +132,54 @@
     }
   }, true);
 
+  // Pictures: a plain click on a link that wraps an <img> and points at an image file shows it in
+  // one reused popup window ("picture"); the next picture swaps into that same window. Middle and
+  // modified clicks, and a blocked popup, fall through to the plain link. The unified review page
+  // renders details in srcdoc frames, so each frame's document gets the same handler.
+  const PIC = /\.(png|jpe?g|gif|webp|svg)$/i;
+  const PIC_PAGE = '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">' +
+    '<title>Picture</title><style>html,body{height:100%;margin:0}body{display:flex;flex-direction:column;background:#1b1b1b;color:#eee;' +
+    'font:14px/1.4 system-ui,sans-serif}.stage{flex:1 1 0;min-height:0;display:flex;align-items:center;justify-content:center;padding:8px}' +
+    '.stage img{max-width:100%;max-height:100%;object-fit:contain}.bar{display:flex;gap:12px;justify-content:space-between;' +
+    'padding:8px 12px;border-top:1px solid #333}.bar a{color:inherit}</style></head><body><div class="stage"><img id="pic" alt=""></div>' +
+    '<div class="bar"><span id="cap"></span><a id="full" target="_blank" rel="noopener">Full size</a></div></body></html>';
+  function pictureLink(e) {
+    if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return null;
+    const a = e.target && e.target.closest && e.target.closest("a[href]");
+    if (!a || a.hasAttribute("download") || !a.querySelector("img")) return null;
+    try { return PIC.test(new URL(a.href).pathname) ? a : null; } catch (err) { return null; }
+  }
+  function showPicture(e) {
+    const a = pictureLink(e);
+    if (!a) return;
+    const w = window.open("", "picture", "width=1000,height=760");
+    if (!w) return;
+    e.preventDefault();
+    const name = decodeURIComponent(new URL(a.href).pathname.split("/").pop());
+    const cap = (a.querySelector("img").getAttribute("alt") || "").trim() || name;
+    try {
+      const d = w.document;
+      if (!d.getElementById("pic")) { d.open(); d.write(PIC_PAGE); d.close(); }
+      const img = d.getElementById("pic");
+      img.src = a.href; img.alt = cap;
+      d.getElementById("cap").textContent = cap;
+      d.getElementById("full").href = a.href;
+      d.title = cap;
+    } catch (err) {
+      w.location.href = a.href;  // the window was navigated somewhere we can't write to
+    }
+    w.focus();
+  }
+  function hookFrame(f) {
+    try {
+      const d = f.contentDocument;
+      if (d && !d.sitePictures) { d.sitePictures = true; d.addEventListener("click", showPicture); }
+    } catch (err) { /* cross-origin frame: its links behave as usual */ }
+  }
+  document.addEventListener("click", showPicture);
+  document.querySelectorAll("iframe").forEach(hookFrame);
+  document.addEventListener("load", e => { if (e.target && e.target.tagName === "IFRAME") hookFrame(e.target); }, true);
+
   let timer = null;
   async function tick() {
     if (busy || document.hidden) return;

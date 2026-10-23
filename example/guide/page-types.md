@@ -8,8 +8,8 @@ Common rules:
 
 - `<body class="site">` turns on the shared look; `<header class="top"><div class="wrap">` and
   `<main class="wrap">` give the standard frame.
-- Review pages load `/_site/review.js?v=12` just before `</body>`; it brings `live.js` itself. Other pages
-  load `/_site/live.js?v=12` with `data-mode="page"`.
+- Review pages load `/_site/review.js?v=14` just before `</body>`; it brings `live.js` itself. Other pages
+  load `/_site/live.js?v=14` with `data-mode="page"`.
 - Answers are saved on the server; Copy results is what the owner pastes back to you.
 - A round is one pass of answers under one `data-build` value or `data-review-reset` version. Bump either
   one and the server archives the round it replaces on its own (see `_site/SAVE-API.md` "Round history");
@@ -53,7 +53,7 @@ is instead an open question (see (i)) when the answer isn't a choice between opt
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Settings screen: design review</title>
 <meta name="description" content="Three sections to approve before the settings screen is built.">
-<link rel="stylesheet" href="/_site/site.css?v=12">
+<link rel="stylesheet" href="/_site/site.css?v=14">
 </head>
 <body class="site" data-review-approved="" data-review-reopen="">
 <header class="top"><div class="wrap">
@@ -70,7 +70,7 @@ is instead an open question (see (i)) when the answer isn't a choice between opt
 <h2>Errors and empty states</h2>
 <p>What the owner sees when a save fails or there is nothing to show.</p>
 </main>
-<script src="/_site/review.js?v=12"></script>
+<script src="/_site/review.js?v=14"></script>
 </body></html>
 ```
 
@@ -91,7 +91,8 @@ python3 _site/build-review.py <folder>      # writes <folder>/review/index.html
 
 Each source page becomes a collapsed group (one open at a time): title, summary, open count, chips,
 "Full page" and Stale. Item ids are prefixed with the page (`design-review.s2`), and the source page's
-approved, reopened and reset attributes carry through.
+approved, reopened, blocked and reset attributes carry through. Each group's "N open" chip and the header
+total update as the owner answers, counting the same items as the bottom bar.
 
 ## (d) Sign-off checklist
 
@@ -112,7 +113,7 @@ When every open item is answered the bottom bar turns green; all Yes shows APPRO
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Example app 1.4.0: sign-off checklist</title>
-<link rel="stylesheet" href="/_site/site.css?v=12">
+<link rel="stylesheet" href="/_site/site.css?v=14">
 </head>
 <body class="site" data-review-h2="off" data-review-skip="on" data-build="1.4.0-rc.2"
       data-review-blocked="t3=t2 (sign-in must pass first)">
@@ -141,7 +142,7 @@ When every open item is answered the bottom bar turns green; all Yes shows APPRO
   <p>Exporting the weekly report downloads a CSV with today's rows.</p>
 </section>
 </main>
-<script src="/_site/review.js?v=12"></script>
+<script src="/_site/review.js?v=14"></script>
 </body></html>
 ```
 
@@ -157,7 +158,7 @@ section.
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Decision: where exports are stored</title>
-<link rel="stylesheet" href="/_site/site.css?v=12">
+<link rel="stylesheet" href="/_site/site.css?v=14">
 </head>
 <body class="site">
 <header class="top"><div class="wrap"><h1>Decision: where exports are stored</h1>
@@ -172,7 +173,7 @@ section.
 </table>
 <p class="muted">Yes = A. No = none of these (say why). Changes = B or C (say which).</p>
 </main>
-<script src="/_site/review.js?v=12"></script>
+<script src="/_site/review.js?v=14"></script>
 </body></html>
 ```
 
@@ -186,7 +187,7 @@ section.
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>First-run setup: walk-through</title>
-<link rel="stylesheet" href="/_site/site.css?v=12">
+<link rel="stylesheet" href="/_site/site.css?v=14">
 </head>
 <body class="site">
 <header class="top"><div class="wrap"><h1>First-run setup: walk-through</h1>
@@ -206,7 +207,7 @@ section.
 +----------------------------------+</pre>
 <p>Next checks the password rules, then goes to the network screen.</p>
 </main>
-<script src="/_site/review.js?v=12"></script>
+<script src="/_site/review.js?v=14"></script>
 </body></html>
 ```
 
@@ -221,7 +222,7 @@ section.
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Email draft: maintenance window</title>
-<link rel="stylesheet" href="/_site/site.css?v=12">
+<link rel="stylesheet" href="/_site/site.css?v=14">
 </head>
 <body class="site">
 <header class="top"><div class="wrap"><h1>Email draft: maintenance window</h1>
@@ -243,7 +244,7 @@ document.getElementById("copy").addEventListener("click", async e => {
   e.target.textContent = "Copied";
 });
 </script>
-<script src="/_site/live.js?v=12" data-mode="page"></script>
+<script src="/_site/live.js?v=14" data-mode="page"></script>
 </body></html>
 ```
 
@@ -259,7 +260,7 @@ the owner is typing) and keeps the scroll position.
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Rollout status: example app 1.4.0</title>
-<link rel="stylesheet" href="/_site/site.css?v=12">
+<link rel="stylesheet" href="/_site/site.css?v=14">
 </head>
 <body class="site">
 <header class="top"><div class="wrap"><h1>Rollout status: example app 1.4.0</h1>
@@ -273,7 +274,7 @@ the owner is typing) and keeps the scroll position.
   <tr><td>Deploy to production</td><td><span class="chip">Waiting</span></td><td></td></tr>
 </table>
 </main>
-<script src="/_site/live.js?v=12" data-mode="page"></script>
+<script src="/_site/live.js?v=14" data-mode="page"></script>
 </body></html>
 ```
 

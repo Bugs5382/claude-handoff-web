@@ -33,7 +33,7 @@ document.addEventListener("toggle", e => { if (e.target.open) e.target.querySele
 (function () {
   // Pages that render their own items (and their own pop-out) opt out.
   if (document.body.getAttribute("data-review-controls") === "off") return;
-  const V = "12";
+  const V = "14";
   function itemOf(el) {
     const box = el.closest("[data-review-question], .item");
     if (box) {
@@ -243,7 +243,7 @@ document.addEventListener("toggle", e => { if (e.target.open) e.target.querySele
   }
 
   if (!document.querySelector('link[href*="/_site/site.css"]')) {
-    const l = document.createElement("link"); l.rel = "stylesheet"; l.href = "/_site/site.css?v=12"; document.head.appendChild(l);
+    const l = document.createElement("link"); l.rel = "stylesheet"; l.href = "/_site/site.css?v=14"; document.head.appendChild(l);
   }
 
   // data-review-skip="on" (test checklists): adds Skipped; a skipped item is locked.
@@ -421,6 +421,24 @@ document.addEventListener("toggle", e => { if (e.target.open) e.target.querySele
     for (const it of list) { const a = document.createElement("a"); a.href = "#rv-" + it.id; a.className = "chip c-review"; a.textContent = it.id; a.addEventListener("click", e => { e.preventDefault(); showIds(false); go(it); }); jumpEl.appendChild(a); }
     idsBtn.textContent = "Open ids (" + list.length + ")"; idsBtn.disabled = !list.length;
     if (!list.length) showIds(false);
+    paintGroupCounts(list);
+  }
+  // Unified pages: each group's "N open" chip and the header total count what openList() counts, so
+  // they agree with the bar. Pages built before the chips were marked are matched by their text.
+  function paintGroupCounts(list) {
+    if (!body.classList.contains("unified")) return;
+    for (const g of document.querySelectorAll("details.grp")) {
+      const chip = g.querySelector("summary [data-open-chip]") ||
+        Array.from(g.querySelectorAll("summary .chip")).find(c => /^\d+ open$/.test(c.textContent.trim()));
+      if (!chip) continue;
+      const n = list.filter(it => it.box.closest("details.grp") === g).length;
+      chip.textContent = n + " open";
+      chip.classList.toggle("c-review", n > 0); chip.classList.toggle("c-approved", n === 0);
+    }
+    const tot = document.querySelector("header.top .open-total");
+    if (tot) { tot.textContent = list.length; return; }
+    const p = document.querySelector("header.top p"), t = p && p.firstChild;
+    if (t && t.nodeType === 3 && /^\d+ open items/.test(t.nodeValue)) t.nodeValue = t.nodeValue.replace(/^\d+/, list.length);
   }
   function openList() {
     return items.filter(it => { const s = state[it.id] || {}; return !isQ(it) && !hidden.has(it.id) && !s.locked && !blocked[it.id] && (!s.v || (s.v === "chg" && !(s.n || "").trim())); });
@@ -564,6 +582,6 @@ document.addEventListener("toggle", e => { if (e.target.open) e.target.querySele
 
   function loadLive() {
     if (document.querySelector('script[src*="/_site/live.js"]')) return;
-    const sc = document.createElement("script"); sc.src = "/_site/live.js?v=12"; sc.setAttribute("data-mode", "page"); body.appendChild(sc);
+    const sc = document.createElement("script"); sc.src = "/_site/live.js?v=14"; sc.setAttribute("data-mode", "page"); body.appendChild(sc);
   }
 })();

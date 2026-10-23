@@ -249,6 +249,23 @@ def _results_text(page, title, src, attrs, answers, round_no, build):
     return "\n".join(lines) + "\n"
 
 
+def _round_count(answers, src):
+    """A round's one-line count for the History lists: "x of y Yes", or on a page with its own choices the
+    per-choice counts the round's results text ends with ("1 start · 2 hold")."""
+    attrs = _body_attrs(src)
+    choices = _page_choices(attrs)
+    if choices:
+        tally = {label.lower(): 0 for label in choices["labels"].values()}
+        for sid, _ in _extract_items(src, attrs):
+            a = answers.get(sid) or {}
+            label = choices["labels"].get(a.get("v") or choices["default"], "")
+            if label:
+                tally[label.lower()] += 1
+        return " · ".join(f"{n} {k}" for k, n in tally.items())
+    yes, counted = _count_yes(answers)
+    return f"{yes} of {counted} Yes" if counted else "no items"
+
+
 def _slug(s):
     return re.sub(r"[^a-z0-9._-]+", "-", (s or "").lower()).strip("-") or "round"
 
@@ -426,6 +443,13 @@ class Handler(SimpleHTTPRequestHandler):
         key = m.group(1)
         hdir = os.path.join(self.save_dir, "history", key)
         rounds = []
+        pages = discover_pages(self.root, load_config(self.root))
+        src = ""
+        if key in pages:
+            try:
+                src = open(pages[key]["path"], errors="ignore").read()
+            except OSError:
+                pass
         if os.path.isdir(hdir):
             for fn in sorted(os.listdir(hdir)):
                 if not HIST_FILE_RE.match(fn):
@@ -435,12 +459,11 @@ class Handler(SimpleHTTPRequestHandler):
                         entry = json.load(f)
                 except (OSError, ValueError):
                     continue
-                yes, counted = _count_yes(entry.get("answers") or {})
                 rounds.append({"file": fn, "round": entry.get("round"), "build": entry.get("build", ""),
                                 "opened": entry.get("opened"), "closed": entry.get("closed"),
-                                "count": f"{yes} of {counted} Yes" if counted else "no items"})
+                                "count": _round_count(entry.get("answers") or {}, src)})
         rounds.sort(key=lambda r: r["round"] if isinstance(r["round"], int) else -1, reverse=True)
-        page_removed = bool(rounds) and key not in discover_pages(self.root, load_config(self.root))
+        page_removed = bool(rounds) and key not in pages
         self._json(HTTPStatus.OK, {"page_removed": page_removed, "rounds": rounds})
 
     def _json_body(self, limit):

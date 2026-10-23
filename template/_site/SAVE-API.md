@@ -38,7 +38,7 @@ This needs nothing extra from a page that already follows this spec: just keep `
 
 | Method | Path | Body | Result |
 |---|---|---|---|
-| `GET` | `/_history/<name>/` | none | `200`, `{"page_removed": bool, "rounds": [{"file", "round", "build", "opened", "closed", "count"}, ...]}`, newest round first |
+| `GET` | `/_history/<name>/` | none | `200`, `{"page_removed": bool, "rounds": [{"file", "round", "build", "opened", "closed", "count"}, ...]}`, newest round first; `count` is "x of y Yes", or the per-choice counts ("1 start · 2 hold") for a page with its own choices |
 | `GET` | `/_history/<name>/<file>` | none | `200` with that round's full entry, or `404` |
 | `POST` | `/_round-close` | `{"name": "<name>", "results_text": "..." (optional)}` | `200` `{"round", "file"}`: archives the current round by hand, under its current build, then opens the next round |
 

@@ -182,3 +182,12 @@ def test_history_page_listed_on_the_first_run(site):
     run_script(site, site / "gen-index.py")
     card = card_html((site / "demo" / "index.html").read_text(), "demo/history/")
     assert ">Demo project: history</a>" in card
+
+
+def test_history_round_on_a_choices_page_shows_choice_counts(site):
+    """A Start/Hold backlog has no Yes; its rounds show the per-choice counts, untouched items on the default."""
+    put_history_entry(site, "review-demo-backlog.html", 1, "b1", {"s1": {"v": "start", "n": ""}, "s2": {"v": "", "n": "Not before Q3"}})
+    run_script(site, site / "gen-index.py")
+    history_html = (site / "demo" / "history" / "index.html").read_text()
+    assert "1 start · 2 hold" in history_html
+    assert "Yes" not in history_html

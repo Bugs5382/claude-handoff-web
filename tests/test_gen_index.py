@@ -101,7 +101,8 @@ def test_choices_page_card_shows_no_open_items(site):
     assert ">Approved<" not in backlog
     assert ">To review<" in backlog
     # a Yes / No / Changes page next to it still counts its items
-    assert "4 open items" in card_html(folder, "demo/design-review.html")
+    # three Yes / No / Changes items; its open question never counts
+    assert "3 open items" in card_html(folder, "demo/design-review.html")
 
 
 def test_page_mixing_choices_and_yes_no_counts_only_yes_no_items(site):
@@ -132,3 +133,24 @@ def test_folder_open_total_counts_unified_page_items_once(site):
     sources = sum(n for k, n in per_card.items() if k != "demo/review/")
     total = int(re.search(r'<span class="muted">(\d+) open items</span>', group).group(1))
     assert total == sources
+
+
+def test_open_questions_and_blocked_items_never_count_as_open(site):
+    gi = load_module(site / "gen-index.py", "gen_index_q")
+    src = ('<body class="site" data-review-blocked="s2=s1 must pass first"><h2>One</h2><h2>Two</h2>'
+           '<h2 data-review-type="question">Anything else?</h2>'
+           '<section data-review-question="q2" data-title="Q" data-review-type="question"></section>'
+           '<script src="/_site/review.js?v=16"></script></body>')
+    n, open_n, _, n_choice = gi.review_info(src)
+    assert (n, open_n, n_choice) == (2, 1, 0)
+
+
+def test_page_of_only_questions_shows_no_count_or_approved(site):
+    page = ('<!doctype html><html><head><title>Questions</title></head><body class="site">'
+            '<h2 data-review-type="question">Anything else?</h2>'
+            '<script src="/_site/review.js?v=16"></script></body></html>')
+    (site / "demo" / "questions.html").write_text(page)
+    run_script(site, site / "gen-index.py")
+    card = card_html((site / "demo" / "index.html").read_text(), "demo/questions.html")
+    assert "open item" not in card
+    assert ">Approved<" not in card

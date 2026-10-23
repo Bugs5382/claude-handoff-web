@@ -85,7 +85,7 @@ waiting for a build or version change.
 Every page collects its own rounds in one closed `<details>` at the very bottom, "History
 (n rounds)", never expanded automatically and never ahead of the page's current content; each
 round inside is its own closed `<details>` with a one-line summary (round, build, dates, a count
-like "21 of 34 Yes") and the same Copy results text that round had. The More menu's History item
+like "21 of 34 Yes", or on a page with its own choices the per-choice counts, "1 start · 2 hold") and the same Copy results text that round had. The More menu's History item
 opens (and scrolls to) that block. `/<folder>/history/` (built by `gen-index.py`) lists every
 page's rounds the same way, one closed group per page. Stale keeps a page's history; the folder's
 history page then notes it as removed.

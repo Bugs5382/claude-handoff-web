@@ -240,8 +240,33 @@ def history_rounds(folder, key):
     return rounds
 
 
-def round_count_line(answers):
+def page_choices(src):
+    """The page's own answer choices from its <body> (data-review-options, data-review-default), the rule
+    serve.py's round text uses: ([(value, label), ...], default value or ""), or None for Yes / No / Changes."""
+    m = re.search(r"<body[^>]*>", src)
+    get = lambda n: html.unescape((re.search(n + r'="([^"]*)"', m.group(0) if m else "") or [None, ""])[1])
+    opts = [(v.strip(), lab.strip()) for v, _, lab in (p.partition(":") for p in get("data-review-options").split(","))
+            if v.strip() and lab.strip()]
+    if not opts:
+        return None
+    d = get("data-review-default")
+    return opts, d if any(v == d for v, _ in opts) else ""
+
+
+def round_count_line(answers, choices=None, n_items=0):
+    """A round's count line: "x of y Yes", or on a choices page the per-choice counts ("1 start · 2 hold"), where each of
+    the page's n_items choice items with no saved choice counts as the default."""
     counted = [k for k, v in (answers or {}).items() if isinstance(v, dict) and not k.startswith(("_", "import:")) and not v.get("locked")]
+    if choices:
+        opts, default = choices
+        labels = dict(opts)
+        tally = {lab.lower(): 0 for _, lab in opts}
+        picked = [answers[k]["v"] for k in counted if answers[k].get("v") in labels]
+        for v in picked:
+            tally[labels[v].lower()] += 1
+        if default:
+            tally[labels[default].lower()] += max(n_items - len(picked), 0)
+        return " · ".join(f"{n} {k}" for k, n in tally.items())
     yes = sum(1 for k in counted if answers[k].get("v") == "yes")
     return f"{yes} of {len(counted)} Yes" if counted else "no items"
 
@@ -255,12 +280,16 @@ def history_page(folder, pages):
         rounds = history_rounds(folder, p["key"])
         if not rounds:
             continue
+        src = read(target(folder, p["key"]))
+        choices = page_choices(src)
+        info = review_info(src) if choices else None
+        n_choice = info[3] if info else 0
         items = []
         for e in rounds:
             summary = (f'Round {esc(str(e.get("round", "")))}'
                        + (f' &middot; build {esc(e.get("build", ""))}' if e.get("build") else "")
                        + f' &middot; {esc((e.get("opened") or "")[:10])} to {esc((e.get("closed") or "")[:10])}'
-                       + f' &middot; {esc(round_count_line(e.get("answers")))}')
+                       + f' &middot; {esc(round_count_line(e.get("answers"), choices, n_choice))}')
             items.append(f'<details class="rvhist-round"><summary>{summary}</summary>'
                          f'<pre class="hist-text">{esc(e.get("results_text", ""))}</pre></details>')
         n = len(rounds)

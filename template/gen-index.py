@@ -296,6 +296,9 @@ def main():
     everything = {}
     for d, name in FOLDERS.items():
         ensure_reference_entry(d, "history/", "Past review and sign-off rounds for this folder.")
+        if not os.path.exists(os.path.join(ROOT, d, "history", "index.html")):
+            # A first version for collect() to find, so the folder's index lists it from the first run.
+            history_page(d, [])
         pages = collect(d)
         everything[d] = pages
         history_page(d, pages)

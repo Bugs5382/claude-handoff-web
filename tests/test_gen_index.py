@@ -2,6 +2,7 @@
 
 import importlib.util
 import json
+import re
 import shutil
 import subprocess
 import sys
@@ -82,3 +83,30 @@ def test_history_entry_never_forced_needs_you(site):
     assert r.returncode == 0, r.stderr
     manifest = json.loads((site / "demo" / "_status.json").read_text())
     assert manifest["history/"] == {"state": "reference", "note": "custom note"}
+
+
+def card_html(page_html, key):
+    m = re.search(r'<li class="card[^"]*" data-key="' + re.escape(key) + r'".*?</li>', page_html, re.S)
+    assert m, key
+    return m.group(0)
+
+
+def test_choices_page_card_shows_no_open_items(site):
+    """A page with its own answer choices (the example backlog) has nothing open and is never Approved."""
+    r = subprocess.run([sys.executable, str(site / "gen-index.py")], cwd=site, capture_output=True, text=True)
+    assert r.returncode == 0, r.stderr
+    folder = (site / "demo" / "index.html").read_text()
+    backlog = card_html(folder, "demo/backlog.html")
+    assert "open item" not in backlog
+    assert ">Approved<" not in backlog
+    assert ">To review<" in backlog
+    # a Yes / No / Changes page next to it still counts its items
+    assert "4 open items" in card_html(folder, "demo/design-review.html")
+
+
+def test_page_mixing_choices_and_yes_no_counts_only_yes_no_items(site):
+    gi = load_module(site / "gen-index.py", "gen_index_mix")
+    src = ('<body class="site"><h2>Approve the plan</h2><h2 data-review-options="a:A,b:B" data-review-default="a">Pick one</h2>'
+           '<section data-review-question="x" data-title="X" data-review-options="a:A,b:B"></section>'
+           '<script src="/_site/review.js?v=16"></script></body>')
+    assert gi.review_info(src) == (3, 1, 0, 2)

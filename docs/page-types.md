@@ -8,8 +8,8 @@ Common rules:
 
 - `<body class="site">` turns on the shared look; `<header class="top"><div class="wrap">` and
   `<main class="wrap">` give the standard frame.
-- Review pages load `/_site/review.js?v=15` just before `</body>`; it brings `live.js` itself. Other pages
-  load `/_site/live.js?v=15` with `data-mode="page"`.
+- Review pages load `/_site/review.js?v=16` just before `</body>`; it brings `live.js` itself. Other pages
+  load `/_site/live.js?v=16` with `data-mode="page"`.
 - Answers are saved on the server; Copy results is what the owner pastes back to you.
 - Pictures: wrap each `<img>` in a link to its own file. A click shows it in one reused pop-out window,
   and the next picture swaps into that window (see `_site/README.md` "Pictures (pop-out)").
@@ -40,7 +40,8 @@ python3 gen-index.py
 ```
 
 The card shows the title (the page's `<title>`), the note, chips (New, Updated, To review, Approved,
-Reopened, plus yours), the open item count for review pages, and a Stale button for needs-you pages.
+Reopened, plus yours), the open item count for review pages, and a Stale button for needs-you pages. A
+choices page (see (j)) has no open items: its card shows no count and never the Approved chip.
 
 ## (b) Design or review page
 
@@ -55,7 +56,7 @@ is instead an open question (see (i)) when the answer isn't a choice between opt
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Settings screen: design review</title>
 <meta name="description" content="Three sections to approve before the settings screen is built.">
-<link rel="stylesheet" href="/_site/site.css?v=15">
+<link rel="stylesheet" href="/_site/site.css?v=16">
 </head>
 <body class="site" data-review-approved="" data-review-reopen="">
 <header class="top"><div class="wrap">
@@ -73,7 +74,7 @@ is instead an open question (see (i)) when the answer isn't a choice between opt
 <h2>Errors and empty states</h2>
 <p>What the owner sees when a save fails or there is nothing to show.</p>
 </main>
-<script src="/_site/review.js?v=15"></script>
+<script src="/_site/review.js?v=16"></script>
 </body></html>
 ```
 
@@ -97,6 +98,8 @@ Each source page becomes a collapsed group (one open at a time): title, summary,
 approved, reopened, blocked and reset attributes carry through. Each group's "N open" chip and the header
 total update as the owner answers, counting the same items as the bottom bar.
 Each group's Copy button copies only that page's results, in the same format as Copy results.
+A choices page (see (j)) keeps its own choices in its group; its chip shows the per-choice counts
+("1 start · 2 hold") instead of "N open", and it adds nothing to the header's open total.
 
 ## (d) Sign-off checklist
 
@@ -117,7 +120,7 @@ When every open item is answered the bottom bar turns green; all Yes shows APPRO
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Example app 1.4.0: sign-off checklist</title>
-<link rel="stylesheet" href="/_site/site.css?v=15">
+<link rel="stylesheet" href="/_site/site.css?v=16">
 </head>
 <body class="site" data-review-h2="off" data-review-skip="on" data-build="1.4.0-rc.2"
       data-review-blocked="t3=t2 (sign-in must pass first)">
@@ -146,7 +149,7 @@ When every open item is answered the bottom bar turns green; all Yes shows APPRO
   <p>Exporting the weekly report downloads a CSV with today's rows.</p>
 </section>
 </main>
-<script src="/_site/review.js?v=15"></script>
+<script src="/_site/review.js?v=16"></script>
 </body></html>
 ```
 
@@ -162,7 +165,7 @@ section.
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Decision: where exports are stored</title>
-<link rel="stylesheet" href="/_site/site.css?v=15">
+<link rel="stylesheet" href="/_site/site.css?v=16">
 </head>
 <body class="site">
 <header class="top"><div class="wrap"><h1>Decision: where exports are stored</h1>
@@ -177,7 +180,7 @@ section.
 </table>
 <p class="muted">Yes = A. No = none of these (say why). Changes = B or C (say which).</p>
 </main>
-<script src="/_site/review.js?v=15"></script>
+<script src="/_site/review.js?v=16"></script>
 </body></html>
 ```
 
@@ -191,7 +194,7 @@ section.
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>First-run setup: walk-through</title>
-<link rel="stylesheet" href="/_site/site.css?v=15">
+<link rel="stylesheet" href="/_site/site.css?v=16">
 </head>
 <body class="site">
 <header class="top"><div class="wrap"><h1>First-run setup: walk-through</h1>
@@ -211,7 +214,7 @@ section.
 +----------------------------------+</pre>
 <p>Next checks the password rules, then goes to the network screen.</p>
 </main>
-<script src="/_site/review.js?v=15"></script>
+<script src="/_site/review.js?v=16"></script>
 </body></html>
 ```
 
@@ -226,7 +229,7 @@ section.
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Email draft: maintenance window</title>
-<link rel="stylesheet" href="/_site/site.css?v=15">
+<link rel="stylesheet" href="/_site/site.css?v=16">
 </head>
 <body class="site">
 <header class="top"><div class="wrap"><h1>Email draft: maintenance window</h1>
@@ -248,7 +251,7 @@ document.getElementById("copy").addEventListener("click", async e => {
   e.target.textContent = "Copied";
 });
 </script>
-<script src="/_site/live.js?v=15" data-mode="page"></script>
+<script src="/_site/live.js?v=16" data-mode="page"></script>
 </body></html>
 ```
 
@@ -264,7 +267,7 @@ the owner is typing) and keeps the scroll position.
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Rollout status: example app 1.4.0</title>
-<link rel="stylesheet" href="/_site/site.css?v=15">
+<link rel="stylesheet" href="/_site/site.css?v=16">
 </head>
 <body class="site">
 <header class="top"><div class="wrap"><h1>Rollout status: example app 1.4.0</h1>
@@ -278,7 +281,7 @@ the owner is typing) and keeps the scroll position.
   <tr><td>Deploy to production</td><td><span class="chip">Waiting</span></td><td></td></tr>
 </table>
 </main>
-<script src="/_site/live.js?v=15" data-mode="page"></script>
+<script src="/_site/live.js?v=16" data-mode="page"></script>
 </body></html>
 ```
 
@@ -300,3 +303,55 @@ results, its own `Q <id>: <answer>` line in a block at the end, after the approv
 <h2 data-review-type="question" data-suggested="Nightly, 02:00 US/Eastern">When should the sync job run?</h2>
 <p>Pick a schedule that doesn't land in the middle of the backup window.</p>
 ```
+
+## (j) Choices page (a backlog)
+
+**When:** every item answers from the same short list that isn't Yes / No / Changes, and nothing waits on
+it being "approved": a backlog where each item is Start or Hold, a triage list (Now, Later, Drop).
+
+**Required:** `data-review-options="value:Label,value:Label"` on `<body>` (the choices, in order) and
+`data-review-default="value"` (one of them). The rest is a normal review page: one `<h2>` (or
+`[data-review-question]` section) per item, review.js. Both attributes also work on a single `<h2>` or
+`[data-review-question]` item, which then overrides the page.
+
+**How it behaves:**
+
+- Every item shows the choices and a "Comments (optional)" box: no Blocker button, no Skipped, and no
+  "required for Changes" text.
+- An item nobody has picked shows and counts as the default, marked "Hold (default)".
+- Only what the owner picks or writes is saved, as `{ v: "start", n: "comment" }`; a comment on an item
+  nobody picked is saved as `{ v: "", n: "comment" }`. The default itself is never written, so changing
+  `data-review-default` later moves every item nobody picked, while picked ones keep their answer.
+- The bottom bar counts per choice ("2 start · 12 hold") instead of "n of m open items answered". Choice
+  items are never open, approved, hidden or blocking, so the page is never "not approved"; set
+  `data-review-approved` and the Approved chip don't apply to them.
+- Copy results lists each item as `- [id] START: title` or `- [id] HOLD: title`, a comment as
+  `    Note: ...` under it, and ends with the counts line (`1 start · 2 hold`) instead of the approval line.
+- The folder card shows no open-item count; the unified page shows the counts on the group's chip.
+
+```html
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Demo app backlog</title>
+<meta name="description" content="Three backlog items. Each is on Hold until you pick Start.">
+<link rel="stylesheet" href="/_site/site.css?v=16">
+</head>
+<body class="site" data-review-options="start:Start,hold:Hold" data-review-default="hold">
+<header class="top"><div class="wrap">
+<h1>Demo app backlog</h1>
+<p>Every item stays on Hold until you pick Start. Add a comment if it helps, then More, Copy results, and paste it back.</p>
+</div></header>
+<main class="wrap">
+<h2>Export reports as PDF</h2>
+<p>A PDF button next to the CSV export on the weekly report. About two days.</p>
+<h2>Dark theme</h2>
+<p>A third theme option on the settings screen that follows the system setting. About one day.</p>
+</main>
+<script src="/_site/review.js?v=16"></script>
+</body></html>
+```
+
+Item ids follow the usual rule (`s1`, `s2`, ... by `<h2>` order). Give each item a stable id with
+`<section data-review-question="pdf-export" data-title="Export reports as PDF">` and
+`<body data-review-h2="off">` when items get added or reordered between rounds, so saved answers stay on
+the right item.

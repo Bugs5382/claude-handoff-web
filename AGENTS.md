@@ -30,11 +30,12 @@ attributes in `template/_site/README.md`, the save API in `template/_site/SAVE-A
 
 - `template/` - what `install.sh` copies: `_site/` (assets, `serve.py`, `build-review.py`, docs),
   `gen-index.py`, and the instance `CLAUDE.md`/`AGENTS.md`
-- `example/` - fake `site.json` and demo folders (a review page, a checklist, the guide copies)
+- `example/` - fake `site.json` and demo folders (a review page, a backlog, a checklist, the guide copies)
 - `docs/` - quick start, page types, operating notes
 - `memory/` - the drop-in memory file for Claude sessions
 - `install.sh` - installer (refuses git work trees)
-- `tests/` - end-to-end tests against a real `serve.py` in a temp folder
+- `tests/` - end-to-end tests against a real `serve.py` in a temp folder; `test_review_choices.py` drives
+  `review.js` in headless Chrome (skipped when no Chrome or Chromium is installed; `CHROME` names one)
 
 ## Build, test, lint
 

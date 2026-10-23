@@ -13,6 +13,14 @@
 //   data-review-reset     "v2:s1,s2" clears those answers (and reopened ones) once per version;
 //                         "tag@v2:a.s1|tag2@v1:b.s2" does the same per tag. Cleared answers are
 //                         kept under state._prev, never dropped.
+//   data-review-options   "start:Start,hold:Hold": the page's own answer choices (value:label, in order)
+//                         instead of Yes / No / Changes. Also allowed on one <h2> or [data-review-question]
+//                         item, which then overrides the page (the unified page sets it per item).
+//   data-review-default   "hold": the choice an item shows and counts as until the owner picks one.
+//                         It is never written to the save file: { v: "" } (or no entry) means "the
+//                         default", so changing the page's default later moves every item nobody picked.
+//                         Choice items are never open, approved, hidden or blocking; the bar and Copy
+//                         results count them per choice ("2 start · 12 hold").
 // Round history: a round is this page's run under one data-build value or data-review-reset
 // version. The server archives a round's answers (serve.py) the moment either one changes, or on
 // More, "Save round now". Past rounds show at GET /_history/<page-key>/ (see SAVE-API.md): a
@@ -33,7 +41,7 @@ document.addEventListener("toggle", e => { if (e.target.open) e.target.querySele
 (function () {
   // Pages that render their own items (and their own pop-out) opt out.
   if (document.body.getAttribute("data-review-controls") === "off") return;
-  const V = "15";
+  const V = "16";
   function itemOf(el) {
     const box = el.closest("[data-review-question], .item");
     if (box) {
@@ -243,12 +251,24 @@ document.addEventListener("toggle", e => { if (e.target.open) e.target.querySele
   }
 
   if (!document.querySelector('link[href*="/_site/site.css"]')) {
-    const l = document.createElement("link"); l.rel = "stylesheet"; l.href = "/_site/site.css?v=15"; document.head.appendChild(l);
+    const l = document.createElement("link"); l.rel = "stylesheet"; l.href = "/_site/site.css?v=16"; document.head.appendChild(l);
   }
 
   // data-review-skip="on" (test checklists): adds Skipped; a skipped item is locked.
   const SKIP = body.getAttribute("data-review-skip") === "on";
   const OPTS = ["yes:Yes", "no:No", "chg:Changes"].concat(SKIP ? ["skip:Skipped"] : []);
+  function parseOpts(spec) {
+    return (spec || "").split(",").map(p => { const i = p.indexOf(":"); return i > 0 ? [p.slice(0, i).trim(), p.slice(i + 1).trim()] : null; }).filter(o => o && o[0] && o[1]);
+  }
+  const PAGE_OPTS = parseOpts(body.getAttribute("data-review-options"));
+  const PAGE_DEF = body.getAttribute("data-review-default") || "";
+  function choicesOf(el) {
+    const own = el && el.hasAttribute("data-review-options") ? parseOpts(el.getAttribute("data-review-options")) : [];
+    const opts = own.length ? own : PAGE_OPTS;
+    if (!opts.length) return null;
+    const d = (el && el.getAttribute("data-review-default")) || PAGE_DEF;
+    return { opts, def: opts.some(o => o[0] === d) ? d : "" };
+  }
   const items = [];
   // data-review-h2="off": only [data-review-question] elements are items (converted pages).
   if (body.getAttribute("data-review-h2") !== "off") Array.from(document.querySelectorAll("h2")).forEach((h, i) => {
@@ -257,12 +277,30 @@ document.addEventListener("toggle", e => { if (e.target.open) e.target.querySele
     const nodes = [h];
     while (n && n.tagName !== "H2" && !n.hasAttribute("data-review-question") && n.tagName !== "SCRIPT") { anchor = n; nodes.push(n); n = n.nextElementSibling; }
     const hc = h.cloneNode(true); hc.querySelectorAll(".howto-btn").forEach(x => x.remove());
-    items.push({ id, title: hc.textContent.trim(), after: anchor, nodes, type: h.getAttribute("data-review-type") || "", suggested: h.getAttribute("data-suggested") || "" });
+    items.push({ id, title: hc.textContent.trim(), after: anchor, nodes, type: h.getAttribute("data-review-type") || "", suggested: h.getAttribute("data-suggested") || "", ch: choicesOf(h) });
   });
   document.querySelectorAll("[data-review-question]").forEach(el => {
-    items.push({ id: el.getAttribute("data-review-question"), title: el.getAttribute("data-title") || el.textContent.trim(), at: el, nodes: [el], type: el.getAttribute("data-review-type") || "", suggested: el.getAttribute("data-suggested") || "" });
+    items.push({ id: el.getAttribute("data-review-question"), title: el.getAttribute("data-title") || el.textContent.trim(), at: el, nodes: [el], type: el.getAttribute("data-review-type") || "", suggested: el.getAttribute("data-suggested") || "", ch: choicesOf(el) });
   });
   const isQ = it => it.type === "question";
+  for (const it of items) if (isQ(it)) it.ch = null;
+  const isC = it => !!it.ch;
+  const choiceIds = new Set(items.filter(isC).map(it => it.id));
+  const valOf = it => (state[it.id] || {}).v || it.ch.def;
+  const labelOf = (it, v) => (it.ch.opts.find(o => o[0] === v) || [v, v])[1];
+  function choiceStatus(it) {
+    const v = (state[it.id] || {}).v;
+    return v ? labelOf(it, v) : it.ch.def ? labelOf(it, it.ch.def) + " (default)" : "Not chosen";
+  }
+  // "2 start · 12 hold": every choice the items offer, in order, with how many items sit on it.
+  function tally(list) {
+    const c = new Map();
+    for (const it of list) {
+      for (const o of it.ch.opts) if (!c.has(o[1].toLowerCase())) c.set(o[1].toLowerCase(), 0);
+      const v = valOf(it); if (v) { const k = labelOf(it, v).toLowerCase(); c.set(k, (c.get(k) || 0) + 1); }
+    }
+    return Array.from(c).map(([k, n]) => n + " " + k).join(" · ");
+  }
   // data-review-import="oldKey|prefix": one-time import of answers an older checklist saved in this
   // browser as { id: { status: "pass"|"fail"|"skip", notes } }. The old key is left untouched.
   const imp = body.getAttribute("data-review-import");
@@ -281,9 +319,9 @@ document.addEventListener("toggle", e => { if (e.target.open) e.target.querySele
       state[tag] = 1; persist(tag);
     }
   }
-  const approved = (body.getAttribute("data-review-approved") || "").split(",").map(x => x.trim()).filter(x => x && !reopen[x]);
+  const approved = (body.getAttribute("data-review-approved") || "").split(",").map(x => x.trim()).filter(x => x && !reopen[x] && !choiceIds.has(x));
   for (const id of approved) state[id] = { v: "yes", n: (state[id] || {}).n || "" };
-  const hidden = new Set(items.filter(it => !reopen[it.id] && (approved.includes(it.id) || (reset && (state[it.id] || {}).v === "yes"))).map(it => it.id));
+  const hidden = new Set(items.filter(it => !isC(it) && !reopen[it.id] && (approved.includes(it.id) || (reset && (state[it.id] || {}).v === "yes"))).map(it => it.id));
 
   function saveQuestion(id, answer) {
     state[id] = Object.assign({}, state[id] || {}, { a: answer });
@@ -312,6 +350,38 @@ document.addEventListener("toggle", e => { if (e.target.open) e.target.querySele
       it.box = box;
       if (blocked[it.id]) box.classList.add("blocked");
       requestAnimationFrame(() => grow(qa));
+      continue;
+    }
+    if (isC(it)) {
+      // The page's own choices: no Blocker button, notes optional, and only what the owner picks is saved.
+      box.classList.add("choice");
+      if (blocked[it.id]) { st.classList.add("blk"); st.textContent = "Blocked by " + blocked[it.id]; }
+      else if (reopen[it.id]) { st.classList.add("reo"); st.textContent = "Reopened: " + reopen[it.id]; } else st.textContent = choiceStatus(it);
+      box.appendChild(st);
+      const cur = valOf(it);
+      const crow = document.createElement("div");
+      crow.innerHTML = '<span class="ask">Your answer:</span><span class="opts"></span>';
+      for (const [v, l] of it.ch.opts) {
+        const lab = document.createElement("label"); const r = document.createElement("input");
+        r.type = "radio"; r.name = "rv-" + it.id; r.value = v; r.checked = cur === v;
+        lab.append(r, " " + l); crow.querySelector(".opts").appendChild(lab);
+      }
+      box.appendChild(crow);
+      const cta = document.createElement("textarea"); cta.placeholder = "Comments (optional)"; cta.value = s.n || "";
+      box.appendChild(cta);
+      box.addEventListener("change", e => {
+        if (e.target.name !== "rv-" + it.id) return;
+        state[it.id] = Object.assign({}, state[it.id] || {}, { v: e.target.value, n: cta.value });
+        persist(it.id); paint();
+      });
+      cta.addEventListener("input", () => {
+        state[it.id] = Object.assign({ v: "" }, state[it.id] || {}, { n: cta.value });
+        persist(it.id); paint();
+      });
+      const cdet = it.at && it.at.querySelector(":scope > .rv-details");
+      if (cdet) cdet.before(box); else if (it.at) it.at.appendChild(box); else it.after.insertAdjacentElement("afterend", box);
+      it.box = box;
+      if (blocked[it.id]) { box.classList.add("blocked"); box.querySelectorAll("input, textarea").forEach(x => x.disabled = true); }
       continue;
     }
     if (blocked[it.id]) { st.classList.add("blk"); st.textContent = "Blocked by " + blocked[it.id]; }
@@ -390,7 +460,7 @@ document.addEventListener("toggle", e => { if (e.target.open) e.target.querySele
   }
   function save(id) {
     for (const it of items) {
-      if (isQ(it) || hidden.has(it.id) || (state[it.id] || {}).locked) continue;
+      if (isQ(it) || isC(it) || hidden.has(it.id) || (state[it.id] || {}).locked) continue;
       const v = (it.box.querySelector("input:checked") || {}).value || "";
       const n = it.box.querySelector("textarea").value;
       state[it.id] = Object.assign({ v, n }, (state[it.id] || {}).blocker ? { blocker: true } : {});
@@ -401,21 +471,30 @@ document.addEventListener("toggle", e => { if (e.target.open) e.target.querySele
     let done = 0;
     for (const it of items) {
       const s = state[it.id] || {};
+      if (isC(it)) {
+        it.box.dataset.choice = valOf(it);
+        if (!blocked[it.id] && !reopen[it.id]) it.box.querySelector(".st").textContent = choiceStatus(it);
+        continue;
+      }
       it.box.classList.remove("yes", "no", "chg", "skip", "empty", "blocker");
       if (s.v) it.box.classList.add(s.v);
       if (s.blocker) it.box.classList.add("blocker");
       if (s.v === "chg" && !(s.n || "").trim()) it.box.classList.add("empty");
       if (!hidden.has(it.id) && !s.locked && s.v && !(s.v === "chg" && !(s.n || "").trim())) done++;
     }
-    const open = items.filter(it => !isQ(it) && !hidden.has(it.id) && !(state[it.id] || {}).locked && !blocked[it.id]).length;
-    const nb = items.filter(it => !isQ(it) && !hidden.has(it.id) && blocked[it.id]).length;
-    const yesAll = items.filter(it => !isQ(it) && !hidden.has(it.id) && !blocked[it.id] && !(state[it.id] || {}).locked).every(it => (state[it.id] || {}).v === "yes");
+    const ync = items.filter(it => !isQ(it) && !isC(it));
+    const open = ync.filter(it => !hidden.has(it.id) && !(state[it.id] || {}).locked && !blocked[it.id]).length;
+    const nb = ync.filter(it => !hidden.has(it.id) && blocked[it.id]).length;
+    const yesAll = ync.filter(it => !hidden.has(it.id) && !blocked[it.id] && !(state[it.id] || {}).locked).every(it => (state[it.id] || {}).v === "yes");
     const qOpen = items.filter(it => isQ(it) && !((state[it.id] || {}).a || "").trim()).length;
     const qTail = qOpen ? " · " + qOpen + " question" + (qOpen === 1 ? "" : "s") + " unanswered" : "";
+    const chosen = items.filter(isC);
+    const cTail = chosen.length ? " · " + tally(chosen) : "";
     bar.classList.toggle("all-done", open > 0 && done === open);
     bar.classList.toggle("approved", open > 0 && done === open && yesAll);
-    if (open > 0 && done === open) { bar.querySelector(".cnt").textContent = (yesAll ? "APPROVED: " : "") + "All " + open + " done" + (nb ? " · " + nb + " blocked" : "") + (hidden.size ? " · " + hidden.size + " approved and hidden" : "") + qTail; }
-    else bar.querySelector(".cnt").textContent = done + " of " + open + " open items answered" + (nb ? " · " + nb + " blocked" : "") + (hidden.size ? " · " + hidden.size + " approved and hidden" : "") + qTail;
+    if (chosen.length && !ync.length) bar.querySelector(".cnt").textContent = tally(chosen) + qTail;
+    else if (open > 0 && done === open) { bar.querySelector(".cnt").textContent = (yesAll ? "APPROVED: " : "") + "All " + open + " done" + (nb ? " · " + nb + " blocked" : "") + (hidden.size ? " · " + hidden.size + " approved and hidden" : "") + cTail + qTail; }
+    else bar.querySelector(".cnt").textContent = done + " of " + open + " open items answered" + (nb ? " · " + nb + " blocked" : "") + (hidden.size ? " · " + hidden.size + " approved and hidden" : "") + cTail + qTail;
     jumpEl.innerHTML = "";
     const list = openList();
     for (const it of list) { const a = document.createElement("a"); a.href = "#rv-" + it.id; a.className = "chip c-review"; a.textContent = it.id; a.addEventListener("click", e => { e.preventDefault(); showIds(false); go(it); }); jumpEl.appendChild(a); }
@@ -431,6 +510,12 @@ document.addEventListener("toggle", e => { if (e.target.open) e.target.querySele
       const chip = g.querySelector("summary [data-open-chip]") ||
         Array.from(g.querySelectorAll("summary .chip")).find(c => /^\d+ open$/.test(c.textContent.trim()));
       if (!chip) continue;
+      const mine = items.filter(it => !isQ(it) && it.box.closest("details.grp") === g);
+      if (mine.length && mine.every(isC)) {
+        chip.textContent = tally(mine);
+        chip.classList.remove("c-review", "c-approved");
+        continue;
+      }
       const n = list.filter(it => it.box.closest("details.grp") === g).length;
       chip.textContent = n + " open";
       chip.classList.toggle("c-review", n > 0); chip.classList.toggle("c-approved", n === 0);
@@ -441,7 +526,7 @@ document.addEventListener("toggle", e => { if (e.target.open) e.target.querySele
     if (t && t.nodeType === 3 && /^\d+ open items/.test(t.nodeValue)) t.nodeValue = t.nodeValue.replace(/^\d+/, list.length);
   }
   function openList() {
-    return items.filter(it => { const s = state[it.id] || {}; return !isQ(it) && !hidden.has(it.id) && !s.locked && !blocked[it.id] && (!s.v || (s.v === "chg" && !(s.n || "").trim())); });
+    return items.filter(it => { const s = state[it.id] || {}; return !isQ(it) && !isC(it) && !hidden.has(it.id) && !s.locked && !blocked[it.id] && (!s.v || (s.v === "chg" && !(s.n || "").trim())); });
   }
   function go(it) {
     const el = it.nodes[0] || it.box;
@@ -475,15 +560,18 @@ document.addEventListener("toggle", e => { if (e.target.open) e.target.querySele
     const scope = group ? items.filter(it => it.box.closest("details.grp") === group) : items;
     const head = group ? (gt ? gt.textContent.trim() : src) + " (/" + (location.pathname.split("/")[1] || "") + "/" + src + ")" : document.title + " (" + page + ")";
     let out = "Review: " + head + "\n";
-    const yncItems = scope.filter(it => !isQ(it)), qItems = scope.filter(isQ);
-    for (const it of yncItems) {
+    const yncItems = scope.filter(it => !isQ(it) && !isC(it)), qItems = scope.filter(isQ), cItems = scope.filter(isC);
+    for (const it of scope.filter(it => !isQ(it))) {
       const s = state[it.id] || {};
-      out += "- [" + it.id + "] " + (blocked[it.id] ? "BLOCKED by " + blocked[it.id] + ", " : "") + (s.blocker ? "BLOCKER, " : "") + (label[s.v] || "NOT ANSWERED") + ": " + it.title + (s.n ? "\n    Note: " + s.n.replace(/\n/g, " ") : "") + "\n";
+      const ans = isC(it) ? (valOf(it) ? labelOf(it, valOf(it)).toUpperCase() : "NOT ANSWERED") : (label[s.v] || "NOT ANSWERED");
+      out += "- [" + it.id + "] " + (blocked[it.id] ? "BLOCKED by " + blocked[it.id] + ", " : "") + (s.blocker ? "BLOCKER, " : "") + ans + ": " + it.title + (s.n ? "\n    Note: " + s.n.replace(/\n/g, " ") : "") + "\n";
     }
     for (const p of stalePages) if (!group || p === src) out += "STALE: " + p + "\n";
     const counted = yncItems.filter(it => !(state[it.id] || {}).locked);
     const yes = counted.filter(it => (state[it.id] || {}).v === "yes").length;
-    out += "\n" + (yes === counted.length ? "APPROVED: every item is Yes." : "Not approved yet: " + yes + " of " + counted.length + " are Yes.") + "\n";
+    out += "\n";
+    if (counted.length || !cItems.length) out += (yes === counted.length ? "APPROVED: every item is Yes." : "Not approved yet: " + yes + " of " + counted.length + " are Yes.") + "\n";
+    if (cItems.length) out += tally(cItems) + "\n";
     const qOpen = qItems.filter(it => !((state[it.id] || {}).a || "").trim()).length;
     if (qOpen) out += qOpen + " open question" + (qOpen === 1 ? "" : "s") + "\n";
     // Unified pages prefix ids with their source page ("built.s2"); report each page's approval too.
@@ -491,6 +579,9 @@ document.addEventListener("toggle", e => { if (e.target.open) e.target.querySele
     for (const it of yncItems) { const g = it.id.includes(".") ? it.id.split(".")[0] : ""; if (!g) continue;
       (groups[g] = groups[g] || { n: 0, yes: 0 }).n++; if ((state[it.id] || {}).v === "yes") groups[g].yes++; }
     for (const [g, c] of Object.entries(groups)) out += "  " + g + ": " + (c.yes === c.n ? "APPROVED" : c.yes + " of " + c.n + " Yes") + "\n";
+    const cGroups = {};
+    for (const it of cItems) { const g = it.id.includes(".") ? it.id.split(".")[0] : ""; if (g && !groups[g]) (cGroups[g] = cGroups[g] || []).push(it); }
+    for (const [g, list] of Object.entries(cGroups)) out += "  " + g + ": " + tally(list) + "\n";
     if (qItems.length) {
       out += "\n";
       for (const it of qItems) { const a = ((state[it.id] || {}).a || "").trim(); out += "Q " + it.id + ": " + (a ? a.replace(/\n/g, " ") : "(no answer)") + "\n"; }
@@ -604,6 +695,6 @@ document.addEventListener("toggle", e => { if (e.target.open) e.target.querySele
 
   function loadLive() {
     if (document.querySelector('script[src*="/_site/live.js"]')) return;
-    const sc = document.createElement("script"); sc.src = "/_site/live.js?v=15"; sc.setAttribute("data-mode", "page"); body.appendChild(sc);
+    const sc = document.createElement("script"); sc.src = "/_site/live.js?v=16"; sc.setAttribute("data-mode", "page"); body.appendChild(sc);
   }
 })();

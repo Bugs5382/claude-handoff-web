@@ -10,7 +10,7 @@
   "key_prefix": "review:",
   "blocker_to": "the operator session",
   "folders": [
-    {"id": "demo", "name": "Demo project", "blurb": "A fake project: one review page and one checklist"},
+    {"id": "demo", "name": "Demo project", "blurb": "A fake project: a review page, a backlog and a checklist"},
     {"id": "guide", "name": "Guide", "blurb": "Page types and the agent memory file"}
   ],
   "order": ["demo", "guide"],

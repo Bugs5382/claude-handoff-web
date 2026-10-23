@@ -21,9 +21,9 @@ completes, set it to `done` and it moves to "Completed". To retire a page, the o
 ## Hook a page in
 
 ```html
-<link rel="stylesheet" href="/_site/site.css?v=15">
+<link rel="stylesheet" href="/_site/site.css?v=16">
 ...
-<script src="/_site/review.js?v=15"></script>   <!-- review pages: just before </body> -->
+<script src="/_site/review.js?v=16"></script>   <!-- review pages: just before </body> -->
 ```
 
 - `review.js` turns every `<h2>` section (and every `[data-review-question="id" data-title="..."]`) into an
@@ -57,6 +57,18 @@ completes, set it to `done` and it moves to "Completed". To retire a page, the o
 - `data-review-type="question"` on an `<h2>` or `[data-review-question]` item makes it an open question: a
   free-text box instead of Yes / No / Changes, with `data-suggested="..."` adding a "Use suggestion" button.
   See "Operating the site" below.
+- `data-review-options="start:Start,hold:Hold"` (value:label pairs, in order) and `data-review-default="hold"`
+  on `<body>` give every item the page's own choices instead of Yes / No / Changes; on one `<h2>` or
+  `[data-review-question]` item they override the page for that item. Each item shows the choices and a
+  "Comments (optional)" box (no Blocker button, no Skipped). An item nobody picked shows and counts as the
+  default ("Hold (default)"). Only what the owner picks or writes is saved (`{ v: "start", n: "..." }`, or
+  `{ v: "", n: "..." }` for a comment alone); the default is never written, so changing
+  `data-review-default` later moves every item nobody picked. Choice items are never open, approved, hidden
+  or blocking: the bar shows per-choice counts (`2 start · 12 hold`), Copy results lists `- [id] HOLD: title`
+  and ends with the counts line instead of the approval line. build-review.py copies the choices onto each
+  item, so a choices group keeps them on the unified page; its `data-open-chip` shows the counts instead of
+  "N open" and it adds nothing to `.open-total`. gen-index.py shows no open-item count on its card.
+  Server-built round text (`serve.py`) reads the page's `<body>` choices the same way.
 - Pages without review.js (checklists, indexes) load `/_site/live.js` (`data-mode="page"` on non-index pages).
 - Element styles apply only under `<body class="site">`; design mocks can load site.css without losing their look.
 
@@ -116,14 +128,19 @@ list it in `_status.json` as `reference`, so the index doesn't show it as an unc
 
 ## Wording
 
-- Answers, review pages: Yes, No, Changes (notes required for Changes). Test checklists add Skipped.
-- Item states: Open, Reopened: <reason>, Approved, Skipped (locked), Blocked by <id>.
+- Answers, review pages: Yes, No, Changes (notes required for Changes). Test checklists add Skipped. A
+  choices page: its own labels, with "Comments (optional)".
+- Item states: Open, Reopened: <reason>, Approved, Skipped (locked), Blocked by <id>; on a choices page the
+  chosen label, or `<label> (default)`.
 - Buttons: Copy results, Copy (one unified-page group), Clear my answers (never clears approved or locked items), Blocker: copy now,
   Stale: remove this page.
 - Progress: `<n> of <m> open items answered`, plus ` · <k> approved and hidden` when k > 0, plus
-  ` · <j> questions unanswered` when j > 0 (open questions never count toward `<n>` or `<m>`).
-- Copy results lines: `- [id] ANSWER: title` and `    Note: ...`; `STALE: <page>`; footer
-  `APPROVED: every item is Yes.` or `Not approved yet: <n> of <m> are Yes.`, then `<j> open questions`
+  ` · <j> questions unanswered` when j > 0 (open questions never count toward `<n>` or `<m>`). Choice
+  items add ` · <n> <label> · <n> <label>`; a page with only choice items shows just those counts.
+- Copy results lines: `- [id] ANSWER: title` (a choice item: its label in capitals) and `    Note: ...`;
+  `STALE: <page>`; footer `APPROVED: every item is Yes.` or `Not approved yet: <n> of <m> are Yes.` (left
+  out when every item is a choice item), then the per-choice counts when there are choice items,
+  then `<j> open questions`
   when j > 0, then each question as its own `Q <id>: <answer>` (or `Q <id>: (no answer)`) line.
 - Index sections: Needs you, Reference, Completed (collapsed). Root: Needs you now.
 - History: "History (n rounds)", "Round N", "Save round now", "page removed".

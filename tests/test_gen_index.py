@@ -109,7 +109,7 @@ def test_page_mixing_choices_and_yes_no_counts_only_yes_no_items(site):
     gi = load_module(site / "gen-index.py", "gen_index_mix")
     src = ('<body class="site"><h2>Approve the plan</h2><h2 data-review-options="a:A,b:B" data-review-default="a">Pick one</h2>'
            '<section data-review-question="x" data-title="X" data-review-options="a:A,b:B"></section>'
-           '<script src="/_site/review.js?v=16"></script></body>')
+           '<script src="/_site/review.js?v=17"></script></body>')
     assert gi.review_info(src) == (3, 1, 0, 2)
 
 
@@ -140,7 +140,7 @@ def test_open_questions_and_blocked_items_never_count_as_open(site):
     src = ('<body class="site" data-review-blocked="s2=s1 must pass first"><h2>One</h2><h2>Two</h2>'
            '<h2 data-review-type="question">Anything else?</h2>'
            '<section data-review-question="q2" data-title="Q" data-review-type="question"></section>'
-           '<script src="/_site/review.js?v=16"></script></body>')
+           '<script src="/_site/review.js?v=17"></script></body>')
     n, open_n, _, n_choice = gi.review_info(src)
     assert (n, open_n, n_choice) == (2, 1, 0)
 
@@ -148,7 +148,7 @@ def test_open_questions_and_blocked_items_never_count_as_open(site):
 def test_page_of_only_questions_shows_no_count_or_approved(site):
     page = ('<!doctype html><html><head><title>Questions</title></head><body class="site">'
             '<h2 data-review-type="question">Anything else?</h2>'
-            '<script src="/_site/review.js?v=16"></script></body></html>')
+            '<script src="/_site/review.js?v=17"></script></body></html>')
     (site / "demo" / "questions.html").write_text(page)
     run_script(site, site / "gen-index.py")
     card = card_html((site / "demo" / "index.html").read_text(), "demo/questions.html")

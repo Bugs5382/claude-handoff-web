@@ -86,6 +86,10 @@ async function saved() { await until(() => !w().siteReview.unsaved(), "the save"
     out.newDefault = snap();
     await load("/demo/design-review.html"); await ready();
     out.yesNo = snap();
+    await load("/demo/signoff-checklist.html"); await ready();
+    out.checklist = snap();
+    await load("/demo/review/"); await ready();
+    out.unifiedChecklist = snap();
   }
 })().catch(e => { out.error = String(e && e.stack || e); })
   .finally(() => { document.getElementById("out").textContent = JSON.stringify(out); });
@@ -220,3 +224,11 @@ def test_unified_page_keeps_each_groups_choices(browser):
         "\n"
         "1 start · 2 hold\n"
         "  backlog: 1 start · 2 hold\n")
+
+
+def test_blocked_item_keeps_its_blocked_status_once_locked(browser):
+    """A blocked item is locked like a skipped one, but its status still names what blocks it."""
+    page, unified = browser[1]["checklist"]["items"], browser[1]["unifiedChecklist"]["items"]
+    assert page["rv-t3"]["status"] == "Blocked by t2 (sign-in must pass first)"
+    assert unified["rv-signoff-checklist.t3"]["status"] == "Blocked by signoff-checklist.t2 (sign-in must pass first)"
+    assert page["rv-t1"]["status"] == "Open"

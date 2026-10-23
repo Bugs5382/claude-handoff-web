@@ -129,9 +129,36 @@ def text_of(chunk):
     return re.sub(r"\s+", " ", html.unescape(re.sub(r"<[^>]+>", " ", chunk))).strip()
 
 
+VOID = {"area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "param", "source", "track", "wbr"}
+# Elements whose end tag the parser infers: left alone, since an added or dropped one changes the layout.
+OPTIONAL_END = {"p", "li", "dt", "dd", "option", "optgroup", "tr", "td", "th", "thead", "tbody", "tfoot", "colgroup", "rp", "rt"}
+TAG = re.compile(r"<!--.*?-->|<(/?)([a-zA-Z][a-zA-Z0-9-]*)\b[^>]*>", re.S)
+
+
+def balance(chunk):
+    """An <h2> section is cut out of its page at the next <h2>, so it can end inside a wrapper (the page's
+    </main>) or open one it never closes. Drop closing tags with no opener in the chunk and close what is
+    left open, so nothing escapes the item on the unified page."""
+    out, stack, pos = [], [], 0
+    for m in TAG.finditer(chunk):
+        closing, name = m.group(1), (m.group(2) or "").lower()
+        if not name or name in VOID or name in OPTIONAL_END or m.group(0).endswith("/>"):
+            continue
+        if not closing:
+            stack.append(name)
+        elif name in stack:
+            while stack.pop() != name:
+                pass
+        else:
+            out.append(chunk[pos:m.start()])
+            pos = m.end()
+    out.append(chunk[pos:])
+    return "".join(out) + "".join(f"</{n}>" for n in reversed(stack))
+
+
 def clean(chunk, title):
     """Drop page chrome (header/nav/footer) and the item's own heading, which the group already shows."""
-    chunk = CHROME.sub("", chunk)
+    chunk = balance(CHROME.sub("", chunk))
     m = re.match(r"\s*<section\b[^>]*>", chunk)
     if m:
         chunk = chunk[m.end():]

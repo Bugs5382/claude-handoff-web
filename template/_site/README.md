@@ -125,8 +125,9 @@ into one named pop-out window (`picture`, 1000x760, reused): the picture fitted 
 as the caption, and a "Full size" link. Clicking another picture swaps it into the same window and brings
 the window to the front. Only links that wrap an `<img>` and point at a `.png`, `.jpg`, `.jpeg`, `.gif`,
 `.webp` or `.svg` file count. Middle-click, Cmd- or Ctrl-click, a `download` link, a blocked pop-up or a
-browser without JavaScript keep the plain link (a new tab). Keep pictures in a subfolder such as `img/` and
-list it in `_status.json` as `reference`, so the index doesn't show it as an unclassified page.
+browser without JavaScript keep the plain link (a new tab). Keep pictures in a subfolder such as `img/`.
+A subfolder with no `.html` file in it is never a page, so the index leaves it out; it needs no
+`_status.json` entry.
 
 ## Wording
 

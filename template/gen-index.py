@@ -102,6 +102,14 @@ def when(ts):
     return d.strftime("%b %-d, %-I:%M %p ") + TZ_LABEL
 
 
+def is_page_dir(p):
+    """A subfolder is a page only when it holds an .html file; img/ and other asset folders never are."""
+    try:
+        return any(e.endswith(".html") for e in os.listdir(p))
+    except OSError:
+        return False
+
+
 def discover(folder):
     fp = os.path.join(ROOT, folder)
     keys = []
@@ -110,7 +118,8 @@ def discover(folder):
             continue
         full = os.path.join(fp, e)
         if os.path.isdir(full):
-            keys.append(e + "/")
+            if is_page_dir(full):
+                keys.append(e + "/")
         elif e.endswith(".html"):
             keys.append(e)
     return keys
@@ -121,7 +130,9 @@ def collect(folder):
     os.makedirs(fp, exist_ok=True)
     mpath = os.path.join(fp, "_status.json")
     manifest = json.load(open(mpath)) if os.path.exists(mpath) else {}
-    keys = discover(folder) + [k for k in manifest if k not in discover(folder) and os.path.exists(target(folder, k))]
+    found = discover(folder)
+    keys = found + [k for k in manifest if k not in found and os.path.exists(target(folder, k))
+                    and not (os.path.isdir(target(folder, k)) and not is_page_dir(target(folder, k)))]
     dirty, pages = False, []
     for k in keys:
         p = target(folder, k)

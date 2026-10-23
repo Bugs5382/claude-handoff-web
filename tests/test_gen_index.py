@@ -191,3 +191,23 @@ def test_history_round_on_a_choices_page_shows_choice_counts(site):
     history_html = (site / "demo" / "history" / "index.html").read_text()
     assert "1 start · 2 hold" in history_html
     assert "Yes" not in history_html
+
+
+def test_asset_folders_are_not_cards(site):
+    """A subfolder is a page only when it holds an .html file: img/ is never a card, listed in the manifest or not."""
+    manifest = json.loads((site / "demo" / "_status.json").read_text())
+    manifest.pop("img/", None)
+    (site / "demo" / "_status.json").write_text(json.dumps(manifest))
+    (site / "demo" / "files").mkdir()
+    (site / "demo" / "files" / "notes.txt").write_text("x")
+    (site / "demo" / "report").mkdir()
+    (site / "demo" / "report" / "index.html").write_text("<title>Report</title>")
+    run_script(site, site / "gen-index.py")
+    folder = (site / "demo" / "index.html").read_text()
+    assert 'data-key="demo/img/"' not in folder
+    assert 'data-key="demo/files/"' not in folder
+    assert 'data-key="demo/report/"' in folder
+    assert "img/" not in json.loads((site / "demo" / "_status.json").read_text())
+    (site / "demo" / "_status.json").write_text(json.dumps({**manifest, "img/": {"state": "reference", "note": "Pictures"}}))
+    run_script(site, site / "gen-index.py")
+    assert 'data-key="demo/img/"' not in (site / "demo" / "index.html").read_text()

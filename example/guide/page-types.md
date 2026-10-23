@@ -24,6 +24,7 @@ Common rules:
 `_status.json`; you never write index HTML.
 
 **Required:** one key per page (`page.html`, `dir/` or `dir/page.html`), a `state`, a one-line `note`.
+A `dir/` is a page only when it holds an `.html` file; asset folders such as `img/` are never cards.
 Optional: `chips` (custom labels), `priority` (lower sorts first, default 50).
 
 ```json

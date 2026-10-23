@@ -311,7 +311,8 @@ def main():
         counts[d] = len(now_d)
         if not now_d:
             continue
-        opens = sum(p["open"] or 0 for p in now_d)
+        # The unified review page repeats its source pages' items, so its own count would add them twice.
+        opens = sum(p["open"] or 0 for p in now_d if p["key"] != "review/")
         label = (f'{esc(FOLDERS[d])} <span class="count">{len(now_d)}</span>'
                  + (f' <span class="muted">{opens} open items</span>' if opens else ""))
         groups.append(f'<section class="sect" data-project="{d}" data-sect="now-{d}"><h2>{label}</h2>'

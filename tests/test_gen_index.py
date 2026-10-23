@@ -110,3 +110,25 @@ def test_page_mixing_choices_and_yes_no_counts_only_yes_no_items(site):
            '<section data-review-question="x" data-title="X" data-review-options="a:A,b:B"></section>'
            '<script src="/_site/review.js?v=16"></script></body>')
     assert gi.review_info(src) == (3, 1, 0, 2)
+
+
+def run_script(site, *args):
+    r = subprocess.run([sys.executable, *map(str, args)], cwd=site, capture_output=True, text=True)
+    assert r.returncode == 0, r.stderr
+    return r.stdout
+
+
+def test_folder_open_total_counts_unified_page_items_once(site):
+    """The unified review page repeats its source pages' items, so the folder total leaves its card out."""
+    run_script(site, site / "_site" / "build-review.py", "demo")
+    run_script(site, site / "gen-index.py")
+    root_html = (site / "index.html").read_text()
+    group = re.search(r'<section class="sect" data-project="demo".*?</section>', root_html, re.S).group(0)
+    per_card = {}
+    for card in re.findall(r"<li .*?</li>", group, re.S):
+        m = re.search(r"<b>(\d+) open items?</b>", card)
+        per_card[re.search(r'data-key="([^"]+)"', card).group(1)] = int(m.group(1)) if m else 0
+    assert "demo/review/" in per_card
+    sources = sum(n for k, n in per_card.items() if k != "demo/review/")
+    total = int(re.search(r'<span class="muted">(\d+) open items</span>', group).group(1))
+    assert total == sources

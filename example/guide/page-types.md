@@ -42,6 +42,8 @@ python3 gen-index.py
 The card shows the title (the page's `<title>`), the note, chips (New, Updated, To review, Approved,
 Reopened, plus yours), the open item count for review pages, and a Stale button for needs-you pages. A
 choices page (see (j)) has no open items: its card shows no count and never the Approved chip.
+On the root index each folder's "Needs you now" heading adds up its cards' open items, leaving out the
+unified page (`review/`), whose items are already counted on their own pages.
 
 ## (b) Design or review page
 

@@ -142,7 +142,8 @@ list it in `_status.json` as `reference`, so the index doesn't show it as an unc
   out when every item is a choice item), then the per-choice counts when there are choice items,
   then `<j> open questions`
   when j > 0, then each question as its own `Q <id>: <answer>` (or `Q <id>: (no answer)`) line.
-- Index sections: Needs you, Reference, Completed (collapsed). Root: Needs you now.
+- Index sections: Needs you, Reference, Completed (collapsed). Root: Needs you now, with each folder's
+  open-item total (the unified `review/` card is left out of it, so no item counts twice).
 - History: "History (n rounds)", "Round N", "Save round now", "page removed".
 - Chips: New (first seen in the last 24 h), Updated, To review, Reopened, Approved, Reference, Done,
   Not classified, plus custom chips from `"chips"`.

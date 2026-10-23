@@ -14,6 +14,8 @@ type: reference
 - Something that isn't a choice (a free-text answer) is an open question, not a Yes/No/Changes item:
   `data-review-type="question"` (optional `data-suggested="..."`). It never blocks approval and is never
   counted in the open-items count; Copy results lists it as `Q <id>: <answer>`.
+- Pictures: `<a href="img/x.png" target="_blank"><img src="img/x.png" alt="caption"></a>`. A click opens one
+  reused pop-out that swaps to each picture clicked; list the `img/` folder as `reference` in `_status.json`.
 - Keep one unified page per session: `python3 _site/build-review.py <folder>` builds `/<folder>/review/`.
 - Never ask twice: if a checklist answered it, close the review item from that answer.
 - The owner's Stale button deletes a page for good; `_old/` copies are pruned after 7 days. A page's round

@@ -11,6 +11,8 @@ Common rules:
 - Review pages load `/_site/review.js?v=14` just before `</body>`; it brings `live.js` itself. Other pages
   load `/_site/live.js?v=14` with `data-mode="page"`.
 - Answers are saved on the server; Copy results is what the owner pastes back to you.
+- Pictures: wrap each `<img>` in a link to its own file. A click shows it in one reused pop-out window,
+  and the next picture swaps into that window (see `_site/README.md` "Pictures (pop-out)").
 - A round is one pass of answers under one `data-build` value or `data-review-reset` version. Bump either
   one and the server archives the round it replaces on its own (see `_site/SAVE-API.md` "Round history");
   nothing else is needed. Past rounds show in a collapsed "History" block at the page's bottom, in the More
@@ -67,6 +69,7 @@ is instead an open question (see (i)) when the answer isn't a choice between opt
 <pre>+-----------------------------+
 | Profile | Security | Alerts  |
 +-----------------------------+</pre>
+<p><a href="img/layout.png" target="_blank" rel="noopener"><img src="img/layout.png" alt="Layout mock" width="320"></a></p>
 <h2>Errors and empty states</h2>
 <p>What the owner sees when a save fails or there is nothing to show.</p>
 </main>

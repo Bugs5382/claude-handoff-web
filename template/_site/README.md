@@ -21,9 +21,9 @@ completes, set it to `done` and it moves to "Completed". To retire a page, the o
 ## Hook a page in
 
 ```html
-<link rel="stylesheet" href="/_site/site.css?v=12">
+<link rel="stylesheet" href="/_site/site.css?v=15">
 ...
-<script src="/_site/review.js?v=12"></script>   <!-- review pages: just before </body> -->
+<script src="/_site/review.js?v=15"></script>   <!-- review pages: just before </body> -->
 ```
 
 - `review.js` turns every `<h2>` section (and every `[data-review-question="id" data-title="..."]`) into an
@@ -42,7 +42,9 @@ completes, set it to `done` and it moves to "Completed". To retire a page, the o
   collapsed group (one open at a time) whose heading shows the title, a one-line summary
   (`<meta name="description">`, else the first paragraph, else the manifest note), the open count, chips,
   "Full page" and Stale. Each item shows its question and answer controls first; bulky content sits behind
-  "Show details". A folder with its own builder lists it in `site.json` `builders`.
+  "Show details". A folder with its own builder lists it in `site.json` `builders`. A Copy button next to
+  each group's "N open" chip copies just that page's results, in the Copy results format (its own heading,
+  items, STALE line, footer and questions); it doesn't open or close the group.
 - Converted pages wrap each item in `<section data-review-question="id" data-title="...">` and set
   `<body data-review-h2="off">` so only those sections are items. `data-review-skip="on"` adds Skipped (locked)
   for test checklists; `data-review-import="oldKey|prefix"` imports answers an older checklist saved.
@@ -96,7 +98,7 @@ review.js with `<body data-review-controls="off">`: review.js then only starts l
 
 - Answers, review pages: Yes, No, Changes (notes required for Changes). Test checklists add Skipped.
 - Item states: Open, Reopened: <reason>, Approved, Skipped (locked), Blocked by <id>.
-- Buttons: Copy results, Clear my answers (never clears approved or locked items), Blocker: copy now,
+- Buttons: Copy results, Copy (one unified-page group), Clear my answers (never clears approved or locked items), Blocker: copy now,
   Stale: remove this page.
 - Progress: `<n> of <m> open items answered`, plus ` · <k> approved and hidden` when k > 0, plus
   ` · <j> questions unanswered` when j > 0 (open questions never count toward `<n>` or `<m>`).

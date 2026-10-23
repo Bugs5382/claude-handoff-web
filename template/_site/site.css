@@ -211,6 +211,8 @@ body.unified details.grp[open] > summary .gt::before { transform: rotate(90deg);
 body.unified details.grp > summary .gs { color: var(--muted); font-size: .92rem; }
 body.unified details.grp > summary .gm { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; font-size: .88rem; }
 body.unified details.grp > summary .gm a { margin-left: auto; }
+body.unified .grp-copy { font: 600 12px system-ui, sans-serif; padding: .15rem .6rem; border: 1px solid var(--accent); color: var(--accent); background: #fff; border-radius: 999px; cursor: pointer; }
+body.unified .grp-copy:hover { background: var(--accent-soft); }
 body.unified details.grp[open] > summary { border-bottom: 1px solid var(--line); border-radius: var(--radius) var(--radius) 0 0; background: var(--accent-soft); }
 body.unified .gb { padding: .4rem 1.1rem 1rem; }
 body.unified .item { margin: 1rem 0 0; padding-top: 1rem; border-top: 1px solid var(--line); }

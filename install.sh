@@ -14,7 +14,8 @@
 #   --folders <list>      comma separated id:Name:blurb (default ops:Operator:Coordination)
 #   --key-prefix <text>   answer storage key prefix (default review:)
 #   --blocker-to <text>   who blockers are pasted to (default "the operator session")
-#   --example             also copy the fake example folders and its site.json
+#   --example             also copy the fake example folders and start from its site.json; any option
+#                         given is applied on top of it (--folders adds folders next to the example ones)
 #   --force               overwrite an existing site.json
 #
 # The target is scratch memory and is never committed: the script refuses to install inside a git
@@ -60,7 +61,7 @@ ask() {  # ask <var> <prompt> <default>
   if [ -z "$cur" ] && [ -t 0 ]; then read -r -p "$2 [$3]: " cur || true; fi
   printf -v "$1" '%s' "${cur:-$3}"
 }
-if [ "$EXAMPLE" -eq 0 ] || [ -n "$OWNER$FOLDERS" ]; then
+if [ "$EXAMPLE" -eq 0 ]; then
   ask OWNER "Owner (the person who answers)" "owner"
   ask TITLE "Site title" "Pages for $OWNER"
   ask HOST "Bind address" "127.0.0.1"
@@ -78,20 +79,19 @@ TARGET="$(cd "$TARGET" && pwd)"
 cp -R "$SRC/template/." "$TARGET/"
 mkdir -p "$TARGET/_saved" "$TARGET/_old"
 
+BASE=""
 if [ "$EXAMPLE" -eq 1 ]; then
-  for d in "$SRC/example"/*/; do cp -R "$d" "$TARGET/"; done
-  if [ -z "$OWNER$FOLDERS" ] && { [ ! -e "$TARGET/site.json" ] || [ "$FORCE" -eq 1 ]; }; then
-    cp "$SRC/example/site.json" "$TARGET/site.json"
-  fi
+  # BSD cp (macOS) copies a source ending in "/" as its contents, so strip the slash to copy the folder itself.
+  for d in "$SRC/example"/*/; do cp -R "${d%/}" "$TARGET/"; done
+  BASE="$SRC/example/site.json"
 fi
 
-if [ -n "$OWNER$FOLDERS" ] || [ "$EXAMPLE" -eq 0 ]; then
-  if [ -e "$TARGET/site.json" ] && [ "$FORCE" -eq 0 ]; then
-    echo "kept the existing $TARGET/site.json (use --force to rewrite it)"
-  else
-    TITLE="$TITLE" OWNER="$OWNER" HOST="$HOST" PORT="$PORT" TZONE="$TZONE" TZLABEL="$TZLABEL" \
-    WINDOWS="$WINDOWS" FOLDERS="$FOLDERS" KEYPREFIX="$KEYPREFIX" BLOCKERTO="$BLOCKERTO" \
-    python3 - "$TARGET/site.json" <<'PY'
+if [ -e "$TARGET/site.json" ] && [ "$FORCE" -eq 0 ]; then
+  echo "kept the existing $TARGET/site.json (use --force to rewrite it)"
+else
+  BASE="$BASE" TITLE="$TITLE" OWNER="$OWNER" HOST="$HOST" PORT="$PORT" TZONE="$TZONE" TZLABEL="$TZLABEL" \
+  WINDOWS="$WINDOWS" FOLDERS="$FOLDERS" KEYPREFIX="$KEYPREFIX" BLOCKERTO="$BLOCKERTO" \
+  python3 - "$TARGET/site.json" <<'PY'
 import json, os, sys
 env = os.environ
 folders = []
@@ -99,6 +99,31 @@ for part in filter(None, (p.strip() for p in env["FOLDERS"].split(","))):
     fid, _, rest = part.partition(":")
     name, _, blurb = rest.partition(":")
     folders.append({"id": fid.strip(), "name": (name or fid).strip(), "blurb": blurb.strip()})
+if env["BASE"]:
+    # --example: the example site.json, with only the options actually given applied on top.
+    with open(env["BASE"]) as f:
+        cfg = json.load(f)
+    if env["OWNER"]:
+        cfg["owner"] = env["OWNER"]
+        cfg["title"] = env["TITLE"] or "Pages for " + env["OWNER"]
+    for key, var in (("title", "TITLE"), ("host", "HOST"), ("timezone", "TZONE"), ("key_prefix", "KEYPREFIX"),
+                     ("blocker_to", "BLOCKERTO")):
+        if env[var]:
+            cfg[key] = env[var]
+    if env["PORT"]:
+        cfg["port"] = int(env["PORT"])
+    if env["TZONE"] or env["TZLABEL"]:
+        cfg["tz_label"] = env["TZLABEL"] or env["TZONE"]
+    if env["WINDOWS"]:
+        cfg["review_windows"] = [w.strip() for w in env["WINDOWS"].split(",") if w.strip()]
+    for fo in folders:
+        cfg["folders"] = [x for x in cfg["folders"] if x["id"] != fo["id"]] + [fo]
+        if fo["id"] not in cfg["order"]:
+            cfg["order"].append(fo["id"])
+    with open(sys.argv[1], "w") as f:
+        json.dump(cfg, f, indent=2)
+        f.write("\n")
+    sys.exit(0)
 cfg = {
     "title": env["TITLE"], "owner": env["OWNER"],
     "subtitle": "Everything waiting on you is at the top. Pages update themselves.",
@@ -112,7 +137,6 @@ with open(sys.argv[1], "w") as f:
     json.dump(cfg, f, indent=2)
     f.write("\n")
 PY
-  fi
 fi
 
 # Stamp the per-install constants into review.js from site.json.

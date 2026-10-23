@@ -12,9 +12,10 @@ cd claude-handoff-web
   --folders "ops:Operator:Coordination,app:My app:Reviews for the app"
 ```
 
-Without flags the script asks once for each value. Add `--example` to copy the fake demo folders too (with
-no `--owner`/`--folders`, it uses the example's `site.json`). The script refuses a target inside a git
-work tree and never runs `git init`.
+Without flags the script asks once for each value. Add `--example` to copy the fake demo folders too: it
+starts from the example's `site.json` and asks nothing, applying any option you give on top of it
+(`--owner`, `--port` and so on; `--folders` adds folders next to `demo` and `guide`). The script refuses a
+target inside a git work tree and never runs `git init`.
 
 ## 2. Run the server
 

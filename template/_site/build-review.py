@@ -4,7 +4,7 @@
 its heading shows the page title, a one-line summary, the open count, its chips and a Stale button.
 Each item shows its question and answer controls first; bulky content sits behind "Show details" in an
 iframe with its page's CSS. Items come from [data-review-question] sections, or from <h2> sections on plain pages.
-Approved, reopened and reset attributes on the source pages carry through, prefixed by page.
+Approved, reopened, blocked and reset attributes on the source pages carry through, prefixed by page.
 
 Usage: build-review.py <folder>    (rerun after any source page or manifest change)
 """
@@ -72,8 +72,9 @@ def load(prefix, path):
     ver, _, ids = reset.partition(":")
     rids = [i.strip() for i in ids.split(",") if i.strip()] + [k for k in reopen if k not in ids.split(",")]
     tagged = f"{prefix}@{ver}:" + ",".join(f"{prefix}.{i}" for i in rids) if ver else ""
+    blocked = dict(p.split("=", 1) for p in attr(body, "data-review-blocked").split("|") if "=" in p)
     extra = {"skip": attr(body, "data-review-skip") == "on", "import": attr(body, "data-review-import"),
-             "build": attr(body, "data-build")}
+             "build": attr(body, "data-build"), "blocked": {k.strip(): v.strip() for k, v in blocked.items()}}
     return title, styles, out, tagged, extra
 
 
@@ -144,7 +145,7 @@ def main(folder):
     manifest = json.loads((fdir / "_status.json").read_text())
     protected = set(SITE.get("protected", []))
     srcs = [k for k, v in manifest.items() if v.get("state") == "needs-you" and k != "review/"]
-    groups, approved, reopen, resets, open_n, skip, imports = [], [], [], [], 0, False, []
+    groups, approved, reopen, resets, open_n, skip, imports, blocked = [], [], [], [], 0, False, [], []
     for key in srcs:
         path = fdir / (key + "index.html" if key.endswith("/") else key)
         if not path.exists():
@@ -159,13 +160,17 @@ def main(folder):
             imports.append(f"{k}|{prefix}.{pre}")
         if tagged:
             resets.append(tagged)
+        blocked += [f"{prefix}.{k}={prefix}.{v}" for k, v in extra["blocked"].items()]
+        is_blocked = {f"{prefix}.{k}" for k in extra["blocked"]}
         base = f"/{folder}/" + (key if key.endswith("/") else (key.rsplit("/", 1)[0] + "/" if "/" in key else ""))
         ync = [i for i in items if i.get("type") != "question"]
-        n_open = sum(not i["approved"] for i in ync)
+        n_open = sum(not i["approved"] and i["id"] not in is_blocked for i in ync)
         n_reo = sum(bool(i["reopen"]) for i in ync)
-        chips = chip(f"{n_open} open", "c-review" if n_open else "c-approved")
+        # review.js finds this chip by data-open-chip and keeps it current as items are answered.
+        chips = f'<span class="chip {"c-review" if n_open else "c-approved"}" data-open-chip>{n_open} open</span>'
         chips += chip("Reopened", "c-reopened") if n_reo else ""
-        chips += chip(f"{len(ync) - n_open} approved", "c-approved") if len(ync) - n_open and n_open else ""
+        n_appr = sum(bool(i["approved"]) for i in ync)
+        chips += chip(f"{n_appr} approved", "c-approved") if n_appr and n_open else ""
         chips += "".join(chip(c) for c in manifest[key].get("chips", []) if c)
         stale = "" if f"{folder}/{key}" in protected else (
             f'<button type="button" class="stale-btn" data-stale-folder="{html.escape(folder, quote=True)}" '
@@ -177,7 +182,7 @@ def main(folder):
                 pass  # never counted in approved/open/reopen: it is a free-text question, not Yes/No/Changes
             elif it["approved"]:
                 approved.append(it["id"])
-            else:
+            elif it["id"] not in is_blocked:
                 open_n += 1
             if not is_q and it["reopen"]:
                 reopen.append(f'{it["id"]}={it["reopen"]}')
@@ -202,21 +207,22 @@ def main(folder):
     stale_pages = stale_log(folder)
     extra_attrs = (' data-review-skip="on"' if skip else "") + \
                   (f' data-review-import="{html.escape(imports[0], quote=True)}"' if imports else "") + \
-                  (f' data-review-stale="{html.escape("|".join(stale_pages), quote=True)}"' if stale_pages else "")
+                  (f' data-review-stale="{html.escape("|".join(stale_pages), quote=True)}"' if stale_pages else "") + \
+                  (f' data-review-blocked="{html.escape("|".join(blocked), quote=True)}"' if blocked else "")
     page = f'''<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{html.escape(name)}: everything open for review</title>
-<link rel="stylesheet" href="/_site/site.css?v=13">
+<link rel="stylesheet" href="/_site/site.css?v=14">
 </head>
 <body class="site unified" data-tz="{html.escape(SITE.get("timezone", ""), quote=True)}" data-review-page="/{folder}/review/" data-review-h2="off" data-review-reset="{html.escape("|".join(resets), quote=True)}" data-review-approved="{",".join(approved)}" data-review-reopen="{html.escape("|".join(reopen), quote=True)}"{extra_attrs}>
 <header class="top"><div class="wrap">
 <h1>{html.escape(name)}: everything open for review</h1>
-<p>{open_n} open items from {len(out)} pages. Open a page, answer each item Yes, No or Changes (Changes needs a note), then use More, Copy results and paste it into the {html.escape(folder.upper())} session. Press Stale on a page that no longer matters. Approved items are hidden and stay in Copy results. <a href="../">All {html.escape(name)} pages</a></p>
+<p><span class="open-total">{open_n}</span> open items from {len(out)} pages. Open a page, answer each item Yes, No or Changes (Changes needs a note), then use More, Copy results and paste it into the {html.escape(folder.upper())} session. Press Stale on a page that no longer matters. Approved items are hidden and stay in Copy results. <a href="../">All {html.escape(name)} pages</a></p>
 </div></header>
 <main class="wrap">
 {"".join(out) or '<p class="empty">Nothing open.</p>'}
 </main>
-<script src="/_site/review.js?v=13"></script>
+<script src="/_site/review.js?v=14"></script>
 </body></html>
 '''
     (fdir / "review").mkdir(exist_ok=True)

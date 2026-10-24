@@ -47,10 +47,14 @@ function load(url) { return new Promise(r => { f.onload = r; f.src = url; }); }
 function snap() {
   const s = {};
   for (const box of d().querySelectorAll(".rv")) {
-    s[box.id] = { checked: (box.querySelector("input:checked") || {}).value || "",
-                  values: Array.from(box.querySelectorAll("input[type=radio]")).map(i => i.value),
-                  status: box.querySelector(".st").textContent, note: (box.querySelector("textarea") || {}).value || "",
-                  placeholder: (box.querySelector("textarea") || {}).placeholder || "", blocker: !!box.querySelector(".blocker-btn"),
+    const pressed = (box.querySelector(".seg button[aria-pressed=true]") || { dataset: {} }).dataset.v || "";
+    s[box.id] = { checked: box.dataset.choice || pressed, pressed,
+                  def: (box.querySelector(".seg button.def") || { dataset: {} }).dataset.v || "",
+                  values: Array.from(box.querySelectorAll(".seg button")).map(b => b.dataset.v),
+                  status: (box.closest(".rvcard") || box).querySelector(".rvhead .st").textContent,
+                  note: (box.querySelector("textarea") || {}).value || "",
+                  placeholder: (box.querySelector("textarea") || {}).placeholder || "",
+                  noteLabel: (box.querySelector(".notel > span") || {}).textContent || "", blocker: !!box.querySelector(".blocker-btn"),
                   need: !!box.querySelector(".need") };
   }
   return { items: s, bar: d().querySelector(".rvbar .cnt").textContent, results: w().siteReview.results() };
@@ -63,7 +67,7 @@ async function saved() { await until(() => !w().siteReview.unsaved(), "the save"
     await load("/demo/backlog.html"); await ready();
     out.first = snap();
     out.firstBox = await (await fetch(w().siteReview.saveUrl, { cache: "no-store" })).status;
-    d().querySelector("#rv-s1 input[value=start]").click();
+    d().querySelector("#rv-s1 .seg button[data-v=start]").click();
     const ta = d().querySelector("#rv-s2 textarea");
     ta.value = "Not before Q3"; ta.dispatchEvent(new Event("input", { bubbles: true }));
     await sleep(100); await saved();
@@ -77,7 +81,7 @@ async function saved() { await until(() => !w().siteReview.unsaved(), "the save"
     out.chip = chip();
     out.total = d().querySelector(".open-total").textContent;
     out.before = snap();
-    d().querySelector("#rv-backlog\\.s3 input[value=start]").click();
+    d().querySelector("#rv-backlog\\.s3 .seg button[data-v=start]").click();
     await sleep(100); await saved();
     out.chipAfter = chip();
     out.groupResults = w().siteReview.results(grp());
@@ -156,11 +160,12 @@ def test_untouched_items_show_the_default(browser):
     for sid in ("s1", "s2", "s3"):
         it = first["items"][f"rv-{sid}"]
         assert it["values"] == ["start", "hold"]
-        assert it["checked"] == "hold"
-        assert it["status"] == "Hold (default)"
-        assert it["placeholder"] == "Comments (optional)"
+        assert it["checked"] == "hold" and it["def"] == "hold"
+        assert it["pressed"] == "", "the default is marked, not pressed"
+        assert it["status"] == "Not picked · Hold (default)"
+        assert it["noteLabel"] == "Comments (optional)"
         assert not it["blocker"] and not it["need"]
-    assert first["bar"] == "0 start · 3 hold"
+    assert first["bar"] == "0 of 3 picked · 0 start · 3 hold"
 
 
 def test_only_what_the_owner_changed_is_saved(browser):
@@ -169,11 +174,12 @@ def test_only_what_the_owner_changed_is_saved(browser):
 
 def test_choice_and_comment_survive_reload(browser):
     r = browser[0]["reloaded"]
-    assert r["items"]["rv-s1"]["checked"] == "start" and r["items"]["rv-s1"]["status"] == "Start"
+    assert r["items"]["rv-s1"]["checked"] == "start" and r["items"]["rv-s1"]["pressed"] == "start"
+    assert r["items"]["rv-s1"]["status"] == "Start"
     assert r["items"]["rv-s2"]["checked"] == "hold" and r["items"]["rv-s2"]["note"] == "Not before Q3"
-    assert r["items"]["rv-s2"]["status"] == "Hold (default)"
+    assert r["items"]["rv-s2"]["status"] == "Not picked · Hold (default)"
     assert r["items"]["rv-s3"]["checked"] == "hold"
-    assert r["bar"] == "1 start · 2 hold"
+    assert r["bar"] == "1 of 3 picked · 1 start · 2 hold"
 
 
 def test_copy_results_lists_each_choice(browser):
@@ -192,17 +198,18 @@ def test_a_new_default_applies_to_items_nobody_picked(browser):
     assert r["items"]["rv-s1"]["checked"] == "start"
     assert r["items"]["rv-s2"]["checked"] == "start", "a comment alone doesn't pin the old default"
     assert r["items"]["rv-s3"]["checked"] == "start"
-    assert r["bar"] == "3 start · 0 hold"
+    assert r["items"]["rv-s2"]["status"] == "Not picked · Start (default)"
+    assert r["bar"] == "1 of 3 picked · 3 start · 0 hold"
 
 
 def test_pages_without_choices_keep_yes_no_changes(browser):
     r = browser[1]["yesNo"]
     it = r["items"]["rv-s1"]
     assert it["values"] == ["yes", "no", "chg"]
-    assert it["checked"] == "" and it["status"] == "Open"
+    assert it["checked"] == "" and it["def"] == "" and it["status"] == "Open"
     assert it["placeholder"] == "Notes (required for Changes)"
     assert it["blocker"] and it["need"]
-    assert r["bar"].startswith("0 of 3 open items answered")
+    assert r["bar"].startswith("0 of 3 answered")
     assert "Not approved yet: 0 of 3 are Yes." in r["results"]
 
 

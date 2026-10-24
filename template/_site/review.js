@@ -385,7 +385,7 @@ if (!window.siteTheme) { const t = document.createElement("script"); t.src = "/_
   }
   function headEl(it) {
     const h = document.createElement("div"); h.className = "rvhead";
-    h.innerHTML = '<span class="rid"></span><span class="sp"></span><span class="st2"></span><span class="st" role="status"></span>';
+    h.innerHTML = '<span class="rid"></span><span class="sp"></span><span class="st2" data-pill="2"></span><span class="st" data-pill="1" role="status"></span>';
     h.querySelector(".rid").textContent = it.id;
     return h;
   }
@@ -406,7 +406,7 @@ if (!window.siteTheme) { const t = document.createElement("script"); t.src = "/_
     const box = document.createElement("div"); box.className = "rv"; box.id = "rv-" + it.id;
     const s = state[it.id] || {};
     const head = headEl(it); box.appendChild(head);
-    const st = head.querySelector(".st");
+    const st = head.querySelector("[data-pill='1']");
     if (isQ(it)) {
       box.classList.add("question");
       if (blocked[it.id]) { st.classList.add("blk"); st.textContent = "Blocked by " + blocked[it.id]; }
@@ -645,7 +645,7 @@ if (!window.siteTheme) { const t = document.createElement("script"); t.src = "/_
     for (const it of items) {
       const s = state[it.id] || {};
       const head = it.card ? it.card.querySelector(":scope > .rvhead") : it.box.querySelector(".rvhead");
-      const pill = head.querySelector(".st"), pill2 = head.querySelector(".st2");
+      const pill = head.querySelector("[data-pill='1']"), pill2 = head.querySelector("[data-pill='2']");
       if (isQ(it)) continue;
       if (isC(it)) {
         const v = s.v || "";

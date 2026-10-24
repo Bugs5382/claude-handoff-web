@@ -37,6 +37,7 @@ SCENARIOS = [
     "finished page: green bar and toast point back to the folder; Copy results returns after 1.5 s",
     "finished page: typing or moving after Copy results stays",
     "unfinished page: Copy results stays put and no back link",
+    "blocker and reopened pills: later paints keep both pills and Add a note still opens",
 ]
 
 
@@ -66,6 +67,9 @@ SECTIONS = ('<!doctype html><html><head><title>Sections</title></head><body clas
                       for n, t in ((1, "A module repo"), (2, "The web app"), (3, "The platform repos"), (4, "Shared config")))
             + '</main>' + REVIEW + '</body></html>')
 
+# The same sections with r2 reopened, so one card carries the Reopened pill and another the Blocker pill.
+PILLS = SECTIONS.replace('data-review-h2="off"', 'data-review-h2="off" data-review-reopen="r2=fixed in 1.2"', 1)
+
 FINISHED = ('<!doctype html><html><head><title>Fin</title></head><body class="site" data-review-h2="off"><header class="top">'
             '<div class="wrap"><h1>Fin</h1></div></header><main class="wrap">'
             '<section data-review-question="a" data-title="A"><h2>A</h2></section>'
@@ -86,6 +90,7 @@ def write_pages(root):
     for n in (1, 2, 3):
         (demo / f"sm-review-{n}.html").write_text(SECTIONS)
     (demo / "sm-saved.html").write_text(SECTIONS)
+    (demo / "sm-pills.html").write_text(PILLS)
     (demo / "sm-unified").mkdir()
     (demo / "sm-unified" / "index.html").write_text(UNIFIED)
     (demo / "sm-synth.html").write_text(SYNTH)

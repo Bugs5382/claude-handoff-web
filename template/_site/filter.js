@@ -16,17 +16,19 @@
   }
   function apply() {
     const on = new Set(boxes.filter(b => b.checked).map(b => b.value));
-    let n = 0;
+    let n = 0, open = 0;
     document.querySelectorAll("#live [data-project]").forEach(el => {
       const show = on.has(el.dataset.project);
       el.style.display = show ? "" : "none";
       if (el.tagName === "SECTION") {
         const k = el.querySelectorAll(".cards > .card").length;
-        if (show) n += k;
+        if (show) { n += k; open += +el.dataset.open || 0; }
         const c = box.querySelector('[data-count="' + el.dataset.project + '"]'); if (c && c.textContent !== String(k)) c.textContent = k;
       }
     });
     const c = document.getElementById("now-count"); if (c && c.textContent !== String(n)) c.textContent = n;
+    const o = document.getElementById("now-open"); if (o && o.textContent !== String(open)) o.textContent = open;
+    const op = document.getElementById("now-open-pill"); if (op && op.hidden !== !open) op.hidden = !open;
     const e = document.getElementById("now-empty"); if (e && e.hidden !== n > 0) e.hidden = n > 0;
     label();
   }

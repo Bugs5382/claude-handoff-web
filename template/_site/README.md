@@ -21,9 +21,10 @@ completes, set it to `done` and it moves to "Completed". To retire a page, the o
 ## Hook a page in
 
 ```html
-<link rel="stylesheet" href="/_site/site.css?v=17">
+<link rel="stylesheet" href="/_site/site.css?v=20">
+<script src="/_site/theme.js?v=20"></script>   <!-- in <head>: light / dark before first paint -->
 ...
-<script src="/_site/review.js?v=17"></script>   <!-- review pages: just before </body> -->
+<script src="/_site/review.js?v=20"></script>   <!-- review pages: just before </body> -->
 ```
 
 - `review.js` turns every `<h2>` section (and every `[data-review-question="id" data-title="..."]`) into an
@@ -36,7 +37,7 @@ completes, set it to `done` and it moves to "Completed". To retire a page, the o
   page key is `KEY_PREFIX` (top of `review.js`, from `site.json` `key_prefix`) plus the page path,
   sanitised. Answers an older copy kept in the browser's localStorage under that key are uploaded once,
   read back, then removed from the browser. Saves are debounced 500 ms and retried; the bar shows
-  "Saved hh:mm" or "Not saved, retrying".
+  "Saved hh:mm" or an amber "Not saved · retrying".
 - Unified page: `python3 _site/build-review.py <folder>` builds `/<folder>/review/` from every needs-you page
   in its `_status.json`; rerun it after a source page or the manifest changes. Each source page is one
   collapsed group (one open at a time) whose heading shows the title, a one-line summary
@@ -65,11 +66,14 @@ completes, set it to `done` and it moves to "Completed". To retire a page, the o
   "Comments (optional)" box (no Blocker button, no Skipped). An item nobody picked shows and counts as the
   default ("Hold (default)"). Only what the owner picks or writes is saved (`{ v: "start", n: "..." }`, or
   `{ v: "", n: "..." }` for a comment alone); the default is never written, so changing
-  `data-review-default` later moves every item nobody picked. Choice items are never open, approved, hidden
-  or blocking: the bar shows per-choice counts (`2 start · 12 hold`), Copy results lists `- [id] HOLD: title`
+  `data-review-default` later moves every item nobody picked. Choice items are never approved, hidden or
+  blocking. The bar counts a choice item as answered once it has a pick that isn't the untouched default
+  (a comment alone isn't a pick), turns green when none is left on the default, and its picker is
+  "Not picked (n)"; it shows `2 of 4 picked · 1 start · 3 hold`. Copy results lists `- [id] HOLD: title`
   and ends with the counts line instead of the approval line. build-review.py copies the choices onto each
   item, so a choices group keeps them on the unified page; its `data-open-chip` shows the counts instead of
-  "N open" and it adds nothing to `.open-total`. gen-index.py shows no open-item count on its card.
+  "N open" and it adds nothing to `.open-total`. gen-index.py shows its per-choice counts on its card instead
+  of an open count, from the saved answers as of the last gen-index.py run.
   Server-built round text (`serve.py`) reads the page's `<body>` choices the same way.
 - Pages without review.js (checklists, indexes) load `/_site/live.js` (`data-mode="page"` on non-index pages).
 - Element styles apply only under `<body class="site">`; design mocks can load site.css without losing their look.
@@ -90,11 +94,29 @@ opens (and scrolls to) that block. `/<folder>/history/` (built by `gen-index.py`
 page's rounds the same way, one closed group per page. Stale keeps a page's history; the folder's
 history page then notes it as removed.
 
-## Bottom bar (lean, for now)
+## Look and bottom bar
 
-One line: the count and the Saved status, Previous / Next, "Open ids (n)" (the open-id chips fold behind it)
-and More (Copy results, History, Save round now, Clear my answers). The n and p keys jump between open
-items. A fuller redesign of the bar is planned; keep changes here small until then.
+IBM Plex Sans and IBM Plex Mono, self-hosted in `_site/fonts/` (SIL OFL 1.1, `fonts/OFL.txt`; no font CDN).
+Every colour is a token on `:root` in `site.css`. Light and dark: the system setting by default (`prefers-color-scheme`); the
+Auto / Light / Dark toggle top-right in the header (from `/_site/theme.js`) keeps a choice per browser
+(`localStorage` `site-theme`) and sets `data-theme` on `<html>`. Load `theme.js` in `<head>` right after
+site.css so it applies before the first paint; review.js and live.js load it late on pages that don't.
+Every colour token is redefined twice for dark (under the media query, guarded by
+`:root:not([data-theme="light"])`, and under `:root[data-theme="dark"]`); no colour lives outside the tokens. Pages get a white header; a `[data-review-question]`
+section becomes the item card (id and status pill on top, border and pill follow the answer), and answers
+are a segmented group of real buttons (44 px; pressing the chosen one again clears it). The note box opens
+for Changes (required) and No (optional), or with "Add a note".
+
+The bar, left to right: Previous, Next, "Open IDs (n) ▴", the status dot and text, the Saved time, More.
+Open IDs opens upward: a filter box (an ID or title words), "N open · showing M", the list (up to 200 rows),
+↑↓ / Enter / Esc. The n and p keys still jump between open items. More holds Copy results, Copy blockers
+only (every item marked with "Blocker: copy now", in that format), History, Save round now and Clear my
+answers. States: dark while items are open; green "All N answered · ready to copy" when every one is
+answered; green "APPROVED · all N Yes" when all are Yes; a red ring and "N BLOCKER" while a blocker is
+marked; an amber "Not saved · retrying" pill when a save fails. At 480 px and below it is two rows: the
+status, then Prev / Next / IDs / More as equal buttons. A finished page (the bar is green) shows "← Back to <Folder> pages" in the bar and a
+toast with that link; after Copy results there it returns to the folder index in 1.5 s unless they move,
+scrolls or types (never while typing, and only once the answers are saved). The counting is `window.rvCount` in review.js.
 
 ## Live
 
@@ -137,16 +159,20 @@ A subfolder with no `.html` file in it is never a page, so the index leaves it o
   chosen label, or `<label> (default)`.
 - Buttons: Copy results, Copy (one unified-page group), Clear my answers (never clears approved or locked items), Blocker: copy now,
   Stale: remove this page.
-- Progress: `<n> of <m> open items answered`, plus ` · <k> approved and hidden` when k > 0, plus
-  ` · <j> questions unanswered` when j > 0 (open questions never count toward `<n>` or `<m>`). Choice
-  items add ` · <n> <label> · <n> <label>`; a page with only choice items shows just those counts.
+- Progress: `<n> of <m> answered`, plus ` · <b> blocked`, ` · <s> skipped`, ` · <k> approved and hidden`
+  when above 0, plus ` · <j> questions unanswered` when j > 0 (open questions never count toward `<n>` or
+  `<m>`). Choice items count toward `<n>` and `<m>` and add ` · <n> <label> · <n> <label>`; a page with only
+  choice items shows `<n> of <m> picked · <counts>`.
 - Copy results lines: `- [id] ANSWER: title` (a choice item: its label in capitals) and `    Note: ...`;
   `STALE: <page>`; footer `APPROVED: every item is Yes.` or `Not approved yet: <n> of <m> are Yes.` (left
   out when every item is a choice item), then the per-choice counts when there are choice items,
   then `<j> open questions`
   when j > 0, then each question as its own `Q <id>: <answer>` (or `Q <id>: (no answer)`) line.
-- Index sections: Needs you, Reference, Completed (collapsed). Root: Needs you now, with each folder's
-  open-item total (the unified `review/` card is left out of it, so no item counts twice).
+- Index sections: Needs you, Reference (a grid), Completed (collapsed). Root: Needs you now, grouped by
+  folder with each folder's open-item total (the unified `review/` card is left out of it, so no item
+  counts twice), then Reference and Completed across folders, then Folders. Cards are never ordered by change time:
+  `priority` first, then `review/`, then each numbered series where its first page sits in `_status.json`,
+  numbered pages naturally inside it (2 before 10), then manifest order (`order_pages()` in gen-index.py).
 - History: "History (n rounds)", "Round N", "Save round now", "page removed".
 - Chips: New (first seen in the last 24 h), Updated, To review, Reopened, Approved, Reference, Done,
   Not classified, plus custom chips from `"chips"`.
@@ -173,7 +199,8 @@ A subfolder with no `.html` file in it is never a page, so the index leaves it o
 - **Root filter:** one "Projects" dropdown (checkboxes with needs-you counts, All, None). The choice stays in
   the browser (`localStorage` `site-filter`).
 - **Focus and order:** optional `_site/focus.json` `{"order": [...], "focus": [...]}` overrides `site.json`
-  `order`. Within a project, cards sort by `priority`, then `review/`, then the newest.
+  `order`. Within a project, cards sort by `priority`, then `review/`, then by number and `_status.json`
+  order (see Index sections above); never by change time.
 - **Open questions:** review and design pages may also carry open-ended questions, as their own item type:
   a free-text answer box (no Yes / No / Changes), shown with the question, its context and any suggested
   answer. Copy results lists each as "Q <id>: <answer>". They are not blockers: no Blocker button, and they

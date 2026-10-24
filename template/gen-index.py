@@ -167,28 +167,105 @@ def collect(folder):
         chips += [c for c in ent.get("chips", []) if c]
         chips = [c for i, c in enumerate(chips) if c and c not in chips[:i]]
         first = dt.datetime.fromisoformat(ent["first_seen"]).timestamp()
+        tally = choice_tally(folder, k, src, info) if info and state == "needs-you" and info[3] and info[0] == info[3] else None
         pages.append(dict(folder=folder, key=k, href=f"/{folder}/{k}", title=title_of(src, k), note=ent.get("note", ""),
-                          state=state, chips=chips, mtime=mt, first=first, open=open_items, priority=ent.get("priority", 50)))
+                          state=state, chips=chips, mtime=mt, first=first, open=open_items, priority=ent.get("priority", 50),
+                          tally=tally))
     if dirty:
         with open(mpath, "w") as f:
             json.dump(manifest, f, indent=2, ensure_ascii=False)
             f.write("\n")
-    pages.sort(key=lambda x: -x["mtime"])
-    return pages
+    return order_pages(pages, list(manifest))
 
 
-def card(pg, show_folder=False):
-    sig = f'{pg["state"]}|{int(pg["mtime"])}|{pg["note"]}|{",".join(pg["chips"])}|{pg["open"]}'
+def choice_tally(folder, key, src, info):
+    """The per-choice counts a choices page's bar shows ("2 start · 21 hold"), from its saved answers
+    (_saved/<page-key>.json): an item nobody picked counts as the page's default."""
+    choices = page_choices(src)
+    if not choices:
+        return None
+    name = page_key(CONFIG.get("key_prefix", "review:") + f"/{folder}/{key}")
+    try:
+        answers = json.load(open(os.path.join(ROOT, "_saved", name + ".json")))
+    except (OSError, ValueError):
+        answers = {}
+    ids = set(choice_ids(src))
+    answers = {k: v for k, v in (answers if isinstance(answers, dict) else {}).items() if k in ids}
+    return round_count_line(answers, choices, info[3])
+
+
+def choice_ids(src):
+    """The item ids on a page, in review.js's order (h2 items s1, s2, ... then [data-review-question])."""
+    m = re.search(r"<body[^>]*>", src)
+    body = m.group(0) if m else ""
+    inner = re.sub(r"<script.*?</script>", "", src[m.end():] if m else src, flags=re.S)
+    ids = [] if 'data-review-h2="off"' in body else [f"s{i}" for i, _ in enumerate(re.findall(r"<h2(?:\s[^>]*)?>", inner), 1)]
+    return ids + [html.unescape(q) for q in re.findall(r'<[a-zA-Z][a-zA-Z0-9]*\b[^>]*\bdata-review-question="([^"]*)"', inner)]
+
+
+def _nat(text):
+    """Natural sort key: "2" before "10", case ignored."""
+    return [(0, int(t), "") if t.isdigit() else (1, 0, t) for t in re.split(r"(\d+)", text.lower()) if t]
+
+
+def _series(p):
+    """(series, number) for a numbered page: a title that starts with a number ("2. Sign in") is in the
+    "" series; otherwise the first number in the page key ("design-review-2-..." is series
+    "design-review-", number 2). Unnumbered pages are their own series with no number."""
+    m = re.match(r"\s*(\d+)\b", p["title"])
+    if m:
+        return "", int(m.group(1))
+    m = re.match(r"(\D*?)(\d+)", p["key"])
+    if m:
+        return m.group(1).lower(), int(m.group(2))
+    return "\0" + p["key"], None
+
+
+def order_pages(pages, manifest):
+    """Index card order, never by change time: priority (lower first), then the unified review/ page,
+    then by series. A series sits where its first page sits in the folder's _status.json (manifest:
+    its keys in file order); inside one, pages run by their number naturally (2 before 10), then by
+    manifest position, then by title. Pages not in the manifest come after those that are."""
+    pos = {k: i for i, k in enumerate(manifest)}
+    far = len(manifest)
+    first = {}
+    for p in pages:
+        ser = _series(p)[0]
+        first[ser] = min(first.get(ser, far), pos.get(p["key"], far))
+    def key(p):
+        ser, num = _series(p)
+        return (p.get("priority", 50), p["key"] != "review/", first[ser], _nat(ser),
+                num if num is not None else -1, pos.get(p["key"], far), _nat(p["title"]), p["key"])
+    return sorted(pages, key=key)
+
+
+def card(pg, show_folder=False, compact=False):
+    """One page card: chips, title and note on the left; the open count (or a choices page's
+    per-choice counts), when it changed and Stale on the right. compact: the Reference grid and
+    Completed list, title and "Folder · note" only."""
+    sig = f'{pg["state"]}|{int(pg["mtime"])}|{pg["note"]}|{",".join(pg["chips"])}|{pg["open"]}|{pg.get("tally")}'
     chips = "".join(f'<span class="chip {CHIP_CLASS.get(c, "c-custom")}">{esc(c)}</span>' for c in pg["chips"])
-    where = f'<span>{esc(FOLDERS[pg["folder"]])}</span>' if show_folder else ""
     cls = {"needs-you": "needs", "done": "done"}.get(pg["state"], "")
-    return (f'<li class="card {cls}" data-key="{esc(pg["folder"] + "/" + pg["key"])}" data-sig="{esc(sig)}" '
-            f'data-mtime="{int(pg["mtime"])}" data-first="{int(pg["first"])}">'
-            f'<p class="t"><a href="{esc(pg["href"])}">{esc(pg["title"])}</a></p>'
+    attrs = (f'data-key="{esc(pg["folder"] + "/" + pg["key"])}" data-sig="{esc(sig)}" '
+             f'data-mtime="{int(pg["mtime"])}" data-first="{int(pg["first"])}"'
+             + (f' data-project="{esc(pg["folder"])}"' if show_folder else ""))
+    title = f'<p class="t"><a href="{esc(pg["href"])}">{esc(pg["title"])}</a></p>'
+    if compact:
+        note = " · ".join(x for x in [esc(FOLDERS[pg["folder"]]) if show_folder else "", esc(pg["note"])] if x)
+        return (f'<li class="card compact {cls}" {attrs}>{title}' + (f'<p class="n">{note}</p>' if note else "")
+                + f'<div class="chips">{chips}</div></li>')
+    if pg.get("tally"):
+        count = f'<span class="tally">{esc(pg["tally"])}</span>'
+    elif pg["open"] is not None:
+        count = f'<span class="opn{" zero" if not pg["open"] else ""}">{pg["open"]} open</span>'
+    else:
+        count = ""
+    where = f'<span>{esc(FOLDERS[pg["folder"]])}</span>' if show_folder else ""
+    ago = f'<span class="ago" data-ts="{int(pg["mtime"])}" title="Changed {esc(when(pg["mtime"]))}">Changed {esc(when(pg["mtime"]))}</span>'
+    return (f'<li class="card {cls}" {attrs}><div class="cmain"><div class="chips">{chips}</div>{title}'
             + (f'<p class="n">{esc(pg["note"])}</p>' if pg["note"] else "")
-            + f'<div class="chips">{chips}</div>'
-            f'<p class="m">{where}' + (f'<span><b>{pg["open"]} open item{"" if pg["open"] == 1 else "s"}</b></span>' if pg["open"] is not None else "") + f'<span>Changed {when(pg["mtime"])}</span><code>{esc(pg["key"])}</code></p>'
-            + stale_btn(pg) + '</li>')
+            + f'<p class="m">{where}<code>{esc(pg["key"])}</code></p></div>'
+            f'<div class="cside">{count}{ago}{stale_btn(pg)}</div></li>')
 
 
 def stale_btn(pg):
@@ -199,20 +276,43 @@ def stale_btn(pg):
 
 
 def section(sid, label, pages, show_folder=False):
-    body = (f'<ul class="cards">{"".join(card(p, show_folder) for p in pages)}</ul>' if pages
+    """Needs you as full cards, Reference as a grid, Completed folded (a compact list)."""
+    compact = sid != "needs-you"
+    ul = "cards grid" if sid == "reference" else "cards compact-list" if sid == "done" else "cards"
+    body = (f'<ul class="{ul}">{"".join(card(p, show_folder, compact) for p in pages)}</ul>' if pages
             else '<p class="empty">Nothing here.</p>')
     if sid == "done":
-        return (f'<section class="sect"><details data-sect="{sid}"><summary>{label} ({len(pages)})</summary>'
-                f'{body}</details></section>')
-    return (f'<section class="sect" data-sect="{sid}"><h2>{label} <span class="count">{len(pages)}</span></h2>'
+        return (f'<section class="sect"><details data-sect="{sid}"><summary><span>{label}</span> '
+                f'<span class="count">{len(pages)}</span></summary>{body}</details></section>')
+    extra = ""
+    if sid == "needs-you":
+        opens = sum(p["open"] or 0 for p in pages if p["key"] != "review/")
+        if opens:
+            extra = f' <span class="pill amber">{opens} open item{"" if opens == 1 else "s"}</span>'
+    return (f'<section class="sect" data-sect="{sid}"><h2>{label} <span class="count">{len(pages)}</span>{extra}</h2>'
             f'{body}</section>')
 
 
-def shell(title, sub, live, extra=""):
+ICON = ('<svg width="28" height="28" viewBox="0 0 28 28" aria-hidden="true"><rect x="3" y="5" width="22" height="18" rx="4" '
+        'fill="none" stroke="currentColor" stroke-width="2"></rect><path d="M8 12l4 4 8-8" fill="none" stroke="currentColor" '
+        'stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"></path></svg>')
+
+
+def shell(title, sub, live, extra="", crumb="", root=False):
+    """The white header (crumb, title, subtitle; on the root the icon, review windows and the
+    Projects filter on the right), then the live-updating content."""
+    side = ""
+    if root:
+        wins = "".join(f'<span class="mono-pill">{esc(w)} {esc(TZ_LABEL)}</span>' for w in CONFIG.get("review_windows", []))
+        side = ('<div class="hside">' + (f'<span class="lbl">Review windows</span>{wins}' if wins else "") + f'{extra}</div>')
+    head = ('<div class="hrow"><div class="hmain">'
+            + (f"<a class=crumb href='{crumb[0]}'>&larr; {esc(crumb[1])}</a>" if crumb else "")
+            + f'<div class="htitle">{ICON if root else ""}<h1>{esc(title)}</h1></div>'
+            + (f'<p>{sub}</p>' if sub else "") + f'</div>{side}</div>')
     return ("<!doctype html><html lang=en><head><meta charset=utf-8>"
             "<meta name=viewport content='width=device-width,initial-scale=1'>"
-            f"<title>{esc(title)}</title><link rel=stylesheet href='{asset('site.css')}'></head>"
-            f"<body class=site><header class=top><div class=wrap><h1>{esc(title)}</h1><p>{sub}</p>{extra}</div></header>"
+            f"<title>{esc(title)}</title><link rel=stylesheet href='{asset('site.css')}'><script src='{asset('theme.js')}'></script></head>"
+            f"<body class=site><header class=top><div class=wrap>{head}</div></header>"
             f"<main class=wrap id=live>{live}</main>"
             f"<script src='{asset('live.js')}'></script>" + (f"<script src='{asset('filter.js')}'></script>" if extra else "") + "</body></html>\n")
 
@@ -310,7 +410,8 @@ def history_page(folder, pages):
     hdir = os.path.join(ROOT, folder, "history")
     os.makedirs(hdir, exist_ok=True)
     with open(os.path.join(hdir, "index.html"), "w") as f:
-        f.write(shell(f"{FOLDERS[folder]}: history", f"<a href='/{folder}/'>{esc(FOLDERS[folder])}</a> &middot; past review and sign-off rounds", body))
+        f.write(shell(f"{FOLDERS[folder]}: history", "Past review and sign-off rounds.", body,
+                      crumb=(f"/{folder}/", FOLDERS[folder])))
 
 
 def ensure_reference_entry(folder, key, note):
@@ -347,7 +448,7 @@ def main():
                    f'&middot; {len(by["done"])} completed</p>')
         live = summary + "".join(section(s, label, by[s]) for s, label in SECTIONS)
         with open(os.path.join(ROOT, d, "index.html"), "w") as f:
-            f.write(shell(name, f"<a href='/'>All folders</a> &middot; {esc(BLURB[d])}", live))
+            f.write(shell(name, esc(BLURB[d]), live, crumb=("/", f'{CONFIG.get("title", "Pages")} hand-off · all folders')))
     cfg = {}
     try:
         cfg = json.load(open(os.path.join(ROOT, "_site", "focus.json")))
@@ -356,20 +457,22 @@ def main():
     cfg.setdefault("order", CONFIG.get("order", []))
     order = [d for d in cfg.get("order", []) if d in FOLDERS] + [d for d in FOLDERS if d not in cfg.get("order", [])]
 
-    def rank(p):
-        return (p.get("priority", 50), p["key"] != "review/", -p["mtime"])
     groups = []
     counts = {}
     for d in order:
-        now_d = sorted((p for p in everything[d] if p["state"] == "needs-you"), key=rank)
+        now_d = [p for p in everything[d] if p["state"] == "needs-you"]
         counts[d] = len(now_d)
         if not now_d:
             continue
         # The unified review page repeats its source pages' items, so its own count would add them twice.
         opens = sum(p["open"] or 0 for p in now_d if p["key"] != "review/")
-        label = (f'{esc(FOLDERS[d])} <span class="count">{len(now_d)}</span>'
-                 + (f' <span class="muted">{opens} open items</span>' if opens else ""))
-        groups.append(f'<section class="sect" data-project="{d}" data-sect="now-{d}"><h2>{label}</h2>'
+        picks = sum(1 for p in now_d if p.get("tally"))
+        parts = ([f"{opens} open"] if opens else []) + ([f"{picks} to pick"] if picks else [])
+        parts = parts or [f'{len(now_d)} page{"" if len(now_d) == 1 else "s"}']
+        label = (f'<span class="gname"><a href="/{d}/">{esc(FOLDERS[d])}</a></span><span>{" · ".join(parts)}</span>'
+                 f'<span class="rule"></span>')
+        groups.append(f'<section class="sect grp" data-project="{d}" data-sect="now-{d}" data-open="{opens}">'
+                      f'<div class="ghead">{label}</div>'
                       f'<ul class="cards">{"".join(card(p) for p in now_d)}</ul></section>')
     total = sum(counts.values())
     folders = "".join(
@@ -379,9 +482,17 @@ def main():
         f'<p class="big{"" if n else " zero"}">{n}</p><p class="m"><span>need you</span><a href="/{d}/history/">History</a></p>'
         f'<div class="chips"></div></li>'
         for d in order for n in [counts[d]])
-    live = (f'<section class="sect" data-sect="now"><h2>Needs you now <span class="count" id="now-count">{total}</span></h2>'
-            f'<p class="empty" id="now-empty" hidden>Nothing needs you in the projects you picked.</p></section>'
-            + "".join(groups)
+    open_total = sum(p["open"] or 0 for d in order for p in everything[d] if p["state"] == "needs-you" and p["key"] != "review/")
+    refs = [p for d in order for p in everything[d] if p["state"] == "reference"]
+    done = [p for d in order for p in everything[d] if p["state"] == "done"]
+    ref_body = (f'<ul class="cards grid">{"".join(card(p, True, True) for p in refs)}</ul>' if refs else '<p class="empty">Nothing here.</p>')
+    done_body = (f'<ul class="cards compact-list">{"".join(card(p, True, True) for p in done)}</ul>' if done else '<p class="empty">Nothing here.</p>')
+    live = (f'<section class="sect" data-sect="now"><h2>Needs you now <span class="count"><span id="now-count">{total}</span> pages</span>'
+            f'<span class="pill amber" id="now-open-pill"{"" if open_total else " hidden"}><span id="now-open">{open_total}</span> open items</span></h2>'
+            f'<p class="empty" id="now-empty"{" hidden" if total else ""}>Nothing needs you in the projects you picked.</p>'
+            + "".join(groups) + '</section>'
+            + f'<section class="sect" data-sect="reference"><h2>Reference <span class="count">{len(refs)}</span></h2>{ref_body}</section>'
+            + f'<section class="sect"><details data-sect="done"><summary><span>Completed</span> <span class="count">{len(done)}</span></summary>{done_body}</details></section>'
             + f'<section class="sect" data-sect="folders"><h2>Folders</h2><ul class="folders">{folders}</ul></section>')
     chips = "".join(f'<label class="fopt"><input type="checkbox" value="{d}" checked> <span class="fl">{esc(FOLDERS[d])}</span>'
                     f' <span class="count" data-count="{d}">{counts[d]}</span></label>' for d in order)
@@ -390,7 +501,7 @@ def main():
             f'<div class="fmenu" id="filter-menu" role="group" aria-label="Projects" hidden>{chips}'
             '<div class="fact"><button type="button" data-all>All</button><button type="button" data-none>None</button></div></div></div>')
     with open(os.path.join(ROOT, "index.html"), "w") as f:
-        f.write(shell(CONFIG.get("title", "Pages"), CONFIG.get("subtitle", ""), live, filt))
+        f.write(shell(CONFIG.get("title", "Pages") + " hand-off", CONFIG.get("subtitle", ""), live, filt, root=True))
     print(" ".join(f"{d}={sum(p['state'] == 'needs-you' for p in everything[d])}" for d in FOLDERS))
 
 

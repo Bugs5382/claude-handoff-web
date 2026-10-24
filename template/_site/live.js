@@ -4,6 +4,9 @@
 //   only when nobody is typing and nothing was clicked for 5 s; scroll position is kept.
 // Index cards carry data-key, data-sig, data-mtime and data-first (epoch seconds); the "New" and
 // "Updated" chips are worked out here so they age without a rebuild.
+// Theme toggle: index and plain pages that don't load /_site/theme.js in <head> get it here.
+if (!window.siteTheme) { const t = document.createElement("script"); t.src = "/_site/theme.js?v=20"; document.head.appendChild(t); }
+
 (function () {
   const me = document.currentScript || document.querySelector('script[src*="/_site/live.js"]');
   const mode = (me && me.getAttribute("data-mode")) || (document.getElementById("live") ? "index" : "page");
@@ -32,8 +35,14 @@
   function chip(cls, text, lit) {
     const c = document.createElement("span"); c.className = "chip " + cls + (lit ? " lit" : ""); c.textContent = text; c.setAttribute("data-live", "1"); return c;
   }
+  // "2 min ago" on index cards (the full time stays in the title).
+  function ago(ts, now) {
+    const s = Math.max(0, now - ts), m = Math.round(s / 60), h = Math.round(s / 3600), d = Math.round(s / 86400);
+    return s < 60 ? "just now" : m < 60 ? m + " min ago" : h < 24 ? h + " h ago" : d + (d === 1 ? " day ago" : " days ago");
+  }
   function decorate() {
     const now = Date.now() / 1000;
+    for (const el of document.querySelectorAll("#live .ago[data-ts]")) { const t = ago(+el.dataset.ts, now); if (el.textContent !== t) el.textContent = t; }
     for (const card of document.querySelectorAll("#live [data-key]")) {
       const box = card.querySelector(".chips"); if (!box) continue;
       box.querySelectorAll("[data-live]").forEach(x => x.remove());
@@ -137,11 +146,9 @@
   // modified clicks, and a blocked popup, fall through to the plain link. The unified review page
   // renders details in srcdoc frames, so each frame's document gets the same handler.
   const PIC = /\.(png|jpe?g|gif|webp|svg)$/i;
-  const PIC_PAGE = '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">' +
-    '<title>Picture</title><style>html,body{height:100%;margin:0}body{display:flex;flex-direction:column;background:#1b1b1b;color:#eee;' +
-    'font:14px/1.4 system-ui,sans-serif}.stage{flex:1 1 0;min-height:0;display:flex;align-items:center;justify-content:center;padding:8px}' +
-    '.stage img{max-width:100%;max-height:100%;object-fit:contain}.bar{display:flex;gap:12px;justify-content:space-between;' +
-    'padding:8px 12px;border-top:1px solid #333}.bar a{color:inherit}</style></head><body><div class="stage"><img id="pic" alt=""></div>' +
+  const PIC_PAGE = '<!doctype html><html lang="en"' + (document.documentElement.getAttribute("data-theme") ? ' data-theme="' + document.documentElement.getAttribute("data-theme") + '"' : "") +
+    '><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">' +
+    '<title>Picture</title><link rel="stylesheet" href="' + location.origin + '/_site/site.css?v=20"></head><body class="pic-win"><div class="stage"><img id="pic" alt=""></div>' +
     '<div class="bar"><span id="cap"></span><a id="full" target="_blank" rel="noopener">Full size</a></div></body></html>';
   function pictureLink(e) {
     if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return null;
@@ -188,6 +195,7 @@
     busy = false;
   }
   function start() { if (!timer) { tick(); timer = setInterval(tick, POLL); } }
+  if (mode !== "page") setInterval(() => { if (!document.hidden) decorate(); }, 60000);
   function stop() { clearInterval(timer); timer = null; }
   document.addEventListener("visibilitychange", () => { if (document.hidden) stop(); else start(); });
   if (!document.hidden) start();

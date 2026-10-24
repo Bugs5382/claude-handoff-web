@@ -103,7 +103,7 @@ def test_choices_page_card_shows_no_open_items(site):
     assert ">To review<" in backlog
     # a Yes / No / Changes page next to it still counts its items
     # three Yes / No / Changes items; its open question never counts
-    assert "3 open items" in card_html(folder, "demo/design-review.html")
+    assert '<span class="opn">3 open</span>' in card_html(folder, "demo/design-review.html")
 
 
 def test_page_mixing_choices_and_yes_no_counts_only_yes_no_items(site):
@@ -125,15 +125,16 @@ def test_folder_open_total_counts_unified_page_items_once(site):
     run_script(site, site / "_site" / "build-review.py", "demo")
     run_script(site, site / "gen-index.py")
     root_html = (site / "index.html").read_text()
-    group = re.search(r'<section class="sect" data-project="demo".*?</section>', root_html, re.S).group(0)
+    group = re.search(r'<section class="sect grp" data-project="demo".*?</section>', root_html, re.S).group(0)
     per_card = {}
     for card in re.findall(r"<li .*?</li>", group, re.S):
-        m = re.search(r"<b>(\d+) open items?</b>", card)
+        m = re.search(r'<span class="opn[^"]*">(\d+) open</span>', card)
         per_card[re.search(r'data-key="([^"]+)"', card).group(1)] = int(m.group(1)) if m else 0
     assert "demo/review/" in per_card
     sources = sum(n for k, n in per_card.items() if k != "demo/review/")
-    total = int(re.search(r'<span class="muted">(\d+) open items</span>', group).group(1))
+    total = int(re.search(r'data-open="(\d+)"', group).group(1))
     assert total == sources
+    assert re.search(rf'<div class="ghead">.*?<span>{total} open( · [^<]*)?</span>', group), "the group header shows the same total"
 
 
 def test_open_questions_and_blocked_items_never_count_as_open(site):
@@ -174,7 +175,11 @@ def test_history_card_never_left_under_needs_you(site, entry):
         assert manifest["history/"]["first_seen"] == entry["first_seen"]
     card = card_html((site / "demo" / "index.html").read_text(), "demo/history/")
     assert 'class="card needs"' not in card and "Not classified" not in card
-    assert 'data-key="demo/history/"' not in (site / "index.html").read_text()
+    root_html = (site / "index.html").read_text()
+    now = re.search(r'<section class="sect" data-sect="now">.*?<section class="sect" data-sect="reference">', root_html, re.S).group(0)
+    assert 'data-key="demo/history/"' not in now
+    ref = re.search(r'<section class="sect" data-sect="reference">.*?</section>', root_html, re.S).group(0)
+    assert 'data-key="demo/history/"' in ref, "the root lists it under Reference instead"
 
 
 def test_history_page_listed_on_the_first_run(site):

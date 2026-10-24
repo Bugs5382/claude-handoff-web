@@ -1,0 +1,208 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>smoke harness</title></head><body>
+<!-- Smoke tests for review.js and theme.js in a real browser, run by tests/test_review_smoke.py. Each
+     test loads its own copy of a page (so saved answers never leak between tests) in a same-origin
+     frame, clicks like the owner would, and the results land in #out for Chrome's --dump-dom. -->
+<iframe id="f" style="width:1000px;height:800px"></iframe>
+<pre id="out">pending</pre>
+<script>
+const results = {};
+const f = document.getElementById("f");
+const d = () => f.contentDocument, w = () => f.contentWindow;
+const tick = ms => new Promise(r => setTimeout(r, ms));
+async function until(cond, what) {
+  for (let i = 0; i < 400; i++) { try { if (cond()) return; } catch (e) {} await tick(25); }
+  throw new Error("timed out waiting for " + what);
+}
+function fail(msg) { throw new Error(msg); }
+const ok = (v, msg) => { if (!v) fail(msg || "expected truthy"); };
+const eq = (a, b, msg) => { if (a !== b) fail((msg ? msg + ": " : "") + JSON.stringify(a) + " !== " + JSON.stringify(b)); };
+const match = (s, re, msg) => { if (!re.test(s)) fail((msg ? msg + ": " : "") + JSON.stringify(s) + " !~ " + re); };
+async function t(name, fn) {
+  try { await fn(); results[name] = "ok"; } catch (e) { results[name] = "FAIL " + String(e && e.stack || e).split("\n").slice(0, 3).join(" | "); }
+}
+function stub() {
+  const win = w();
+  win.alert = () => {}; win.confirm = () => true; win.prompt = () => "stuck";
+  Object.defineProperty(win.navigator, "clipboard", { configurable: true, value: { writeText: async s => { win.__clip = s; } } });
+}
+async function load(path) {
+  await new Promise(r => { f.onload = r; f.src = path; });
+  await until(() => w().siteReview && d().querySelector(".rvbar .cnt").textContent, "review.js on " + path);
+  stub();
+  return { win: w(), doc: d(), bar: d().querySelector(".rvbar") };
+}
+const click = el => el.dispatchEvent(new (w().MouseEvent)("click", { bubbles: true }));
+const saved = () => until(() => !w().siteReview.unsaved(), "the save");
+
+(async () => {
+  await t("backlog: choices start not picked, bar dark, picker says Not picked", async () => {
+    const { doc, bar } = await load("/demo/sm-backlog-1.html");
+    const n = doc.querySelectorAll(".rv.choice").length; ok(n > 0);
+    ok(!bar.classList.contains("all-done"));
+    match(bar.querySelector(".cnt").textContent, new RegExp("^0 of " + n + " picked"));
+    eq(bar.querySelector(".ids-l").textContent, "Not picked");
+    eq(bar.querySelector(".ids-n").textContent, "(" + n + ")");
+    ok(doc.querySelector(".rv .seg button.def").textContent.includes("(default)"));
+  });
+  await t("backlog: picking every item (Hold included) turns the bar green", async () => {
+    const { win, doc, bar } = await load("/demo/sm-backlog-2.html");
+    const segs = Array.from(doc.querySelectorAll(".rv.choice .seg"));
+    segs.forEach((g, i) => click(g.querySelectorAll("button")[i === 0 ? 0 : 1]));
+    ok(bar.classList.contains("all-done"), bar.querySelector(".cnt").textContent);
+    ok(!bar.classList.contains("approved"));
+    match(bar.querySelector(".cnt").textContent, /^All \d+ picked · 1 start · \d+ hold/);
+    await saved();
+    const box = await (await fetch(win.siteReview.saveUrl, { cache: "no-store" })).json();
+    eq(box.s1.v, "start");
+    const r = win.siteReview.results(); match(r, /- \[s1\] START: /); match(r, /\n1 start · \d+ hold\n/);
+  });
+  await t("backlog: clicking the picked choice again returns it to the default", async () => {
+    const { doc, bar } = await load("/demo/sm-backlog-3.html");
+    const b = doc.querySelector(".rv.choice .seg button");
+    click(b); eq(b.getAttribute("aria-pressed"), "true");
+    click(b); eq(b.getAttribute("aria-pressed"), "false");
+    match(bar.querySelector(".cnt").textContent, /^0 of/);
+  });
+  await t("review page: segmented answers, card follows answer, green then approved", async () => {
+    const { win, doc, bar } = await load("/demo/sm-review-1.html");
+    const cards = Array.from(doc.querySelectorAll(".rvcard")); ok(cards.length >= 4, "cards " + cards.length);
+    ok(cards[0].querySelector(":scope > .rvhead .rid"));
+    eq(bar.querySelector(".ids-l").textContent, "Open IDs");
+    const yes = c => c.querySelector('.seg button[data-v="yes"]'), no = c => c.querySelector('.seg button[data-v="no"]');
+    click(no(cards[0]));
+    eq(cards[0].dataset.answer, "no");
+    eq(cards[0].querySelector(".rvhead .st").textContent, "No");
+    ok(!cards[0].querySelector(".notel").hidden);
+    cards.slice(1).forEach(c => click(yes(c)));
+    ok(bar.classList.contains("all-done")); ok(!bar.classList.contains("approved"));
+    match(bar.querySelector(".cnt").textContent, /^All \d+ answered · ready to copy/);
+    click(yes(cards[0]));
+    ok(bar.classList.contains("approved"));
+    match(bar.querySelector(".cnt").textContent, /^APPROVED · all \d+ Yes/);
+    match(win.siteReview.results(), /APPROVED: every item is Yes\./);
+  });
+  await t("review page: Changes needs a note; blocker rings the bar; copy blockers", async () => {
+    const { win, doc, bar } = await load("/demo/sm-review-2.html");
+    const c = doc.querySelector(".rvcard");
+    click(c.querySelector('.seg button[data-v="chg"]'));
+    ok(c.querySelector(".rv").classList.contains("empty"));
+    ok(bar.querySelector(".ids-n").textContent.length);
+    click(c.querySelector(".blocker-btn")); await tick(50);
+    ok(bar.classList.contains("has-blocker"));
+    eq(bar.querySelector(".bkr").textContent, "1 BLOCKER");
+    ok(c.classList.contains("is-blocker"));
+    click(bar.querySelector(".copy-blockers")); await tick(50);
+    match(win.__clip, /^BLOCKER: .*\n- \[r1\] .*\n {4}Note: stuck\n$/);
+  });
+  await t("review page: picker filters by words and Enter jumps", async () => {
+    const { win, bar } = await load("/demo/sm-review-3.html");
+    click(bar.querySelector(".ids"));
+    const pick = bar.querySelector(".rvids"); ok(!pick.hidden);
+    const inp = pick.querySelector("input"); inp.value = "web app"; inp.dispatchEvent(new win.Event("input"));
+    eq(pick.querySelectorAll(".rvids-list a").length, 1);
+    match(pick.querySelector(".rvids-h").textContent, /\d+ open · showing 1$/);
+    inp.value = "zzzz"; inp.dispatchEvent(new win.Event("input"));
+    ok(pick.querySelector(".nomatch"));
+    inp.value = ""; inp.dispatchEvent(new win.Event("input"));
+    inp.dispatchEvent(new win.KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true }));
+    ok(pick.querySelectorAll(".rvids-list a")[1].classList.contains("on"));
+    inp.dispatchEvent(new win.KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+    ok(pick.hidden);
+  });
+  await t("saved answers load and render; save failure shows amber", async () => {
+    const { win, doc, bar } = await load("/demo/sm-saved.html");
+    const c = doc.querySelector(".rvcard"); eq(c.dataset.answer, "yes");
+    eq(c.querySelector('.seg button[data-v="yes"]').getAttribute("aria-pressed"), "true");
+    win.fetch = async (u, o = {}) => { if (o.method === "PUT") throw new Error("down"); return { ok: false, status: 500 }; };
+    click(c.querySelector('.seg button[data-v="no"]'));
+    await until(() => bar.classList.contains("save-bad"), "the failed save");
+    eq(bar.querySelector(".svst").textContent, "Not saved · retrying");
+    eq(win.siteReview.unsaved(), true);
+  });
+  await t("unified page: group chips and total still count", async () => {
+    const { doc } = await load("/demo/sm-unified/");
+    const chip = doc.querySelector("summary [data-open-chip]"); ok(chip); const n0 = parseInt(chip.textContent, 10);
+    click(doc.querySelector('.item .seg button[data-v="yes"]'));
+    eq(parseInt(chip.textContent, 10), n0 - 1);
+    eq(doc.querySelector(".open-total").textContent, "2");
+    ok(doc.querySelector(".grp-copy"));
+  });
+  await t("synthetic: h2 items, skip locks, approved hidden, blocked, question", async () => {
+    const { win, doc, bar } = await load("/demo/sm-synth.html");
+    eq(doc.querySelectorAll(".rv").length, 5);
+    ok(doc.querySelector(".rvdone"));
+    eq(doc.querySelector("#rv-s4 .st").textContent, "Blocked by s2");
+    ok(doc.querySelector("header.top .crumb"));
+    match(bar.querySelector(".cnt").textContent, /^0 of 2 answered · 1 blocked · 1 approved and hidden · 1 question unanswered/);
+    click(doc.querySelector('#rv-s3 .seg button[data-v="skip"]'));
+    eq(doc.querySelector("#rv-s3 .st").textContent, "Skipped (locked)");
+    ok(doc.querySelector('#rv-s3 .seg button[data-v="yes"]').disabled);
+    click(doc.querySelector('#rv-s2 .seg button[data-v="yes"]'));
+    ok(bar.classList.contains("approved"), bar.querySelector(".cnt").textContent);
+    const r = win.siteReview.results();
+    match(r, /- \[s1\] YES: One/); match(r, /- \[s3\] SKIPPED \(locked\): Three/);
+    match(r, /- \[s4\] BLOCKED by s2, NOT ANSWERED: Four/); match(r, /Q s5: \(no answer\)/);
+  });
+  await t("theme toggle sets data-theme, saves it, Auto clears it; survives blocked storage", async () => {
+    const inject = async () => {
+      const s = d().createElement("script"); s.src = "/_site/theme.js"; d().head.appendChild(s);
+      await until(() => w().siteTheme, "theme.js"); await tick(50);
+    };
+    const plain = async path => { await new Promise(r => { f.onload = r; f.src = path; }); };
+    localStorage.removeItem("site-theme");
+    await plain("/demo/sm-theme-1.html"); await inject();
+    const tg = d().querySelector("header.top .theme-tg"); ok(tg, "toggle mounted in the header");
+    const btn = v => tg.querySelector('[data-theme="' + v + '"]');
+    eq(btn("auto").getAttribute("aria-pressed"), "true");
+    ok(!d().documentElement.hasAttribute("data-theme"));
+    click(btn("dark"));
+    eq(d().documentElement.getAttribute("data-theme"), "dark");
+    eq(w().localStorage.getItem("site-theme"), "dark");
+    eq(btn("dark").getAttribute("aria-pressed"), "true");
+    click(btn("light")); eq(d().documentElement.getAttribute("data-theme"), "light");
+    click(btn("auto")); ok(!d().documentElement.hasAttribute("data-theme")); eq(w().localStorage.getItem("site-theme"), null);
+    // A saved choice applies on load; a page without a header gets the floating toggle.
+    localStorage.setItem("site-theme", "dark");
+    await plain("/demo/sm-theme-2.html"); await inject();
+    eq(d().documentElement.getAttribute("data-theme"), "dark");
+    ok(d().querySelector(".theme-tg.floating"));
+    localStorage.removeItem("site-theme");
+    // Storage that throws: still switches for this page.
+    await plain("/demo/sm-theme-3.html");
+    Object.defineProperty(w(), "localStorage", { configurable: true, get() { throw new Error("blocked"); } });
+    await inject();
+    click(d().querySelector('[data-theme="dark"]'));
+    eq(d().documentElement.getAttribute("data-theme"), "dark");
+  });
+  await t("finished page: green bar and toast point back to the folder; Copy results returns after 1.5 s", async () => {
+    const { doc, bar } = await load("/demo/sm-fin-1.html");
+    const back = bar.querySelector(".back"); ok(back.hidden);
+    doc.querySelectorAll('.seg button[data-v="yes"]').forEach(b => click(b));
+    ok(bar.classList.contains("approved")); ok(!back.hidden);
+    eq(back.getAttribute("href"), "/demo/"); eq(back.textContent, "← Back to Demo pages");
+    const toast = doc.querySelector(".site-toast.act"); ok(toast, "toast"); eq(toast.querySelector("a").getAttribute("href"), "/demo/");
+    click(bar.querySelector(".copy")); await tick(400);
+    eq(w().location.pathname, "/demo/sm-fin-1.html", "not before 1.5 s");
+    await until(() => w().location.pathname === "/demo/", "going back to the folder");
+  });
+  await t("finished page: typing or moving after Copy results stays", async () => {
+    const { win, doc, bar } = await load("/demo/sm-fin-2.html");
+    doc.querySelectorAll('.seg button[data-v="no"]').forEach(b => click(b));
+    ok(bar.classList.contains("all-done")); ok(!bar.classList.contains("approved"));
+    click(bar.querySelector(".copy")); await tick(100);
+    win.dispatchEvent(new win.KeyboardEvent("keydown", { key: "a", bubbles: true }));
+    await tick(1700);
+    eq(w().location.pathname, "/demo/sm-fin-2.html");
+    match(doc.querySelector(".site-toast.act").textContent, /Staying on this page/);
+  });
+  await t("unfinished page: Copy results stays put and no back link", async () => {
+    const { doc, bar } = await load("/demo/sm-fin-3.html");
+    click(doc.querySelector('.seg button[data-v="yes"]'));
+    ok(bar.querySelector(".back").hidden);
+    click(bar.querySelector(".copy")); await tick(1800);
+    eq(w().location.pathname, "/demo/sm-fin-3.html");
+  });
+})().catch(e => { results.harness = "FAIL " + String(e && e.stack || e); })
+  .finally(() => { document.getElementById("out").textContent = JSON.stringify(results); });
+</script></body></html>

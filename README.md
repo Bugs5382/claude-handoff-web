@@ -14,6 +14,9 @@ library only:** no build step, no framework, no database.
 - 🎛️ **Your own choices:** a page can swap Yes / No / Changes for its own answers and a default, such as a backlog of Start or Hold.
 - 🧪 **Sign-off checklists:** ordered tests, How to test pop-outs with Copy buttons, dependencies, blockers, Skipped.
 - 🖼️ **Pictures in one pop-out:** click a picture and it opens in one reused window; the next one swaps in, no pile of tabs.
+- 🧷 **A bar that tells you where you are:** Previous, Next, an Open IDs picker with a filter, and More; it turns green when every item is answered and points you back to the folder.
+- 🌗 **Light and dark:** IBM Plex type, self-hosted with no font CDN, and an Auto / Light / Dark toggle on every page.
+- 🔢 **Cards in order:** numbered pages list 1, 2, ... 10, never reshuffled by the last edit.
 - 🔄 **Live:** pages refresh themselves, never while the owner is typing.
 - 💾 **Saved on the server:** answers go through a tiny save API, so they survive browsers and machines.
 - 🧹 **Stale:** the owner removes a page that no longer matters with one button.

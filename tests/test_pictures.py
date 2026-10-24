@@ -73,6 +73,9 @@ const document = {
   hidden: true, readyState: "complete",
   addEventListener(t, f) { (listeners[t] = listeners[t] || []).push(f); },
   querySelector() { return null; }, querySelectorAll() { return []; }, getElementById() { return null; },
+  createElement(tag) { return { tagName: tag.toUpperCase() }; },
+  head: { added: [], appendChild(el) { this.added.push(el); } },
+  documentElement: { getAttribute() { return null; } },
 };
 const store = () => {
   const m = {};
@@ -124,6 +127,7 @@ r.noImg = click(link("http://h/demo/img/c.png", "", false)).prevented;
 r.otherOpens = opened.length - before;
 blocked = true; popup = null;
 r.blocked = click(link("http://h/demo/img/d.jpg", "D")).prevented;
+r.themeScript = document.head.added.map(e => e.src);
 console.log(JSON.stringify(r));
 """
 
@@ -170,3 +174,7 @@ def test_modified_clicks_and_other_links_keep_browser_behaviour(run):
 
 def test_blocked_popup_falls_back_to_the_plain_link(run):
     assert run["blocked"] is False
+
+
+def test_pages_without_theme_js_get_it_from_live_js(run):
+    assert len(run["themeScript"]) == 1 and run["themeScript"][0].startswith("/_site/theme.js")

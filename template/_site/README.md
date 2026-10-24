@@ -24,7 +24,7 @@ completes, set it to `done` and it moves to "Completed". To retire a page, the o
 <link rel="stylesheet" href="/_site/site.css?v=20">
 <script src="/_site/theme.js?v=20"></script>   <!-- in <head>: light / dark before first paint -->
 ...
-<script src="/_site/review.js?v=20"></script>   <!-- review pages: just before </body> -->
+<script src="/_site/review.js?v=21"></script>   <!-- review pages: just before </body> -->
 ```
 
 - `review.js` turns every `<h2>` section (and every `[data-review-question="id" data-title="..."]`) into an

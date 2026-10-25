@@ -68,3 +68,11 @@ def test_command_line_prints_the_markup(tmp_path):
     b.write_text("New words here.")
     r = subprocess.run([sys.executable, str(DIFF), str(a), str(b)], capture_output=True, text=True, check=True)
     assert r.stdout.strip() == '<div class="rvdiff"><p><del>Old</del><ins>New</ins> words here.</p></div>'
+
+
+def test_a_wrapped_list_item_stays_one_unit():
+    old = "- Funding: a program\n  approved by the Board.\n- Cost: none"
+    new = "- Funding: a program\n  approved by the Board.\n- Cost: a waiver"
+    ps = paras(load().diff_html(old, new))
+    assert ps[0] == '<p class="same">- Funding: a program approved by the Board.</p>'
+    assert ps[1] == "<p>- Cost: <del>none</del><ins>a waiver</ins></p>"

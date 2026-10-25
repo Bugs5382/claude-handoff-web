@@ -391,7 +391,8 @@ or from Python, `from diff import diff_html, diff_units` (with `_site/` on the p
 **How it reads:**
 
 - The texts are split into sentences (blank lines, list items, table rows and headings are their own
-  units), sentences are matched, and each changed sentence gets a word-level diff.
+  units; an indented line under a list item stays part of it), sentences are matched, and each changed
+  sentence gets a word-level diff.
 - Added words are `<ins>`: green and underlined. Removed words are `<del>`: red and struck through. The
   underline and strikethrough carry the meaning without colour; the colours are theme tokens
   (`--diff-ins`, `--diff-ins-bg`, `--diff-del`, `--diff-del-bg`) with at least 4.5:1 contrast in light and

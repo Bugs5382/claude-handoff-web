@@ -25,7 +25,15 @@ def units(text):
     for block in re.split(r"\n\s*\n", text.strip()):
         lines = block.split("\n")
         if any(_LINE_BLOCK.match(ln) or ln.lstrip().startswith("|") for ln in lines):
-            parts = [ln.strip() for ln in lines if ln.strip()]
+            parts = []
+            for ln in lines:
+                if not ln.strip():
+                    continue
+                # an indented line under a list item continues it
+                if parts and ln[:1] in " \t" and not _LINE_BLOCK.match(ln) and not ln.lstrip().startswith("|"):
+                    parts[-1] += " " + ln.strip()
+                else:
+                    parts.append(ln.strip())
         else:
             parts = _SENT.split(" ".join(ln.strip() for ln in lines))
         out.extend(p for p in parts if p)

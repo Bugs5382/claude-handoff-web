@@ -4,9 +4,12 @@
 The texts are split into sentences first (blank lines, list items, table rows and headings are their own
 units), sentences are matched, and changed sentences get a word-level diff: removed words in <del>, added
 words in <ins>, unchanged sentences as <p class="same">. site.css styles the block (colour plus underline
-and strikethrough). Everything is HTML escaped.
+and strikethrough) and keeps line breaks inside a unit. Everything is HTML escaped.
 
-Usage: diff.py OLD.txt NEW.txt    (prints the markup)
+Code (code=True, for a fenced block): every line is a unit, indentation and blank lines are kept, and the
+block is <div class="rvdiff code"> so site.css sets it monospace.
+
+Usage: diff.py [--code] OLD.txt NEW.txt    (prints the markup)
        from diff import diff_html, diff_units
 """
 import difflib
@@ -55,8 +58,14 @@ def words(old, new):
     return "".join(out)
 
 
-def diff_units(a, b, same=True):
-    """The rvdiff block from two lists of units (sentences, lines or labels). same=False leaves out unchanged units."""
+def code_units(text):
+    """One unit per line, indentation kept; a blank line stays as a single space so it keeps its height."""
+    return [ln.rstrip() or " " for ln in text.strip("\n").split("\n")]
+
+
+def diff_units(a, b, same=True, code=False):
+    """The rvdiff block from two lists of units (sentences, lines or labels). same=False leaves out unchanged units;
+    code=True marks the block as code."""
     paras = []
     for op, i1, i2, j1, j2 in difflib.SequenceMatcher(None, a, b, autojunk=False).get_opcodes():
         if op == "equal":
@@ -71,16 +80,21 @@ def diff_units(a, b, same=True):
         else:
             # A sentence split or merged: diff the run as one paragraph.
             paras.append(f"<p>{words(' '.join(a[i1:i2]), ' '.join(b[j1:j2]))}</p>")
-    return '<div class="rvdiff">' + "\n".join(paras) + "</div>"
+    cls = "rvdiff code" if code else "rvdiff"
+    return f'<div class="{cls}">' + "\n".join(paras) + "</div>"
 
 
-def diff_html(old, new, same=True):
-    """The rvdiff block for two texts, grouped by sentence."""
-    return diff_units(units(old), units(new), same)
+def diff_html(old, new, same=True, code=False):
+    """The rvdiff block for two texts, grouped by sentence, or by line when code=True."""
+    split = code_units if code else units
+    return diff_units(split(old), split(new), same, code)
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 3:
+    args = sys.argv[1:]
+    code = "--code" in args
+    args = [a for a in args if a != "--code"]
+    if len(args) != 2:
         sys.exit(__doc__)
-    with open(sys.argv[1]) as fa, open(sys.argv[2]) as fb:
-        print(diff_html(fa.read(), fb.read()))
+    with open(args[0]) as fa, open(args[1]) as fb:
+        print(diff_html(fa.read(), fb.read(), code=code))

@@ -76,3 +76,28 @@ def test_a_wrapped_list_item_stays_one_unit():
     ps = paras(load().diff_html(old, new))
     assert ps[0] == '<p class="same">- Funding: a program approved by the Board.</p>'
     assert ps[1] == "<p>- Cost: <del>none</del><ins>a waiver</ins></p>"
+
+
+def test_code_flag_diffs_line_by_line_and_marks_the_block():
+    old = "type Query {\n  contract(id: ID!): Contract\n\n  vendors: [Vendor]\n}"
+    new = "type Query {\n  contract(id: ID!): Contract!\n\n  vendors: [Vendor]\n}"
+    out = load().diff_html(old, new, code=True)
+    assert out.startswith('<div class="rvdiff code">') and out.endswith("</div>")
+    lines = out[len('<div class="rvdiff code">'):-len("</div>")].split("\n")
+    assert lines == ['<p class="same">type Query {</p>',
+                     '<p>  contract(id: ID!): Contract<ins>!</ins></p>',
+                     '<p class="same"> </p>',
+                     '<p class="same">  vendors: [Vendor]</p>',
+                     '<p class="same">}</p>']
+
+
+def test_code_flag_on_diff_units_marks_the_block():
+    assert load().diff_units(["a"], ["b"], code=True).startswith('<div class="rvdiff code">')
+
+
+def test_cli_code_flag(tmp_path):
+    a, b = tmp_path / "a", tmp_path / "b"
+    a.write_text("x = 1\ny = 2\n")
+    b.write_text("x = 1\ny = 3\n")
+    out = subprocess.run([sys.executable, str(DIFF), "--code", str(a), str(b)], capture_output=True, text=True, check=True).stdout
+    assert out.startswith('<div class="rvdiff code">') and '<p class="same">x = 1</p>' in out

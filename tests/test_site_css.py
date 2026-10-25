@@ -78,3 +78,9 @@ def test_diff_marks_do_not_rely_on_colour_alone():
     assert "underline" in ins and "var(--diff-ins)" in ins and "var(--diff-ins-bg)" in ins
     assert "line-through" in dele and "var(--diff-del)" in dele and "var(--diff-del-bg)" in dele
     assert "var(--muted)" in rule(".site .rvdiff .same")
+
+
+def test_diff_keeps_line_breaks_and_code_is_monospace():
+    assert "white-space: pre-wrap" in rule(".site .rvdiff p")
+    code = rule(".site .rvdiff.code")
+    assert "monospace" in code and "overflow-x: auto" in code

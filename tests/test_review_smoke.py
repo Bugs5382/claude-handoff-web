@@ -75,7 +75,8 @@ PILLS = SECTIONS.replace('data-review-h2="off"', 'data-review-h2="off" data-revi
 DIFFS = ('<!doctype html><html><head><title>Diffs</title></head><body class="site" data-review-h2="off"><header class="top">'
          '<div class="wrap"><h1>Diffs</h1></div></header><main class="wrap">'
          '<section data-review-question="d1" data-title="Situation"><h2>Situation</h2><div class="rvdiff">'
-         '<p class="same">It never closes.</p><p>The core ran at <del>10</del><ins>20</ins> Gb/s.</p></div></section>'
+         '<p class="same">It never closes.</p><p>The core ran at <del>10</del><ins>20</ins> Gb/s.</p></div>'
+         '<div class="rvdiff code"><p class="same">type Query {\n  contract(id: ID!): Contract\n}</p></div></section>'
          '</main>' + REVIEW + '</body></html>')
 
 FINISHED = ('<!doctype html><html><head><title>Fin</title></head><body class="site" data-review-h2="off"><header class="top">'

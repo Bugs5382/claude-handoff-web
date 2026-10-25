@@ -551,7 +551,10 @@ body.site header.top p.note { font-size: 14px; }
 
 /* Word diff block: <div class="rvdiff"> with <ins>/<del> runs, one <p> per sentence group. Colour plus underline / strikethrough. */
 .site .rvdiff { margin: 10px 0; padding: 10px 14px; background: var(--soft-2); border: 1px solid var(--line); border-radius: var(--radius-sm); line-height: 1.6; overflow-wrap: anywhere; }
-.site .rvdiff p { margin: 0 0 .45em; }
+.site .rvdiff p { margin: 0 0 .45em; white-space: pre-wrap; }
+/* Code diffs (diff.py code=True, from a fenced block): one <p> per line, monospace, long lines scroll sideways. */
+.site .rvdiff.code { font: 12px/1.55 ui-monospace, Menlo, monospace; overflow-x: auto; overflow-wrap: normal; }
+.site .rvdiff.code p { margin: 0; white-space: pre; }
 .site .rvdiff p:last-child { margin-bottom: 0; }
 .site .rvdiff .same { color: var(--muted); }
 .site .rvdiff ins, .site .rvdiff-key ins { background: var(--diff-ins-bg); color: var(--diff-ins); text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 2px; border-radius: 3px; }

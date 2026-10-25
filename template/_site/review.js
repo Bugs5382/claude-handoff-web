@@ -550,7 +550,9 @@ if (!window.siteTheme) { const t = document.createElement("script"); t.src = "/_
     '<input type="search" autocomplete="off" spellcheck="false" placeholder="Type an ID or words from the title"></label>' +
     '<div class="rvids-list" role="listbox"></div>' +
     '<div class="rvids-keys"><span>↑↓ move</span><span>Enter jump</span><span>Esc close</span><span>n / p next, previous</span></div></div>' +
-    '<div class="rvpop menu" role="menu" hidden><button class="copy" type="button" role="menuitem">Copy results</button>' +
+    '<div class="rvpop menu" role="menu" hidden><button class="all-yes" type="button" role="menuitem">Mark unanswered Yes</button>' +
+    '<button class="all-no" type="button" role="menuitem">Mark unanswered No</button>' +
+    '<button class="copy" type="button" role="menuitem">Copy results</button>' +
     '<button class="copy-blockers" type="button" role="menuitem">Copy blockers only</button>' +
     '<button class="history" type="button" role="menuitem" disabled>History</button>' +
     '<button class="round-close" type="button" role="menuitem">Save round now</button>' +
@@ -836,6 +838,17 @@ if (!window.siteTheme) { const t = document.createElement("script"); t.src = "/_
     });
     if (chip) chip.after(b); else gm.prepend(b);
   }
+  // Fills only unanswered Yes / No / Changes items, so a Changes note or an earlier pick is never overwritten.
+  function markAll(v, label) {
+    showMenu(false);
+    const open = items.filter(it => !isQ(it) && !isC(it) && !hidden.has(it.id) && !blocked[it.id] && !(state[it.id] || {}).locked && !pressed(it));
+    if (!open.length) { alert("Every item already has an answer."); return; }
+    if (!confirm("Mark the " + open.length + " unanswered item" + (open.length === 1 ? "" : "s") + " " + label + "? Items you've answered keep their answers.")) return;
+    for (const it of open) { setPressed(it, v); store.touched.add(it.id); }
+    save();
+  }
+  bar.querySelector(".all-yes").addEventListener("click", () => markAll("yes", "Yes"));
+  bar.querySelector(".all-no").addEventListener("click", () => markAll("no", "No"));
   bar.querySelector(".clear").addEventListener("click", async () => {
     showMenu(false);
     if (!confirm("Clear your answers on this page? Approved and Skipped (locked) items stay.")) return;

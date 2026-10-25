@@ -24,7 +24,7 @@ completes, set it to `done` and it moves to "Completed". To retire a page, the o
 <link rel="stylesheet" href="/_site/site.css?v=23">
 <script src="/_site/theme.js?v=20"></script>   <!-- in <head>: light / dark before first paint -->
 ...
-<script src="/_site/review.js?v=24"></script>   <!-- review pages: just before </body> -->
+<script src="/_site/review.js?v=25"></script>   <!-- review pages: just before </body> -->
 ```
 
 - `review.js` turns every `<h2>` section (and every `[data-review-question="id" data-title="..."]`) into an
@@ -117,9 +117,11 @@ for Changes (required) and No (optional), or with "Add a note".
 
 The bar, left to right: Previous, Next, "Open IDs (n) ▴", the status dot and text, the Saved time, More.
 Open IDs opens upward: a filter box (an ID or title words), "N open · showing M", the list (up to 200 rows),
-↑↓ / Enter / Esc. The n and p keys still jump between open items. More holds Copy results, Copy blockers
-only (every item marked with "Blocker: copy now", in that format), History, Save round now and Clear my
-answers. States: dark while items are open; green "All N answered · ready to copy" when every one is
+↑↓ / Enter / Esc. The n and p keys still jump between open items. More holds Mark unanswered Yes, Mark
+unanswered No, Copy results, Copy blockers only (every item marked with "Blocker: copy now", in that
+format), History, Save round now and Clear my answers. The two Mark items fill in only the Yes / No / Changes
+items with no answer yet (never hidden, blocked or Skipped (locked) ones, open questions or a page's own
+choices), after a confirm that gives the count, and never change an answer or note already given. States: dark while items are open; green "All N answered · ready to copy" when every one is
 answered; green "APPROVED · all N Yes" when all are Yes; a red ring and "N BLOCKER" while a blocker is
 marked; an amber "Not saved · retrying" pill when a save fails. At 480 px and below it is two rows: the
 status, then Prev / Next / IDs / More as equal buttons. A finished page (the bar is green) shows "← Back to <Folder> pages" in the bar and a
@@ -165,7 +167,7 @@ A subfolder with no `.html` file in it is never a page, so the index leaves it o
   choices page: its own labels, with "Comments (optional)".
 - Item states: Open, Reopened: <reason>, Approved, Skipped (locked), Blocked by <id>; on a choices page the
   chosen label, or `<label> (default)`.
-- Buttons: Copy results, Copy (one unified-page group), Clear my answers (never clears approved or locked items), Blocker: copy now,
+- Buttons: Copy results, Copy (one unified-page group), Mark unanswered Yes, Mark unanswered No, Clear my answers (never clears approved or locked items), Blocker: copy now,
   Stale: remove this page.
 - Progress: `<n> of <m> answered`, plus ` · <b> blocked`, ` · <s> skipped`, ` · <k> approved and hidden`
   when above 0, plus ` · <j> questions unanswered` when j > 0 (open questions never count toward `<n>` or

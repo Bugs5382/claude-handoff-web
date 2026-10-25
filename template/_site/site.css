@@ -564,3 +564,12 @@ body.site header.top p.note { font-size: 14px; }
 .site .rvdiff-pics figure { margin: 0; flex: 1 1 280px; }
 .site .rvdiff-pics img { width: 100%; height: auto; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--card); }
 .site .rvdiff-pics figcaption { font-size: .85em; color: var(--muted); }
+/* Diff / Final switch. Final hides deletions and shows insertions as plain text. */
+.site .rvdiff-mode { display: inline-flex; gap: 0; margin: 10px 0 -4px; border: 1px solid var(--line); border-radius: var(--radius-sm); overflow: hidden; font-size: 13px; }
+.site .rvdiff-mode button { font: inherit; padding: 4px 12px; border: 0; background: transparent; color: var(--ink-2); cursor: pointer; }
+.site .rvdiff-mode button + button { border-left: 1px solid var(--line); }
+.site .rvdiff-mode button[aria-pressed="true"] { background: var(--soft-2); color: var(--ink); font-weight: 600; }
+.site .rvdiff-all { display: flex; width: max-content; margin: 0 0 12px; }
+.site .rvdiff.final del, .site .rvdiff.final p.gone { display: none; }
+.site .rvdiff.final ins { background: none; color: inherit; text-decoration: none; }
+.site .rvdiff.final .same { color: inherit; }

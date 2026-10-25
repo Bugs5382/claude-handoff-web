@@ -234,6 +234,68 @@ const saved = () => until(() => !w().siteReview.unsaved(), "the save");
     click(card.querySelector('.seg button[data-v="yes"]'));
     match(doc.querySelector(".rvbar .cnt").textContent, /1 of 1|APPROVED|All 1/i, "the item answers");
   });
+  const mode = bar => Array.from(bar.querySelectorAll("button")).filter(b => b.getAttribute("aria-pressed") === "true").map(b => b.dataset.v).join();
+  await t("diff switch: Final hides removed text and un-styles added text, Diff restores both", async () => {
+    const { win, doc } = await load("/demo/sm-diff-2.html");
+    const block = doc.querySelector(".rvdiff"), bar = block.previousElementSibling;
+    await until(() => bar && bar.matches(".rvdiff-mode"), "the switch before the block");
+    const cs = el => win.getComputedStyle(el);
+    const ins = block.querySelector("ins"), del = block.querySelector("del"), same = block.querySelector(".same");
+    const cut = block.querySelectorAll("p")[2];
+    eq(mode(bar), "diff", "starts on Diff");
+    click(bar.querySelector('[data-v="final"]'));
+    eq(mode(bar), "final");
+    ok(block.classList.contains("final"), "block marked final");
+    eq(cs(del).display, "none", "removed words hidden");
+    eq(cs(ins).textDecorationLine, "none", "added words not underlined");
+    eq(cs(ins).backgroundColor, "rgba(0, 0, 0, 0)", "added words have no background");
+    eq(cs(ins).color, cs(ins.parentElement).color, "added words in the text colour");
+    eq(cs(same).color, cs(block).color, "unchanged text no longer dimmed");
+    eq(cs(cut).display, "none", "a fully removed sentence leaves no empty line");
+    eq(block.querySelectorAll("p")[1].textContent.replace(/\s+/g, " "), "The core ran at 1020 Gb/s.", "text itself untouched");
+    click(bar.querySelector('[data-v="diff"]'));
+    eq(mode(bar), "diff");
+    match(cs(ins).textDecorationLine, /underline/, "underline back");
+    match(cs(del).textDecorationLine, /line-through/, "strikethrough back");
+    ok(cs(del).display !== "none" && cs(cut).display !== "none", "removed text back");
+    ok(cs(same).color !== cs(block).color, "unchanged text dimmed again");
+  });
+  await t("diff switch: for all flips every block, goes mixed when one differs, and the view survives a reload", async () => {
+    let { doc } = await load("/demo/sm-diff-3.html");
+    const all = doc.querySelector("main > .rvdiff-all");
+    ok(all, "a for-all switch at the top of main");
+    const blocks = () => Array.from(doc.querySelectorAll(".rvdiff"));
+    eq(blocks().length, 2);
+    click(all.querySelector('[data-v="final"]'));
+    ok(blocks().every(b => b.classList.contains("final")), "every block final");
+    ok(blocks().every(b => mode(b.previousElementSibling) === "final"), "every block switch says Final");
+    eq(mode(all), "final");
+    click(blocks()[0].previousElementSibling.querySelector('[data-v="diff"]'));
+    eq(mode(all), "", "for-all shows neither once blocks differ");
+    click(blocks()[0].previousElementSibling.querySelector('[data-v="final"]'));
+    eq(mode(all), "final", "for-all follows when they agree again");
+    ({ doc } = await load("/demo/sm-diff-3.html"));
+    ok(Array.from(doc.querySelectorAll(".rvdiff")).every(b => b.classList.contains("final")), "Final kept after a reload");
+    eq(doc.querySelectorAll(".rvdiff-mode:not(.rvdiff-all)").length, 2, "one switch per block, no duplicates");
+  });
+  await t("diff switch: a labelled group of buttons, reachable by keyboard, with a visible focus ring", async () => {
+    const { win, doc } = await load("/demo/sm-diff-4.html");
+    const bars = Array.from(doc.querySelectorAll(".rvdiff-mode"));
+    ok(bars.length === 3, "two block switches and one for-all");
+    for (const b of bars) {
+      eq(b.getAttribute("role"), "group");
+      ok(b.getAttribute("aria-label"), "group has a label");
+      for (const x of b.querySelectorAll("button")) {
+        eq(x.tagName, "BUTTON"); eq(x.type, "button"); ok(x.tabIndex === 0, "in the tab order");
+        ok(x.hasAttribute("aria-pressed"), "toggle state exposed");
+      }
+    }
+    const btn = bars[1].querySelector('[data-v="final"]');
+    btn.focus();
+    eq(doc.activeElement, btn, "focusable");
+    await until(() => win.getComputedStyle(btn).outlineStyle !== "none", "focus ring");
+    ok(parseFloat(win.getComputedStyle(btn).outlineWidth) >= 2, "focus ring at least 2px");
+  });
 })().catch(e => { results.harness = "FAIL " + String(e && e.stack || e); })
   .finally(() => { document.getElementById("out").textContent = JSON.stringify(results); });
 </script></body></html>

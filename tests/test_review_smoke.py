@@ -39,6 +39,9 @@ SCENARIOS = [
     "unfinished page: Copy results stays put and no back link",
     "blocker and reopened pills: later paints keep both pills and Add a note still opens",
     "diff block: added underlined, removed struck through, unchanged dimmed, item still answers",
+    "diff switch: Final hides removed text and un-styles added text, Diff restores both",
+    "diff switch: for all flips every block, goes mixed when one differs, and the view survives a reload",
+    "diff switch: a labelled group of buttons, reachable by keyboard, with a visible focus ring",
 ]
 
 
@@ -75,7 +78,8 @@ PILLS = SECTIONS.replace('data-review-h2="off"', 'data-review-h2="off" data-revi
 DIFFS = ('<!doctype html><html><head><title>Diffs</title></head><body class="site" data-review-h2="off"><header class="top">'
          '<div class="wrap"><h1>Diffs</h1></div></header><main class="wrap">'
          '<section data-review-question="d1" data-title="Situation"><h2>Situation</h2><div class="rvdiff">'
-         '<p class="same">It never closes.</p><p>The core ran at <del>10</del><ins>20</ins> Gb/s.</p></div>'
+         '<p class="same">It never closes.</p><p>The core ran at <del>10</del><ins>20</ins> Gb/s.</p>'
+         '<p><del>A sentence that was cut.</del></p></div>'
          '<div class="rvdiff code"><p class="same">type Query {\n  contract(id: ID!): Contract\n}</p></div></section>'
          '</main>' + REVIEW + '</body></html>')
 
@@ -103,7 +107,8 @@ def write_pages(root):
     (demo / "sm-unified").mkdir()
     (demo / "sm-unified" / "index.html").write_text(UNIFIED)
     (demo / "sm-synth.html").write_text(SYNTH)
-    (demo / "sm-diff.html").write_text(DIFFS)
+    for name in ("sm-diff", "sm-diff-2", "sm-diff-3", "sm-diff-4"):
+        (demo / f"{name}.html").write_text(DIFFS)
     for n in (1, 2, 3):
         (demo / f"sm-fin-{n}.html").write_text(FINISHED)
     bare = re.sub(r'<script src="/_site/[a-z]+\.js[^"]*"[^>]*></script>', "", backlog)

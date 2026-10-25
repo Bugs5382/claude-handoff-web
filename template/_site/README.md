@@ -21,10 +21,10 @@ completes, set it to `done` and it moves to "Completed". To retire a page, the o
 ## Hook a page in
 
 ```html
-<link rel="stylesheet" href="/_site/site.css?v=22">
+<link rel="stylesheet" href="/_site/site.css?v=23">
 <script src="/_site/theme.js?v=20"></script>   <!-- in <head>: light / dark before first paint -->
 ...
-<script src="/_site/review.js?v=23"></script>   <!-- review pages: just before </body> -->
+<script src="/_site/review.js?v=24"></script>   <!-- review pages: just before </body> -->
 ```
 
 - `review.js` turns every `<h2>` section (and every `[data-review-question="id" data-title="..."]`) into an
@@ -81,6 +81,7 @@ completes, set it to `done` and it moves to "Completed". To retire a page, the o
   escaped. `.rvdiff-pics` holds before and after pictures; `.rvdiff-key` is an optional key line. The
   colours are the `--diff-*` tokens. Line breaks inside a unit are kept. For a fenced code block use
   `diff.py --code OLD NEW` (or `code=True`): one unit per line, `<div class="rvdiff code">`, monospace.
+  review.js adds a Diff | Final switch per block (and Diff for all | Final for all when there are several).
   See `docs/page-types.md` "(k) Diff item".
 - Pages without review.js (checklists, indexes) load `/_site/live.js` (`data-mode="page"` on non-index pages).
 - Element styles apply only under `<body class="site">`; design mocks can load site.css without losing their look.

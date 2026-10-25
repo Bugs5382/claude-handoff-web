@@ -84,3 +84,10 @@ def test_diff_keeps_line_breaks_and_code_is_monospace():
     assert "white-space: pre-wrap" in rule(".site .rvdiff p")
     code = rule(".site .rvdiff.code")
     assert "monospace" in code and "overflow-x: auto" in code
+
+
+def test_final_view_hides_removed_text_and_plains_the_rest():
+    assert "display: none" in rule(".site .rvdiff.final del")
+    ins = rule(".site .rvdiff.final ins")
+    assert "text-decoration: none" in ins and "background: none" in ins and "color: inherit" in ins
+    assert "color: inherit" in rule(".site .rvdiff.final .same")

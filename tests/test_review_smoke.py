@@ -42,6 +42,9 @@ SCENARIOS = [
     "diff switch: Final hides removed text and un-styles added text, Diff restores both",
     "diff switch: for all flips every block, goes mixed when one differs, and the view survives a reload",
     "diff switch: a labelled group of buttons, reachable by keyboard, with a visible focus ring",
+    "mark unanswered: confirm with the count, fill only open items, keep earlier answers and notes, saved",
+    "mark unanswered: hidden, blocked, locked and question items are left alone",
+    "mark unanswered: a page of choices only says nothing is unanswered and asks nothing",
 ]
 
 
@@ -111,6 +114,9 @@ def write_pages(root):
         (demo / f"{name}.html").write_text(DIFFS)
     for n in (1, 2, 3):
         (demo / f"sm-fin-{n}.html").write_text(FINISHED)
+    (demo / "sm-mark-1.html").write_text(SECTIONS)
+    (demo / "sm-mark-2.html").write_text(SYNTH)
+    (demo / "sm-mark-3.html").write_text(backlog)
     bare = re.sub(r'<script src="/_site/[a-z]+\.js[^"]*"[^>]*></script>', "", backlog)
     (demo / "sm-theme-1.html").write_text(bare)
     (demo / "sm-theme-2.html").write_text("<!doctype html><html><head></head><body class=site><p>x</p></body></html>")

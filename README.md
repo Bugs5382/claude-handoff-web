@@ -10,7 +10,7 @@ library only:** no build step, no framework, no database.
 ## ✨ Highlights
 
 - 🧭 **One place to look:** folder indexes and a root "Needs you now" list, built from each folder's `_status.json`.
-- ✅ **Reviews that stick:** Yes / No / Changes per section, approved items hidden, reopened ones marked with the reason.
+- ✅ **Reviews that stick:** Yes / No / Changes per section, approved items hidden, reopened ones marked with the reason, and More, Mark unanswered Yes (or No) to fill in the rest at once.
 - 🎛️ **Your own choices:** a page can swap Yes / No / Changes for its own answers and a default, such as a backlog of Start or Hold.
 - 🧪 **Sign-off checklists:** ordered tests, How to test pop-outs with Copy buttons, dependencies, blockers, Skipped.
 - 🖼️ **Pictures in one pop-out:** click a picture and it opens in one reused window; the next one swaps in, no pile of tabs.

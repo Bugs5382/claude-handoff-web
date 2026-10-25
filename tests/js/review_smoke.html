@@ -296,6 +296,52 @@ const saved = () => until(() => !w().siteReview.unsaved(), "the save");
     await until(() => win.getComputedStyle(btn).outlineStyle !== "none", "focus ring");
     ok(parseFloat(win.getComputedStyle(btn).outlineWidth) >= 2, "focus ring at least 2px");
   });
+  await t("mark unanswered: confirm with the count, fill only open items, keep earlier answers and notes, saved", async () => {
+    const { win, doc, bar } = await load("/demo/sm-mark-1.html");
+    const card = id => doc.getElementById("rv-" + id);
+    const seg = (id, v) => card(id).querySelector('.seg button[data-v="' + v + '"]');
+    const ans = id => { const b = card(id).querySelector(".seg button[aria-pressed=true]"); return b ? b.dataset.v : ""; };
+    ok(bar.querySelector(".rvpop.menu .all-yes"), "Mark unanswered Yes in the More menu");
+    eq(bar.querySelector(".rvpop.menu .all-yes").textContent, "Mark unanswered Yes");
+    eq(bar.querySelector(".rvpop.menu .all-no").textContent, "Mark unanswered No");
+    click(seg("r1", "chg")); const ta = card("r1").querySelector("textarea"); ta.value = "keep this note"; ta.dispatchEvent(new win.Event("input"));
+    click(seg("r2", "yes"));
+    let asked = [];
+    win.confirm = m => { asked.push(m); return false; };
+    click(bar.querySelector(".all-no"));
+    eq(asked.length, 1); match(asked[0], /^Mark the 2 unanswered items No\?/);
+    eq(ans("r3"), ""); eq(ans("r4"), "");
+    win.confirm = m => { asked.push(m); return true; };
+    click(bar.querySelector(".all-no"));
+    eq(ans("r1"), "chg"); eq(ta.value, "keep this note"); eq(ans("r2"), "yes"); eq(ans("r3"), "no"); eq(ans("r4"), "no");
+    ok(bar.querySelector(".rvpop.menu").hidden, "menu closes");
+    await saved();
+    const box = await (await fetch(win.siteReview.saveUrl, { cache: "no-store" })).json();
+    eq(box.r3.v, "no"); eq(box.r4.v, "no"); eq(box.r1.v, "chg"); eq(box.r1.n, "keep this note"); eq(box.r2.v, "yes");
+    match(win.siteReview.results(), /- \[r4\] NO: /);
+    let alerted = ""; asked = []; win.alert = m => { alerted = m; };
+    click(bar.querySelector(".all-yes"));
+    eq(asked.length, 0); eq(alerted, "Every item already has an answer.");
+    eq(ans("r3"), "no");
+  });
+  await t("mark unanswered: hidden, blocked, locked and question items are left alone", async () => {
+    const { win, doc, bar } = await load("/demo/sm-mark-2.html");
+    const ans = id => { const b = doc.querySelector("#rv-" + id + " .seg button[aria-pressed=true]"); return b ? b.dataset.v : ""; };
+    click(doc.querySelector('#rv-s3 .seg button[data-v="skip"]'));
+    const s1 = ans("s1");
+    const asked = []; win.confirm = m => { asked.push(m); return true; };
+    click(bar.querySelector(".all-yes"));
+    eq(asked.length, 1); match(asked[0], /^Mark the 1 unanswered item Yes\?/);
+    eq(ans("s2"), "yes"); eq(ans("s3"), "skip"); eq(ans("s1"), s1); eq(ans("s4"), "");
+    const q = doc.querySelector(".rv.question textarea"); eq(q.value, "");
+  });
+  await t("mark unanswered: a page of choices only says nothing is unanswered and asks nothing", async () => {
+    const { win, doc, bar } = await load("/demo/sm-mark-3.html");
+    let asked = 0, alerted = ""; win.confirm = () => { asked++; return true; }; win.alert = m => { alerted = m; };
+    click(bar.querySelector(".all-yes"));
+    eq(asked, 0); eq(alerted, "Every item already has an answer.");
+    eq(doc.querySelectorAll(".rv.choice .seg button[aria-pressed=true]").length, 0);
+  });
 })().catch(e => { results.harness = "FAIL " + String(e && e.stack || e); })
   .finally(() => { document.getElementById("out").textContent = JSON.stringify(results); });
 </script></body></html>

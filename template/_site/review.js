@@ -291,7 +291,7 @@ if (!window.siteTheme) { const t = document.createElement("script"); t.src = "/_
   }
 
   if (!document.querySelector('link[href*="/_site/site.css"]')) {
-    const l = document.createElement("link"); l.rel = "stylesheet"; l.href = "/_site/site.css?v=20"; document.head.appendChild(l);
+    const l = document.createElement("link"); l.rel = "stylesheet"; l.href = "/_site/site.css?v=23"; document.head.appendChild(l);
   }
 
   // data-review-skip="on" (test checklists): adds Skipped; a skipped item is locked.
@@ -921,6 +921,48 @@ if (!window.siteTheme) { const t = document.createElement("script"); t.src = "/_
 
   function loadLive() {
     if (document.querySelector('script[src*="/_site/live.js"]')) return;
-    const sc = document.createElement("script"); sc.src = "/_site/live.js?v=20"; sc.setAttribute("data-mode", "page"); body.appendChild(sc);
+    const sc = document.createElement("script"); sc.src = "/_site/live.js?v=21"; sc.setAttribute("data-mode", "page"); body.appendChild(sc);
   }
+})();
+
+// Diff blocks: a Diff / Final switch per block, and one for the whole page when it has several. Final hides
+// removed text and shows the rest plainly. The choice is kept for this tab, so a live reload doesn't undo it.
+(function () {
+  const blocks = Array.from(document.querySelectorAll(".rvdiff"));
+  if (!blocks.length) return;
+  const KEY = "rvdiff-mode:" + location.pathname;
+  let saved = [];
+  try { saved = JSON.parse(sessionStorage.getItem(KEY) || "[]"); } catch (e) {}
+  const save = () => { try { sessionStorage.setItem(KEY, JSON.stringify(blocks.map(b => b.classList.contains("final") ? 1 : 0))); } catch (e) {} };
+  const press = (g, v) => g.querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", String(x.dataset.v === v)));
+  function group(label, suffix, onPick) {
+    const g = document.createElement("div"); g.className = "rvdiff-mode"; g.setAttribute("role", "group"); g.setAttribute("aria-label", label);
+    [["diff", "Diff"], ["final", "Final"]].forEach(([v, text]) => {
+      const b = document.createElement("button"); b.type = "button"; b.dataset.v = v; b.textContent = text + suffix;
+      b.addEventListener("click", () => onPick(v));
+      g.appendChild(b);
+    });
+    return g;
+  }
+  let all = null;
+  function sync() {
+    const modes = new Set(blocks.map(b => b.classList.contains("final") ? "final" : "diff"));
+    if (all) press(all, modes.size === 1 ? [...modes][0] : "");
+    save();
+  }
+  function set(block, v) { block.classList.toggle("final", v === "final"); press(block.previousElementSibling, v); }
+  blocks.forEach((b, i) => {
+    // A sentence removed whole has nothing left to show in Final.
+    b.querySelectorAll("p").forEach(p => {
+      if (p.querySelector("del") && !Array.from(p.childNodes).some(n => n.nodeName !== "DEL" && n.textContent.trim())) p.classList.add("gone");
+    });
+    b.before(group("Show the change or the final text", "", v => { set(b, v); sync(); }));
+    set(b, saved[i] ? "final" : "diff");
+  });
+  if (blocks.length > 1) {
+    all = group("Show every change or every final text", " for all", v => { blocks.forEach(b => set(b, v)); sync(); });
+    all.classList.add("rvdiff-all");
+    (document.querySelector("main") || document.body).prepend(all);
+  }
+  sync();
 })();

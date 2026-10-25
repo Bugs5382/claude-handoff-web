@@ -217,6 +217,20 @@ const saved = () => until(() => !w().siteReview.unsaved(), "the save");
     eq(JSON.stringify(pills("r1")), JSON.stringify(["Blocker", "Yes"]));
     eq(JSON.stringify(pills("r2")), JSON.stringify(["Reopened: fixed in 1.2", "Yes"]));
   });
+  await t("diff block: added underlined, removed struck through, unchanged dimmed, item still answers", async () => {
+    const { win, doc } = await load("/demo/sm-diff.html");
+    await until(() => win.getComputedStyle(doc.querySelector(".rvdiff ins")).textDecorationLine.includes("underline"), "site.css on the diff");
+    const cs = el => win.getComputedStyle(doc.querySelector(el));
+    match(cs(".rvdiff ins").textDecorationLine, /underline/, "ins decoration");
+    match(cs(".rvdiff del").textDecorationLine, /line-through/, "del decoration");
+    ok(cs(".rvdiff ins").backgroundColor !== cs(".rvdiff del").backgroundColor, "ins and del backgrounds differ");
+    ok(cs(".rvdiff ins").backgroundColor !== "rgba(0, 0, 0, 0)", "ins has a background");
+    ok(cs(".rvdiff .same").color !== cs(".rvdiff ins").color, "unchanged text is dimmed, not coloured");
+    const card = doc.querySelector("#rv-d1").closest(".rvcard");
+    ok(card.contains(doc.querySelector(".rvdiff")), "the diff sits inside the item card");
+    click(card.querySelector('.seg button[data-v="yes"]'));
+    match(doc.querySelector(".rvbar .cnt").textContent, /1 of 1|APPROVED|All 1/i, "the item answers");
+  });
 })().catch(e => { results.harness = "FAIL " + String(e && e.stack || e); })
   .finally(() => { document.getElementById("out").textContent = JSON.stringify(results); });
 </script></body></html>

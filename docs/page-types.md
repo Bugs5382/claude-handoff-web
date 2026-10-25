@@ -8,8 +8,8 @@ Common rules:
 
 - `<body class="site">` turns on the shared look; `<header class="top"><div class="wrap">` and
   `<main class="wrap">` give the standard frame.
-- Review pages load `/_site/review.js?v=21` just before `</body>`; it brings `live.js` itself. Other pages
-  load `/_site/live.js?v=20` with `data-mode="page"`.
+- Review pages load `/_site/review.js?v=22` just before `</body>`; it brings `live.js` itself. Other pages
+  load `/_site/live.js?v=21` with `data-mode="page"`.
 - Answers are saved on the server; Copy results is what the owner pastes back to you.
 - Pictures: wrap each `<img>` in a link to its own file. A click shows it in one reused pop-out window,
   and the next picture swaps into that window (see `_site/README.md` "Pictures (pop-out)").
@@ -66,7 +66,7 @@ is instead an open question (see (i)) when the answer isn't a choice between opt
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Settings screen: design review</title>
 <meta name="description" content="Three sections to approve before the settings screen is built.">
-<link rel="stylesheet" href="/_site/site.css?v=20">
+<link rel="stylesheet" href="/_site/site.css?v=21">
 <script src="/_site/theme.js?v=20"></script>
 </head>
 <body class="site" data-review-approved="" data-review-reopen="">
@@ -85,7 +85,7 @@ is instead an open question (see (i)) when the answer isn't a choice between opt
 <h2>Errors and empty states</h2>
 <p>What the owner sees when a save fails or there is nothing to show.</p>
 </main>
-<script src="/_site/review.js?v=21"></script>
+<script src="/_site/review.js?v=22"></script>
 </body></html>
 ```
 
@@ -132,7 +132,7 @@ When every open item is answered the bottom bar turns green; all Yes shows APPRO
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Example app 1.4.0: sign-off checklist</title>
-<link rel="stylesheet" href="/_site/site.css?v=20">
+<link rel="stylesheet" href="/_site/site.css?v=21">
 <script src="/_site/theme.js?v=20"></script>
 </head>
 <body class="site" data-review-h2="off" data-review-skip="on" data-build="1.4.0-rc.2"
@@ -162,7 +162,7 @@ When every open item is answered the bottom bar turns green; all Yes shows APPRO
   <p>Exporting the weekly report downloads a CSV with today's rows.</p>
 </section>
 </main>
-<script src="/_site/review.js?v=21"></script>
+<script src="/_site/review.js?v=22"></script>
 </body></html>
 ```
 
@@ -178,7 +178,7 @@ section.
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Decision: where exports are stored</title>
-<link rel="stylesheet" href="/_site/site.css?v=20">
+<link rel="stylesheet" href="/_site/site.css?v=21">
 <script src="/_site/theme.js?v=20"></script>
 </head>
 <body class="site">
@@ -194,7 +194,7 @@ section.
 </table>
 <p class="muted">Yes = A. No = none of these (say why). Changes = B or C (say which).</p>
 </main>
-<script src="/_site/review.js?v=21"></script>
+<script src="/_site/review.js?v=22"></script>
 </body></html>
 ```
 
@@ -208,7 +208,7 @@ section.
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>First-run setup: walk-through</title>
-<link rel="stylesheet" href="/_site/site.css?v=20">
+<link rel="stylesheet" href="/_site/site.css?v=21">
 <script src="/_site/theme.js?v=20"></script>
 </head>
 <body class="site">
@@ -229,7 +229,7 @@ section.
 +----------------------------------+</pre>
 <p>Next checks the password rules, then goes to the network screen.</p>
 </main>
-<script src="/_site/review.js?v=21"></script>
+<script src="/_site/review.js?v=22"></script>
 </body></html>
 ```
 
@@ -244,7 +244,7 @@ section.
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Email draft: maintenance window</title>
-<link rel="stylesheet" href="/_site/site.css?v=20">
+<link rel="stylesheet" href="/_site/site.css?v=21">
 <script src="/_site/theme.js?v=20"></script>
 </head>
 <body class="site">
@@ -267,7 +267,7 @@ document.getElementById("copy").addEventListener("click", async e => {
   e.target.textContent = "Copied";
 });
 </script>
-<script src="/_site/live.js?v=20" data-mode="page"></script>
+<script src="/_site/live.js?v=21" data-mode="page"></script>
 </body></html>
 ```
 
@@ -283,7 +283,7 @@ the owner is typing) and keeps the scroll position.
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Rollout status: example app 1.4.0</title>
-<link rel="stylesheet" href="/_site/site.css?v=20">
+<link rel="stylesheet" href="/_site/site.css?v=21">
 <script src="/_site/theme.js?v=20"></script>
 </head>
 <body class="site">
@@ -298,7 +298,7 @@ the owner is typing) and keeps the scroll position.
   <tr><td>Deploy to production</td><td><span class="chip">Waiting</span></td><td></td></tr>
 </table>
 </main>
-<script src="/_site/live.js?v=20" data-mode="page"></script>
+<script src="/_site/live.js?v=21" data-mode="page"></script>
 </body></html>
 ```
 
@@ -351,7 +351,7 @@ it being "approved": a backlog where each item is Start or Hold, a triage list (
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Demo app backlog</title>
 <meta name="description" content="Three backlog items. Each is on Hold until you pick Start.">
-<link rel="stylesheet" href="/_site/site.css?v=20">
+<link rel="stylesheet" href="/_site/site.css?v=21">
 <script src="/_site/theme.js?v=20"></script>
 </head>
 <body class="site" data-review-options="start:Start,hold:Hold" data-review-default="hold">
@@ -365,7 +365,7 @@ it being "approved": a backlog where each item is Start or Hold, a triage list (
 <h2>Dark theme</h2>
 <p>A third theme option on the settings screen that follows the system setting. About one day.</p>
 </main>
-<script src="/_site/review.js?v=21"></script>
+<script src="/_site/review.js?v=22"></script>
 </body></html>
 ```
 
@@ -373,3 +373,46 @@ Item ids follow the usual rule (`s1`, `s2`, ... by `<h2>` order). Give each item
 `<section data-review-question="pdf-export" data-title="Export reports as PDF">` and
 `<body data-review-h2="off">` when items get added or reordered between rounds, so saved answers stay on
 the right item.
+
+## (k) Diff item
+
+**When:** an item reviews a rewrite of existing text (a section of a document, a story, a config file) and
+the owner should see exactly what changed rather than a summary of it.
+
+**Required:** a normal review item (an `<h2>` section or a `[data-review-question]` section) whose content
+holds a `<div class="rvdiff">` block. Build the block with `_site/diff.py`, never by hand:
+
+```bash
+python3 _site/diff.py old.txt new.txt > item-diff.html
+```
+
+or from Python, `from diff import diff_html, diff_units` (with `_site/` on the path).
+
+**How it reads:**
+
+- The texts are split into sentences (blank lines, list items, table rows and headings are their own
+  units), sentences are matched, and each changed sentence gets a word-level diff.
+- Added words are `<ins>`: green and underlined. Removed words are `<del>`: red and struck through. The
+  underline and strikethrough carry the meaning without colour; the colours are theme tokens
+  (`--diff-ins`, `--diff-ins-bg`, `--diff-del`, `--diff-del-bg`) with at least 4.5:1 contrast in light and
+  dark.
+- Unchanged sentences stay as grey context (`<p class="same">`). `diff_html(old, new, same=False)` or
+  `diff_units(a, b, same=False)` leaves them out, which suits long lists such as diagram labels.
+- For a picture, put the label diff in the block and the before and after images in a
+  `<div class="rvdiff-pics">` of `<figure>`s, each image wrapped in a link to its file (the picture
+  pop-out). Add a key line with `<p class="rvdiff-key">` if the page needs one.
+
+```html
+<section data-review-question="situation" data-title="README.md: Situation">
+  <h2>README.md: Situation</h2>
+  <div class="rvdiff"><p class="same">It never closes.</p>
+<p>The core ran at <del>10</del><ins>20</ins> Gb/s.</p></div>
+  <div class="rvdiff-pics">
+    <figure><a href="img/overview-before.png"><img src="img/overview-before.png" alt="Overview before"></a><figcaption>Before</figcaption></figure>
+    <figure><a href="img/overview-after.png"><img src="img/overview-after.png" alt="Overview after"></a><figcaption>After</figcaption></figure>
+  </div>
+</section>
+```
+
+Keep item ids stable when you rebuild a diff page after another round of edits, so answers already given
+stay on the right section.

@@ -46,3 +46,35 @@ def test_dark_blocks_respect_an_explicit_light_choice():
 def test_no_hard_coded_colours_outside_the_tokens():
     rest = CSS.replace(LIGHT, "").replace(MEDIA, "").replace(DARK, "")
     assert re.findall(r"#[0-9a-fA-F]{3,8}\b|rgba?\(", rest) == []
+
+
+def luminance(hex_colour):
+    h = hex_colour.lstrip("#")
+    rgb = [int(h[i:i + 2], 16) / 255 for i in (0, 2, 4)]
+    lin = [c / 12.92 if c <= 0.03928 else ((c + 0.055) / 1.055) ** 2.4 for c in rgb]
+    return 0.2126 * lin[0] + 0.7152 * lin[1] + 0.0722 * lin[2]
+
+
+def contrast(a, b):
+    la, lb = sorted((luminance(a), luminance(b)), reverse=True)
+    return (la + 0.05) / (lb + 0.05)
+
+
+def test_diff_colours_have_contrast_in_light_and_dark():
+    for b in (tokens(LIGHT), tokens(MEDIA), tokens(DARK)):
+        for kind in ("ins", "del"):
+            fg, bg = b[f"--diff-{kind}"], b[f"--diff-{kind}-bg"]
+            assert contrast(fg, bg) >= 4.5, (kind, fg, bg, contrast(fg, bg))
+
+
+def rule(selector):
+    m = re.search(re.escape(selector) + r"[^{]*\{([^}]*)\}", CSS)
+    assert m, selector
+    return m.group(1)
+
+
+def test_diff_marks_do_not_rely_on_colour_alone():
+    ins, dele = rule(".site .rvdiff ins"), rule(".site .rvdiff del")
+    assert "underline" in ins and "var(--diff-ins)" in ins and "var(--diff-ins-bg)" in ins
+    assert "line-through" in dele and "var(--diff-del)" in dele and "var(--diff-del-bg)" in dele
+    assert "var(--muted)" in rule(".site .rvdiff .same")

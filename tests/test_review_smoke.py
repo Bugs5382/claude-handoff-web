@@ -38,6 +38,7 @@ SCENARIOS = [
     "finished page: typing or moving after Copy results stays",
     "unfinished page: Copy results stays put and no back link",
     "blocker and reopened pills: later paints keep both pills and Add a note still opens",
+    "diff block: added underlined, removed struck through, unchanged dimmed, item still answers",
 ]
 
 
@@ -70,6 +71,13 @@ SECTIONS = ('<!doctype html><html><head><title>Sections</title></head><body clas
 # The same sections with r2 reopened, so one card carries the Reopened pill and another the Blocker pill.
 PILLS = SECTIONS.replace('data-review-h2="off"', 'data-review-h2="off" data-review-reopen="r2=fixed in 1.2"', 1)
 
+# A review item whose body is a word diff (template/_site/diff.py markup).
+DIFFS = ('<!doctype html><html><head><title>Diffs</title></head><body class="site" data-review-h2="off"><header class="top">'
+         '<div class="wrap"><h1>Diffs</h1></div></header><main class="wrap">'
+         '<section data-review-question="d1" data-title="Situation"><h2>Situation</h2><div class="rvdiff">'
+         '<p class="same">It never closes.</p><p>The core ran at <del>10</del><ins>20</ins> Gb/s.</p></div></section>'
+         '</main>' + REVIEW + '</body></html>')
+
 FINISHED = ('<!doctype html><html><head><title>Fin</title></head><body class="site" data-review-h2="off"><header class="top">'
             '<div class="wrap"><h1>Fin</h1></div></header><main class="wrap">'
             '<section data-review-question="a" data-title="A"><h2>A</h2></section>'
@@ -94,6 +102,7 @@ def write_pages(root):
     (demo / "sm-unified").mkdir()
     (demo / "sm-unified" / "index.html").write_text(UNIFIED)
     (demo / "sm-synth.html").write_text(SYNTH)
+    (demo / "sm-diff.html").write_text(DIFFS)
     for n in (1, 2, 3):
         (demo / f"sm-fin-{n}.html").write_text(FINISHED)
     bare = re.sub(r'<script src="/_site/[a-z]+\.js[^"]*"[^>]*></script>', "", backlog)

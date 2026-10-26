@@ -291,3 +291,13 @@ def test_root_index_lists_every_folder(pages):
     assert [f["id"] for f in got["folders"]] == ["demo", "guide"]
     assert any(c["href"] == "/demo/design" for c in got["folders"][0]["pages"])
     assert request(base + "/_index/nope")[0] == 404
+
+
+def test_get_page_renders_diff_items_and_blocks_on_the_server(pages):
+    root, base = pages
+    pagefile.write_definition(root / "demo" / "diffs.json", {"schema": "handoff.page/v1", "kind": "review", "title": "Diffs", "items": [
+        {"id": "d1", "type": "diff", "title": "Wording", "old": "The core ran at 10 Gb/s.", "new": "The core ran at 20 Gb/s."},
+        {"id": "s2", "title": "Body", "body": [{"p": "x"}, {"diff": {"old": "a b", "new": "a c", "code": True}}]}]})
+    diffs = json.loads(request(base + "/_page/demo/diffs")[1])["diffs"]
+    assert diffs["d1"].startswith('<div class="rvdiff">') and "<del>10</del>" in diffs["d1"] and "<ins>20</ins>" in diffs["d1"]
+    assert diffs["s2/body/2"].startswith('<div class="rvdiff code">')

@@ -60,6 +60,7 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import unquote, urlsplit
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import diff as site_diff  # noqa: E402
 import pagefile  # noqa: E402
 
 MAX_BODY = 256 * 1024
@@ -433,6 +434,20 @@ def discover_page_files(root, folder):
     return out
 
 
+def page_diffs(doc):
+    """Word-diff markup (diff.py) for every diff item ("<id>") and diff block ("<id>/body/<n>", "<id>/howto/<n>")."""
+    out = {}
+    for it in doc["items"]:
+        if pagefile.item_type(doc, it) == "diff":
+            out[it["id"]] = site_diff.diff_html(it.get("old", ""), it.get("new", ""), code=bool(it.get("code")))
+        for key in ("body", "howto"):
+            for n, b in enumerate(it.get(key) or [], 1):
+                if isinstance(b, dict) and isinstance(b.get("diff"), dict):
+                    d = b["diff"]
+                    out[f"{it['id']}/{key}/{n}"] = site_diff.diff_html(d.get("old", ""), d.get("new", ""), code=bool(d.get("code")))
+    return out
+
+
 def page_card(folder, rel, path):
     """One index card for a page file, in the same shape gen-index.py's collect() gives an HTML page."""
     doc = pagefile.load(path)
@@ -641,7 +656,7 @@ class Handler(SimpleHTTPRequestHandler):
         doc = pagefile.load(path)
         route = page_route(cfg, rel.split("/")[0], doc)
         self._etag_json({"page": doc, "states": pagefile.item_states(doc), "summary": pagefile.summary(doc),
-                         "route": route, "listening": is_listening(self.root, route["to"])})
+                         "route": route, "listening": is_listening(self.root, route["to"]), "diffs": page_diffs(doc)})
 
     def _note_taken(self, path, doc):
         """Record "picked up" for every sent submission an agent has moved to its inbox's taken/ folder."""

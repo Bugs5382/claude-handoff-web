@@ -323,3 +323,10 @@ def test_import_rounds_fills_a_fresh_page_only(path):
     assert [r["round"] for r in pagefile.load(path)["rounds"]] == [1, 2]
     with pytest.raises(pagefile.PageError, match="rounds can only be imported into a new page"):
         pagefile.import_rounds(path, [closed, open_])
+
+
+def test_a_note_without_an_answer_is_kept(path):
+    make(path)
+    pagefile.save_answers(path, {"s1": {"answer": "", "note": "Thinking about it"}}, by="Alex", now=T1)
+    a = pagefile.load(path)["rounds"][0]["answers"]["s1"]
+    assert (a["answer"], a["note"]) == ("", "Thinking about it")

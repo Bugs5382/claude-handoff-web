@@ -48,6 +48,7 @@ This repository holds only the generic template and the fake `example/`. Never c
 | `POST` | `/_page/<folder>/<slug>/restart` | `{checkpoint, results?}`: restart a journey and send a `restart` submission |
 | `POST` | `/_page/<folder>/<slug>/send` | `{kind: send or blocker, items?, results?}`: send to the page's route; `409` when the route only copies |
 | `GET` | `/_index/`, `/_index/<folder>` | index cards from the page files, merged with the HTML pages in `_status.json` |
+| `GET` | `/`, `/<folder>/`, `/<folder>/history/` | built on request (with `gen-index.py`'s own HTML) when the folder, or for `/` any folder, has page files; otherwise the static `index.html` |
 
 Nothing else is writable. A rejected page write answers `400` with `{"errors": [...]}`, each error naming the
 item. `Cache-Control: no-store` is sent on `/_save/`, `/_history/`, `/_page/`, `/_index/`, `.html` files,

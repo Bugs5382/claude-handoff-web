@@ -15,6 +15,11 @@ Served by `_site/serve.py` from this folder, at the host and port in `site.json`
    sorts the root list. `first_seen` is added by the script; leave it.
 2. Run `python3 gen-index.py`.
 
+Page files (`<folder>/<slug>.json`, see `PAGE-FILE.md`) need no manifest entry: their card comes from the file
+(`page.py status` sets its state, note, chips and priority), and a folder of only page files has no `_status.json`.
+For a folder with page files, the server builds `/<folder>/`, `/<folder>/history/` and `/` on request, so their
+cards are always current; `gen-index.py` still writes the same pages to disk.
+
 A page that isn't in the manifest shows under "Needs you" with a "Not classified" chip. When a page's item
 completes, set it to `done` and it moves to "Completed". To retire a page, the owner presses Stale.
 

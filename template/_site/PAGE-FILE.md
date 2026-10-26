@@ -38,6 +38,15 @@ The page polls every 10 seconds and redraws in place when the file changes: neve
 3 seconds of a click, or while answers are still unsaved, and it keeps the scroll position. When the only
 change is this tab's own answers coming back, it doesn't redraw.
 
+## On the index
+
+A page file is its own index card; it needs no `_status.json` entry. The card follows the same rules as an HTML
+page's: it sorts by `status.priority`, then by the number in its title or slug; it shows the open count (or a
+backlog's per-choice counts), To review, Reopened and Approved, the Reference or Done chip, and `status.chips`.
+It stays in Needs you until every counted item is Yes, unless `status.state` says otherwise. Stale marks it done
+and moves the file to `<folder>/_old/`. Its closed rounds are listed on `/<folder>/history/` with their Copy
+results text.
+
 ## The format
 
 The definition keys sit at the top level, and the server keys are managed by `pagefile.py`.

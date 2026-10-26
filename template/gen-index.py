@@ -6,15 +6,23 @@ Each manifest maps a page path (relative to its folder: "x.html", "dir/", "dir/y
 "first_seen" is added automatically the first time a page is met. Pages that exist but are not in
 the manifest show under "Needs you" with a "Not classified" chip, so nothing hides silently.
 Names, folders, blurbs and the timezone come from site.json next to this script. See _site/README.md.
+Page files (<folder>/<slug>.json, see _site/PAGE-FILE.md) are listed too, from the files themselves, so a folder
+with only page files needs no _status.json. serve.py builds the same pages on request for folders with page files.
 """
 import datetime as dt
 import html
 import json
 import os
 import re
+import sys
 from zoneinfo import ZoneInfo
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, os.path.join(ROOT, "_site"))
+import pagefile  # noqa: E402
+import pageindex  # noqa: E402
+
+HISTORY_NOTE = "Past review and sign-off rounds for this folder."
 def _config():
     with open(os.path.join(ROOT, "site.json")) as f:
         return json.load(f)
@@ -139,7 +147,10 @@ def collect(folder):
         mt = mtime(p)
         ent = manifest.get(k)
         known = ent is not None
-        if not known:
+        if not known and k == "history/":
+            # gen-index.py's own history page is always Reference, with or without a manifest entry.
+            ent, known = {"state": "reference", "note": HISTORY_NOTE, "first_seen": dt.datetime.fromtimestamp(mt, ET).isoformat(timespec="seconds")}, True
+        elif not known:
             ent = {}
         if "first_seen" not in ent:
             ent["first_seen"] = dt.datetime.fromtimestamp(min(mt, dt.datetime.now().timestamp()), ET).isoformat(timespec="seconds")
@@ -175,6 +186,7 @@ def collect(folder):
         with open(mpath, "w") as f:
             json.dump(manifest, f, indent=2, ensure_ascii=False)
             f.write("\n")
+    pages += [pageindex.page_card(folder, rel, path) for rel, path in pageindex.discover_page_files(ROOT, folder)]
     return order_pages(pages, list(manifest))
 
 
@@ -382,11 +394,54 @@ def round_count_line(answers, choices=None, n_items=0):
     return f"{yes} of {len(counted)} Yes" if counted else "no items"
 
 
-def history_page(folder, pages):
-    """Write <folder>/history/: every page's rounds, each page collapsed, newest round first."""
+def page_file_rounds(folder, key):
+    """A page file's closed rounds, newest first, in the shape history_page() shows: round, build, dates, the
+    count line and the round's Copy results text."""
+    try:
+        doc = pagefile.load(os.path.join(ROOT, folder, key + ".json"))
+    except (OSError, ValueError):
+        return []
+    kind_type = {"review": "section", "checklist": "check", "journey": "step", "backlog": "choice",
+                 "questions": "question", "reference": "info", "status": "info"}[doc["kind"]]
+    types = {it["id"]: it.get("type", kind_type) for it in doc["items"]}
+    yn = [i for i, t in types.items() if t not in ("question", "choice", "info")]
+    choice = [i for i, t in types.items() if t == "choice"]
+    out = []
+    for r in reversed([r for r in doc["rounds"] if r.get("closed")]):
+        a = r.get("answers", {})
+        if choice and not yn:
+            opts = doc["options"]
+            labels = {c["value"]: c["label"].lower() for c in opts["choices"]}
+            tally = {lab: 0 for lab in labels.values()}
+            for i in choice:
+                v = (a.get(i) or {}).get("answer") or opts.get("default", "")
+                if v in labels:
+                    tally[labels[v]] += 1
+            count = " · ".join(f"{n} {k}" for k, n in tally.items())
+        else:
+            count = f'{sum(1 for i in yn if (a.get(i) or {}).get("answer") == "yes")} of {len(yn)} Yes' if yn else "no items"
+        out.append({"round": r["round"], "build": r.get("build") or "", "opened": r.get("opened"), "closed": r.get("closed"),
+                    "count": count, "results_text": r.get("results", "")})
+    return out
+
+
+def history_html(folder, pages):
+    """<folder>/history/: every page's rounds, each page collapsed, newest round first."""
     groups = []
     for p in pages:
         if p["key"] == "history/":
+            continue
+        if p.get("kind"):
+            rounds = page_file_rounds(folder, p["key"])
+            if not rounds:
+                continue
+            items = [f'<details class="rvhist-round"><summary>Round {esc(str(e["round"]))}'
+                     + (f' &middot; build {esc(e["build"])}' if e["build"] else "")
+                     + f' &middot; {esc((e["opened"] or "")[:10])} to {esc((e["closed"] or "")[:10])} &middot; {esc(e["count"])}'
+                     + f'</summary><pre class="hist-text">{esc(e["results_text"])}</pre></details>' for e in rounds]
+            n = len(rounds)
+            groups.append(f'<details class="rvhist"><summary>{esc(p["title"])} ({n} round{"" if n == 1 else "s"})</summary>'
+                          f'<p class="m"><a href="{esc(p["href"])}">Full page</a></p>{"".join(items)}</details>')
             continue
         rounds = history_rounds(folder, p["key"])
         if not rounds:
@@ -407,11 +462,15 @@ def history_page(folder, pages):
         groups.append(f'<details class="rvhist"><summary>{esc(p["title"])} ({n} round{"" if n == 1 else "s"})</summary>'
                       f'<p class="m"><a href="{esc(p["href"])}">Full page</a></p>{"".join(items)}</details>')
     body = "".join(groups) or '<p class="empty">No rounds yet.</p>'
+    return shell(f"{FOLDERS[folder]}: history", "Past review and sign-off rounds.", body, crumb=(f"/{folder}/", FOLDERS[folder]))
+
+
+def history_page(folder, pages):
+    """Write <folder>/history/index.html."""
     hdir = os.path.join(ROOT, folder, "history")
     os.makedirs(hdir, exist_ok=True)
     with open(os.path.join(hdir, "index.html"), "w") as f:
-        f.write(shell(f"{FOLDERS[folder]}: history", "Past review and sign-off rounds.", body,
-                      crumb=(f"/{folder}/", FOLDERS[folder])))
+        f.write(history_html(folder, pages))
 
 
 def ensure_reference_entry(folder, key, note):
@@ -433,22 +492,36 @@ def ensure_reference_entry(folder, key, note):
             f.write("\n")
 
 
+def folder_html(d, pages):
+    """One folder's index: Needs you, Reference, then Completed folded."""
+    by = {s: [p for p in pages if p["state"] == s] for s, _ in SECTIONS}
+    summary = (f'<p class="muted">{len(by["needs-you"])} need you &middot; {len(by["reference"])} reference '
+               f'&middot; {len(by["done"])} completed</p>')
+    live = summary + "".join(section(s, label, by[s]) for s, label in SECTIONS)
+    return shell(FOLDERS[d], esc(BLURB[d]), live, crumb=("/", f'{CONFIG.get("title", "Pages")} hand-off · all folders'))
+
+
 def main():
     everything = {}
-    for d, name in FOLDERS.items():
-        ensure_reference_entry(d, "history/", "Past review and sign-off rounds for this folder.")
+    for d in FOLDERS:
+        has_html = any(k != "history/" for k in discover(d)) if os.path.isdir(os.path.join(ROOT, d)) else False
+        if has_html or os.path.exists(os.path.join(ROOT, d, "_status.json")):
+            ensure_reference_entry(d, "history/", HISTORY_NOTE)
         if not os.path.exists(os.path.join(ROOT, d, "history", "index.html")):
             # A first version for collect() to find, so the folder's index lists it from the first run.
             history_page(d, [])
         pages = collect(d)
         everything[d] = pages
         history_page(d, pages)
-        by = {s: [p for p in pages if p["state"] == s] for s, _ in SECTIONS}
-        summary = (f'<p class="muted">{len(by["needs-you"])} need you &middot; {len(by["reference"])} reference '
-                   f'&middot; {len(by["done"])} completed</p>')
-        live = summary + "".join(section(s, label, by[s]) for s, label in SECTIONS)
         with open(os.path.join(ROOT, d, "index.html"), "w") as f:
-            f.write(shell(name, esc(BLURB[d]), live, crumb=("/", f'{CONFIG.get("title", "Pages")} hand-off · all folders')))
+            f.write(folder_html(d, pages))
+    with open(os.path.join(ROOT, "index.html"), "w") as f:
+        f.write(root_html(everything))
+    print(" ".join(f"{d}={sum(p['state'] == 'needs-you' for p in everything[d])}" for d in FOLDERS))
+
+
+def root_html(everything):
+    """The root index: Needs you now by folder, Reference, Completed and the folder cards."""
     cfg = {}
     try:
         cfg = json.load(open(os.path.join(ROOT, "_site", "focus.json")))
@@ -500,9 +573,7 @@ def main():
             'aria-controls="filter-menu">Projects: All <span aria-hidden="true">&#9662;</span></button>'
             f'<div class="fmenu" id="filter-menu" role="group" aria-label="Projects" hidden>{chips}'
             '<div class="fact"><button type="button" data-all>All</button><button type="button" data-none>None</button></div></div></div>')
-    with open(os.path.join(ROOT, "index.html"), "w") as f:
-        f.write(shell(CONFIG.get("title", "Pages") + " hand-off", CONFIG.get("subtitle", ""), live, filt, root=True))
-    print(" ".join(f"{d}={sum(p['state'] == 'needs-you' for p in everything[d])}" for d in FOLDERS))
+    return shell(CONFIG.get("title", "Pages") + " hand-off", CONFIG.get("subtitle", ""), live, filt, root=True)
 
 
 if __name__ == "__main__":

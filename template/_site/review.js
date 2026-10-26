@@ -327,7 +327,9 @@ if (!window.siteTheme) { const t = document.createElement("script"); t.src = "/_
   }
   const items = [];
   // A page file: the renderer hands over its items (each one a section card it drew).
-  if (PF) PF.items.forEach(x => items.push({ id: x.id, title: x.title, at: x.el, nodes: [x.el], type: x.type, suggested: x.suggested, ch: choicesOf(x.el) }));
+  // data-review-answers="yes,no" on an item: that item's own Yes / No / Changes / Skipped set (page files mix them).
+  const ownAnswers = el => (el.getAttribute("data-review-answers") || "").split(",").map(x => x.trim()).filter(Boolean);
+  if (PF) PF.items.forEach(x => items.push({ id: x.id, title: x.title, at: x.el, nodes: [x.el], type: x.type, suggested: x.suggested, ch: choicesOf(x.el), answers: ownAnswers(x.el) }));
   // data-review-h2="off": only [data-review-question] elements are items (converted pages).
   else if (body.getAttribute("data-review-h2") !== "off") Array.from(document.querySelectorAll("h2")).forEach((h, i) => {
     const id = "s" + (i + 1);
@@ -472,7 +474,8 @@ if (!window.siteTheme) { const t = document.createElement("script"); t.src = "/_
     }
     const row = document.createElement("div"); row.className = "rvrow";
     row.innerHTML = '<span class="ask">Your answer:</span>';
-    row.appendChild(segEl(it, OPTS.map(o => o.split(":"))));
+    const ALL = ["yes:Yes", "no:No", "chg:Changes", "skip:Skipped"];
+    row.appendChild(segEl(it, (it.answers && it.answers.length ? ALL.filter(o => it.answers.includes(o.split(":")[0])) : OPTS).map(o => o.split(":"))));
     const addNote = document.createElement("button"); addNote.type = "button"; addNote.className = "add-note"; addNote.textContent = "Add a note";
     const sp = document.createElement("span"); sp.className = "sp";
     const bk = document.createElement("button"); bk.type = "button"; bk.className = "blocker-btn";
@@ -885,7 +888,8 @@ if (!window.siteTheme) { const t = document.createElement("script"); t.src = "/_
   // Fills only unanswered Yes / No / Changes items, so a Changes note or an earlier pick is never overwritten.
   function markAll(v, label) {
     showMenu(false);
-    const open = items.filter(it => !isQ(it) && !isC(it) && !hidden.has(it.id) && !blocked[it.id] && !(state[it.id] || {}).locked && !pressed(it));
+    const open = items.filter(it => !isQ(it) && !isC(it) && !hidden.has(it.id) && !blocked[it.id] && !(state[it.id] || {}).locked && !pressed(it) &&
+      it.box.querySelector('.seg button[data-v="' + v + '"]'));
     if (!open.length) { alert("Every item already has an answer."); return; }
     if (!confirm("Mark the " + open.length + " unanswered item" + (open.length === 1 ? "" : "s") + " " + label + "? Items you've answered keep their answers.")) return;
     for (const it of open) { setPressed(it, v); store.touched.add(it.id); }

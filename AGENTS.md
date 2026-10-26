@@ -21,14 +21,14 @@ The two things to know before changing it:
 ## Using claude-handoff-web
 
 The contract a page relies on: `/_site/site.css`, `/_site/review.js` and `/_site/live.js` with the body
-attributes in `template/_site/README.md`, the save API in `template/_site/SAVE-API.md`, and the
+attributes in `template/_site/README.md`, the save API in `template/_site/SAVE-API.md`, the page file format in `template/_site/PAGE-FILE.md`, and the
 `_status.json` manifest per folder. Keep those stable; bump the `?v=` cache-buster when an asset changes.
 
 ## Layout
 
 <!-- The directories that matter and what lives in each. Keep it short; point at the entry points. -->
 
-- `template/` - what `install.sh` copies: `_site/` (assets, `serve.py`, `build-review.py`, docs),
+- `template/` - what `install.sh` copies: `_site/` (assets, `serve.py`, `build-review.py`, `schema.py`, `pagefile.py`, docs),
   `gen-index.py`, and the instance `CLAUDE.md`/`AGENTS.md`
 - `example/` - fake `site.json` and demo folders (a review page, a backlog, a checklist, the guide copies)
 - `docs/` - quick start, page types, operating notes

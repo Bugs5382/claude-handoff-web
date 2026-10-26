@@ -50,6 +50,7 @@ Then open `http://127.0.0.1:8000/` (host and port come from `site.json`).
 - 🧱 **[Page types](docs/page-types.md):** the design and a working skeleton for every page an agent makes.
 - 🛠️ **[Operating the site](docs/operating.md):** config, endpoints, Stale, `_old/` pruning, the no-git rule.
 - 💾 **[Save API](template/_site/SAVE-API.md):** how pages store answers on the server.
+- 🗂️ **[Page files](template/_site/PAGE-FILE.md):** the JSON page format and the one module that writes it.
 - 🤖 **[Agent rules](template/AGENTS.md)** and a **[memory file](memory/handoff-web.md)** for Claude sessions.
 
 ## 🧪 Develop

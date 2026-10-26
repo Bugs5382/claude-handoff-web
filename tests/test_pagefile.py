@@ -311,3 +311,15 @@ def test_summary_counts_backlog_choices_with_the_default(path):
     pagefile.save_answers(path, {"b2": {"answer": "start", "note": ""}}, by="Alex")
     s = pagefile.summary(pagefile.load(path))
     assert s["tally"] == {"start": 1, "hold": 2} and s["open"] == 0
+
+
+def test_import_rounds_fills_a_fresh_page_only(path):
+    make(path)
+    closed = {"round": 1, "build": None, "reset": None, "opened": T0, "closed": T1, "openedBy": "imported",
+              "answers": {"s1": {"answer": "no", "note": "", "by": "Alex", "at": T1}}, "checkpoints": {}, "reopened": {}}
+    open_ = {"round": 2, "build": None, "reset": None, "opened": T1, "closed": None, "openedBy": "imported",
+             "answers": {}, "checkpoints": {}, "reopened": {}}
+    assert pagefile.import_rounds(path, [closed, open_]) == 2
+    assert [r["round"] for r in pagefile.load(path)["rounds"]] == [1, 2]
+    with pytest.raises(pagefile.PageError, match="rounds can only be imported into a new page"):
+        pagefile.import_rounds(path, [closed, open_])

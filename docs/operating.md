@@ -66,7 +66,8 @@ The file is `handoff.submission/v1`: the page, its URL, title, build, round and 
 answers and notes, and the Copy results text. File names sort blockers first. An agent takes a file by moving
 it to `_inbox/<agent>/taken/`; the next read of the page records it as picked up. While an agent waits, it
 keeps its pid in `_inbox/<agent>/.listening`, and the page shows it as listening only while that process is
-alive.
+alive. `page.py wait <agent>` does the waiting and `page.py hook <agent>` is the safety net (see
+`_site/PAGE-FILE.md`).
 
 A page file's card is in Needs you until every counted item is Yes, then Done; `status.state` overrides that,
 and `reference` and `status` pages are Reference. Open questions never hold a page up, except on a

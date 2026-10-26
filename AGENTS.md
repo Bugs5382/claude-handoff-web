@@ -28,7 +28,7 @@ attributes in `template/_site/README.md`, the save API in `template/_site/SAVE-A
 
 <!-- The directories that matter and what lives in each. Keep it short; point at the entry points. -->
 
-- `template/` - what `install.sh` copies: `_site/` (assets, `serve.py`, `build-review.py`, `schema.py`, `pagefile.py`, docs),
+- `template/` - what `install.sh` copies: `_site/` (assets, `serve.py`, `build-review.py`, `schema.py`, `pagefile.py`, `page.py`, docs),
   `gen-index.py`, and the instance `CLAUDE.md`/`AGENTS.md`
 - `example/` - fake `site.json` and demo folders (a review page, a backlog, a checklist, the guide copies)
 - `docs/` - quick start, page types, operating notes

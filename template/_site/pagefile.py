@@ -249,6 +249,16 @@ def reply(path, item_id, frm, text, *, action=None, reason=None, ref=None, now=N
         return entry["n"]
 
 
+def import_rounds(path, rounds):
+    """Replace a new page's empty round 1 with converted history plus the open round. Returns the rev."""
+    with _locked(path) as p:
+        doc = load(p)
+        if doc["rev"] != 1 or len(doc["rounds"]) != 1 or doc["rounds"][0]["answers"]:
+            raise PageError("rounds can only be imported into a new page")
+        doc["rounds"] = rounds
+        return _commit(p, doc)
+
+
 def set_status(path, state, *, note=None, chips=None, priority=None):
     """The page's index card. Returns the rev."""
     with _locked(path) as p:

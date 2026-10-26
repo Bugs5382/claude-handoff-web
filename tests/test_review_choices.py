@@ -122,36 +122,38 @@ def browser(tmp_path_factory):
     port = free_port()
     proc = subprocess.Popen([sys.executable, str(root / "_site" / "serve.py"), str(port), "--bind", "127.0.0.1",
                              "--directory", str(root)], stderr=subprocess.DEVNULL)
-    base = f"http://127.0.0.1:{port}"
-    for _ in range(100):
-        try:
-            urllib.request.urlopen(base + "/", timeout=1)
-            break
-        except OSError:
-            time.sleep(0.05)
+    try:
+        base = f"http://127.0.0.1:{port}"
+        for _ in range(100):
+            try:
+                urllib.request.urlopen(base + "/", timeout=1)
+                break
+            except OSError:
+                time.sleep(0.05)
 
-    def run(mode):
-        profile = tmp / f"profile-{mode}"
-        r = subprocess.run([chrome, "--headless=new", "--disable-gpu", "--no-sandbox", "--no-first-run",
-                            f"--user-data-dir={profile}", "--virtual-time-budget=30000", "--dump-dom",
-                            f"{base}/harness.html?mode={mode}"], capture_output=True, text=True, timeout=120)
-        m = re.search(r'<pre id="out">(.*?)</pre>', r.stdout, re.S)
-        assert m, r.stdout[-2000:] + r.stderr[-2000:]
+        def run(mode):
+            profile = tmp / f"profile-{mode}"
+            r = subprocess.run([chrome, "--headless=new", "--disable-gpu", "--no-sandbox", "--no-first-run",
+                                f"--user-data-dir={profile}", "--virtual-time-budget=30000", "--dump-dom",
+                                f"{base}/harness.html?mode={mode}"], capture_output=True, text=True, timeout=120)
+            m = re.search(r'<pre id="out">(.*?)</pre>', r.stdout, re.S)
+            assert m, r.stdout[-2000:] + r.stderr[-2000:]
 
-        data = json.loads(html.unescape(m.group(1)))
-        assert "error" not in data, data["error"]
-        return data
+            data = json.loads(html.unescape(m.group(1)))
+            assert "error" not in data, data["error"]
+            return data
 
-    built = subprocess.run([sys.executable, str(root / "_site" / "build-review.py"), "demo"], cwd=root, capture_output=True, text=True)
-    assert built.returncode == 0, built.stderr
-    unified = run("unified")
-    acted = run("act")
-    page = root / "demo" / "backlog.html"
-    page.write_text(page.read_text().replace('data-review-default="hold"', 'data-review-default="start"'))
-    after = run("read")
-    yield acted, after, unified
-    proc.terminate()
-    proc.wait(timeout=5)
+        built = subprocess.run([sys.executable, str(root / "_site" / "build-review.py"), "demo"], cwd=root, capture_output=True, text=True)
+        assert built.returncode == 0, built.stderr
+        unified = run("unified")
+        acted = run("act")
+        page = root / "demo" / "backlog.html"
+        page.write_text(page.read_text().replace('data-review-default="hold"', 'data-review-default="start"'))
+        after = run("read")
+        yield acted, after, unified
+    finally:
+        proc.terminate()
+        proc.wait(timeout=5)
 
 
 def test_untouched_items_show_the_default(browser):

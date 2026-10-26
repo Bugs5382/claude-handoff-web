@@ -4,14 +4,39 @@ A page file is one JSON file per page, `<folder>/<slug>.json`, in the `handoff.p
 page definition, every round of answers with who and when, and a reply thread per item. The full design is in
 `docs/design/json-pages.md` in the repo.
 
-This covers the file format, the one module that writes it, the `page.py` command line for agents, and the
-server endpoints that read and write it (listed in `docs/operating.md` in the repo). The renderer comes next;
-until then, HTML pages work as they always have.
+This covers the file format, the one module that writes it, the `page.py` command line for agents, the
+server endpoints that read and write it (listed in `docs/operating.md` in the repo), and the renderer that
+draws it. HTML pages keep working as they always have.
 
 ## Before you start
 
 - Python 3.10 or newer. Both modules are standard library only.
 - Run them from `_site/` (or put `_site/` on `sys.path`): `pagefile.py` imports `schema.py`.
+
+## Viewing a page
+
+A page file is shown at `/<folder>/<slug>`. The server answers with `_site/page.html`, and `_site/render.js`
+draws the page from `GET /_page/<folder>/<slug>` into the same markup an HTML page uses, so `site.css` and
+`review.js` work unchanged:
+
+- each answerable item is a numbered card (`<section data-review-question>`), and `info` items are plain
+  sections;
+- the page's settings become the body attributes `review.js` reads: the build, Skipped on checklists and
+  journeys, a backlog's choices, what's blocked (an unmet `dependsOn`, or a `blockedBy` with no `unblock`
+  reply), the earlier-round Yes items to hide, and the reopened items with their reasons;
+- how-tos become `<template data-howto>`, pictures open in the picture pop-out, and diff items and blocks
+  are drawn by the server with `diff.py`, with the Diff | Final switch;
+- `reference` and `status` pages have no answer bar.
+
+`review.js` saves through the renderer (`PUT /_page/.../answers`, only the items this tab changed), and
+History lists the page's closed rounds. When the page's route sends, Blocker becomes "Blocker: send now" and
+the bar gains "Send to <agent>" with a delivery line (Sent, Picked up, the agent's reply, or "isn't
+listening; Copy results instead"). A journey shows "Restart from" with one button per checkpoint reached, and
+each item lists the answers from earlier rounds with the replies, oldest first.
+
+The page polls every 10 seconds and redraws in place when the file changes: never while the owner is typing, within
+3 seconds of a click, or while answers are still unsaved, and it keeps the scroll position. When the only
+change is this tab's own answers coming back, it doesn't redraw.
 
 ## The format
 

@@ -2,6 +2,8 @@
 //   Index mode (default; pages with #live): swap the card lists in place and light up New/Updated.
 //   Page mode (<script data-mode="page">, review pages): soft-reload when the HTML changes, but
 //   only when nobody is typing and nothing was clicked for 5 s; scroll position is kept.
+//   File mode (<script data-mode="file">, pages drawn from a page file): no polling, render.js redraws
+//   those itself; only the picture pop-out and the theme.
 // Index cards carry data-key, data-sig, data-mtime and data-first (epoch seconds); the "New" and
 // "Updated" chips are worked out here so they age without a rebuild.
 // Theme toggle: index and plain pages that don't load /_site/theme.js in <head> get it here.
@@ -111,7 +113,7 @@ if (!window.siteTheme) { const t = document.createElement("script"); t.src = "/_
       const go = () => { scrollTo(saved.x, saved.y); toast("Updated just now"); };
       if (document.readyState === "complete") go(); else addEventListener("load", go);
     }
-  } else {
+  } else if (mode === "index") {
     decorate();
     localStorage.setItem(visitKey, String(Math.floor(loadedAt)));
   }
@@ -191,6 +193,7 @@ if (!window.siteTheme) { const t = document.createElement("script"); t.src = "/_
   async function tick() {
     if (busy || document.hidden) return;
     busy = true;
+    if (mode === "file") return;
     try { await (mode === "page" ? pollPage() : pollIndex()); } catch (e) { /* server busy or offline: next poll */ }
     busy = false;
   }

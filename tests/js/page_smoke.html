@@ -1,0 +1,307 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>page smoke harness</title></head><body>
+<!-- Smoke tests for JSON pages (render.js plus review.js) in a real browser, run by tests/test_page_smoke.py. Each
+     test loads its own page file in a same-origin frame, clicks like the owner would, and the results land in #out
+     for Chrome's --dump-dom. -->
+<iframe id="f" style="width:1000px;height:800px"></iframe>
+<pre id="out">pending</pre>
+<script>
+const results = {};
+const f = document.getElementById("f");
+const d = () => f.contentDocument, w = () => f.contentWindow;
+const tick = ms => new Promise(r => setTimeout(r, ms));
+async function until(cond, what, tries = 600) {
+  for (let i = 0; i < tries; i++) { try { if (cond()) return; } catch (e) {} await tick(25); }
+  throw new Error("timed out waiting for " + what);
+}
+function fail(msg) { throw new Error(msg); }
+const ok = (v, msg) => { if (!v) fail(msg || "expected truthy"); };
+const eq = (a, b, msg) => { if (a !== b) fail((msg ? msg + ": " : "") + JSON.stringify(a) + " !== " + JSON.stringify(b)); };
+const match = (s, re, msg) => { if (!re.test(s)) fail((msg ? msg + ": " : "") + JSON.stringify(s) + " !~ " + re); };
+async function t(name, fn) {
+  try { await fn(); results[name] = "ok"; } catch (e) { results[name] = "FAIL " + String(e && e.stack || e).split("\n").slice(0, 3).join(" | "); }
+}
+function stub() {
+  const win = w();
+  win.alert = () => {}; win.confirm = () => true; win.prompt = () => "stuck";
+  Object.defineProperty(win.navigator, "clipboard", { configurable: true, value: { writeText: async s => { win.__clip = s; } } });
+}
+async function open(path) { await new Promise(r => { f.onload = r; f.src = path; }); }
+async function load(path) {
+  await open(path);
+  await until(() => w().siteReview && d().querySelector(".rvbar .cnt").textContent, "the rendered page " + path);
+  stub();
+  return { win: w(), doc: d(), bar: d().querySelector(".rvbar") };
+}
+const click = el => el.dispatchEvent(new (w().MouseEvent)("click", { bubbles: true }));
+const saved = () => until(() => !w().siteReview.unsaved(), "the save");
+const pageFile = async rel => (await (await fetch("/_page/" + rel, { cache: "no-store" })).json()).page;
+const answers = async rel => { const p = await pageFile(rel); return p.rounds[p.rounds.length - 1].answers; };
+const card = (doc, id) => doc.querySelector('[data-review-question="' + id + '"]');
+const seg = (doc, id, v) => card(doc, id).querySelector('.seg button[data-v="' + v + '"]');
+
+(async () => {
+  await t("review: answers, notes, card follows answer, green then approved, saved to the page file", async () => {
+    const { win, doc, bar } = await load("/demo/pf-review-1");
+    eq(doc.title, "pf-review-1");
+    eq(doc.querySelector("header.top h1").textContent, "pf-review-1");
+    const cards = Array.from(doc.querySelectorAll(".rvcard")); eq(cards.length, 4);
+    eq(cards[0].querySelector("h2").textContent, "1. A module repo", "numbered from 1");
+    click(seg(doc, "r1", "no"));
+    eq(cards[0].dataset.answer, "no"); eq(cards[0].querySelector(".rvhead .st").textContent, "No");
+    ok(!cards[0].querySelector(".notel").hidden);
+    const ta = cards[0].querySelector("textarea"); ta.value = "Split it"; ta.dispatchEvent(new win.Event("input"));
+    await saved();
+    ["r2", "r3", "r4"].forEach(id => click(seg(doc, id, "yes")));
+    ok(bar.classList.contains("all-done")); ok(!bar.classList.contains("approved"));
+    click(seg(doc, "r1", "yes"));
+    ok(bar.classList.contains("approved")); match(bar.querySelector(".cnt").textContent, /^APPROVED · all 4 Yes/);
+    await saved();
+    const a = await answers("demo/pf-review-1");
+    eq(a.r1.answer, "yes"); eq(a.r1.note, "Split it"); eq(a.r1.was[0].answer, "no"); eq(a.r4.answer, "yes"); eq(a.r4.by, "Alex");
+  });
+
+  await t("review: Changes needs a note; Blocker: send now writes a blocker to the inbox; copy blockers", async () => {
+    const { win, doc, bar } = await load("/demo/pf-review-2");
+    const c = card(doc, "r1");
+    click(seg(doc, "r1", "chg"));
+    ok(c.querySelector(".rv").classList.contains("empty"));
+    const bk = c.querySelector(".blocker-btn"); eq(bk.textContent, "Blocker: send now");
+    let alerted = ""; win.alert = m => { alerted = m; };
+    click(bk);
+    await until(() => alerted, "the blocker alert");
+    match(alerted, /^Blocker sent to ops/);
+    ok(bar.classList.contains("has-blocker")); eq(bar.querySelector(".bkr").textContent, "1 BLOCKER");
+    const p = await pageFile("demo/pf-review-2");
+    eq(p.submissions.length, 1); eq(p.submissions[0].kind, "blocker"); eq(JSON.stringify(p.submissions[0].items), '["r1"]');
+    eq(p.rounds[0].answers.r1.note, "stuck");
+    click(bar.querySelector(".copy-blockers")); await tick(50);
+    match(win.__clip, /^BLOCKER: .*\n- \[r1\] A module repo\n {4}Note: stuck\n$/);
+  });
+
+  await t("copy route: Blocker: copy now copies, and there is no Send button", async () => {
+    const { win, doc, bar } = await load("/demo/pf-copyroute");
+    ok(!bar.querySelector(".send-btn"), "no Send on a copy route");
+    const bk = card(doc, "r2").querySelector(".blocker-btn"); eq(bk.textContent, "Blocker: copy now");
+    click(bk); await tick(100);
+    match(win.__clip, /^BLOCKER: Copy route \(\/demo\/pf-copyroute\)\n- \[r2\] The web app\n {4}Note: stuck\n$/);
+    eq((await pageFile("demo/pf-copyroute")).submissions.length, 0);
+  });
+
+  await t("jump bar: Next and the n key walk open items; the picker filters and Enter jumps", async () => {
+    const { win, doc, bar } = await load("/demo/pf-review-3");
+    eq(bar.querySelector(".ids-l").textContent, "Open IDs"); eq(bar.querySelector(".ids-n").textContent, "(4)");
+    click(seg(doc, "r1", "yes"));
+    eq(bar.querySelector(".ids-n").textContent, "(3)");
+    click(bar.querySelector(".next")); await tick(500);
+    eq(doc.activeElement.closest("[data-review-question]").dataset.reviewQuestion, "r2");
+    doc.activeElement.blur();
+    win.document.dispatchEvent(new win.KeyboardEvent("keydown", { key: "n", bubbles: true })); await tick(500);
+    ok(doc.activeElement.closest("[data-review-question]"), "n moved focus to an item");
+    click(bar.querySelector(".ids"));
+    const pick = bar.querySelector(".rvids"); ok(!pick.hidden);
+    const inp = pick.querySelector("input"); inp.value = "platform"; inp.dispatchEvent(new win.Event("input"));
+    eq(pick.querySelectorAll(".rvids-list a").length, 1);
+    inp.dispatchEvent(new win.KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+    ok(pick.hidden);
+  });
+
+  await t("saved answers load from the page file; a failed save shows amber", async () => {
+    const { win, doc, bar } = await load("/demo/pf-saved");
+    const c = card(doc, "r1"); eq(c.dataset.answer, "yes");
+    eq(seg(doc, "r1", "yes").getAttribute("aria-pressed"), "true");
+    match(bar.querySelector(".svst").textContent, /^Saved \d\d:\d\d$/);
+    win.fetch = async (u, o = {}) => { if (o.method === "PUT") throw new Error("down"); return { ok: false, status: 500 }; };
+    click(seg(doc, "r1", "no"));
+    await until(() => bar.classList.contains("save-bad"), "the failed save");
+    eq(bar.querySelector(".svst").textContent, "Not saved · retrying");
+    eq(win.siteReview.unsaved(), true);
+  });
+
+  await t("checklist: skip locks, earlier Yes hidden, blocked by a dependency, reopened with its reason, question", async () => {
+    const { win, doc, bar } = await load("/demo/pf-check");
+    ok(doc.querySelector(".rvdone"), "approved and hidden note");
+    eq(win.getComputedStyle(card(doc, "c1")).display, "none", "c1 hidden");
+    eq(card(doc, "c4").querySelector(".rvhead .st").textContent, "Blocked by c2");
+    eq(card(doc, "c5").querySelector(".rvhead .st").textContent, "Reopened: fixed in #70");
+    match(bar.querySelector(".cnt").textContent, /^0 of 3 answered · 1 blocked · 1 approved and hidden · 1 question unanswered/);
+    click(seg(doc, "c3", "skip"));
+    eq(card(doc, "c3").querySelector(".rvhead .st").textContent, "Skipped (locked)");
+    ok(seg(doc, "c3", "yes").disabled);
+    ["c2", "c5"].forEach(id => click(seg(doc, id, "yes")));
+    ok(bar.classList.contains("approved"), bar.querySelector(".cnt").textContent);
+    const r = win.siteReview.results();
+    match(r, /- \[c1\] YES: One/); match(r, /- \[c3\] SKIPPED \(locked\): Three/); match(r, /- \[c4\] BLOCKED by c2, NOT ANSWERED: Four/);
+    match(r, /Q q1: \(no answer\)/);
+    await saved();
+    const a = await answers("demo/pf-check");
+    eq(a.c3.answer, "skipped"); eq(a.c5.answer, "yes"); ok(!a.c1, "a hidden Yes isn't written into the new round");
+  });
+
+  await t("question: Use suggestion fills the answer and saves it", async () => {
+    const { doc } = await load("/demo/pf-question");
+    const q = card(doc, "q1"); ok(q.querySelector(".rv.question"));
+    click(q.querySelector(".suggest-btn"));
+    eq(q.querySelector("textarea.qans").value, "5390");
+    await saved();
+    eq((await answers("demo/pf-question")).q1.answer, "5390");
+  });
+
+  await t("backlog: default choice, picking every item turns the bar green, saved", async () => {
+    const { win, doc, bar } = await load("/demo/pf-backlog");
+    eq(doc.querySelectorAll(".rv.choice").length, 3);
+    match(bar.querySelector(".cnt").textContent, /^0 of 3 picked/);
+    eq(bar.querySelector(".ids-l").textContent, "Not picked");
+    ok(doc.querySelector(".rv .seg button.def").textContent.includes("(default)"));
+    const segs = Array.from(doc.querySelectorAll(".rv.choice .seg"));
+    segs.forEach((g, i) => click(g.querySelectorAll("button")[i === 0 ? 0 : 1]));
+    ok(bar.classList.contains("all-done")); match(bar.querySelector(".cnt").textContent, /^All 3 picked · 1 start · 2 hold/);
+    const cta = card(doc, "b3").querySelector("textarea"); cta.value = "After the audit"; cta.dispatchEvent(new win.Event("input"));
+    await saved();
+    const a = await answers("demo/pf-backlog");
+    eq(a.b1.answer, "start"); eq(a.b2.answer, "hold"); eq(a.b3.note, "After the audit");
+    match(win.siteReview.results(), /\n1 start · 2 hold\n/);
+  });
+
+  await t("theme toggle works on a rendered page", async () => {
+    localStorage.removeItem("site-theme");
+    const { doc } = await load("/demo/pf-theme");
+    await until(() => doc.querySelector("header.top .theme-tg"), "the theme toggle");
+    click(doc.querySelector('header.top .theme-tg [data-theme="dark"]'));
+    eq(doc.documentElement.getAttribute("data-theme"), "dark");
+    click(doc.querySelector('header.top .theme-tg [data-theme="auto"]'));
+    ok(!doc.documentElement.hasAttribute("data-theme"));
+  });
+
+  await t("finished page: green bar and back link; Copy results goes back to the folder", async () => {
+    const { doc, bar } = await load("/demo/pf-fin-1");
+    ok(doc.querySelector("header.top .crumb"), "the crumb back to the folder");
+    const back = bar.querySelector(".back"); ok(back.hidden);
+    doc.querySelectorAll('.seg button[data-v="yes"]').forEach(b => click(b));
+    ok(bar.classList.contains("approved")); ok(!back.hidden); eq(back.getAttribute("href"), "/demo/");
+    click(bar.querySelector(".copy")); await tick(400);
+    eq(w().location.pathname, "/demo/pf-fin-1", "not before 1.5 s");
+    await until(() => w().location.pathname === "/demo/", "going back to the folder");
+  });
+
+  await t("copy results keeps the Copy results format", async () => {
+    const { win, doc, bar } = await load("/demo/pf-copyres");
+    click(seg(doc, "r1", "yes")); click(seg(doc, "r2", "no"));
+    click(bar.querySelector(".copy")); await tick(100);
+    match(win.__clip, /^Review: pf-copyres \(\/demo\/pf-copyres\)\n- \[r1\] YES: A module repo\n- \[r2\] NO: The web app\n- \[r3\] NOT ANSWERED: The platform repos\n/);
+    match(win.__clip, /Not approved yet: 1 of 4 are Yes\./);
+  });
+
+  await t("mark unanswered Yes fills only open items and saves them", async () => {
+    const { win, doc, bar } = await load("/demo/pf-mark");
+    click(seg(doc, "r1", "no"));
+    const asked = []; win.confirm = m => { asked.push(m); return true; };
+    click(bar.querySelector(".all-yes"));
+    match(asked[0], /^Mark the 3 unanswered items Yes\?/);
+    await saved();
+    const a = await answers("demo/pf-mark");
+    eq(a.r1.answer, "no"); eq(a.r2.answer, "yes"); eq(a.r4.answer, "yes");
+  });
+
+  await t("diff item: server-drawn word diff with the Diff | Final switch", async () => {
+    const { win, doc } = await load("/demo/pf-diff");
+    const block = card(doc, "d1").querySelector(".rvdiff"); ok(block, "the diff sits in the item");
+    eq(block.querySelector("del").textContent, "10"); eq(block.querySelector("ins").textContent, "20");
+    const sw = block.previousElementSibling; ok(sw && sw.matches(".rvdiff-mode"), "the switch");
+    click(sw.querySelector('[data-v="final"]'));
+    ok(block.classList.contains("final"));
+    eq(win.getComputedStyle(block.querySelector("del")).display, "none");
+  });
+
+  await t("pictures open in the picture pop-out; How to test opens its pop-out with Copy buttons", async () => {
+    const { win, doc } = await load("/demo/pf-media");
+    const opened = [];
+    // A pop-out stand-in with a real document, so document.write works the way it does in a window.
+    const fake = () => { const fr = document.createElement("iframe"); fr.style.display = "none"; document.body.appendChild(fr);
+      return { document: fr.contentDocument, focus() {}, navigator: win.navigator, location: fr.contentWindow.location }; };
+    win.open = (u, name) => { const fw = fake(); opened.push({ name, w: fw }); return fw; };
+    const a = card(doc, "m1").querySelector("a[href$='.svg']"); ok(a && a.querySelector("img"), "a picture link");
+    a.dispatchEvent(new win.MouseEvent("click", { bubbles: true, cancelable: true, button: 0 }));
+    eq(opened[0] && opened[0].name, "picture");
+    const hb = card(doc, "m1").querySelector(".howto-btn"); ok(hb, "How to test button");
+    click(hb);
+    const how = opened.find(o => o.name === "howto"); ok(how, "the howto window");
+    ok(how.w.document.querySelector(".howto-body pre"), "the steps");
+    ok(how.w.document.querySelector(".copy-cmd"), "a Copy button");
+  });
+
+  await t("history lists closed rounds; Save round now opens the next round", async () => {
+    const { win, doc, bar } = await load("/demo/pf-history");
+    await until(() => doc.querySelector(".rvhist"), "the history block");
+    match(doc.querySelector(".rvhist > summary").textContent, /^History \(1 round\)/);
+    ok(!bar.querySelector(".history").disabled);
+    const r1 = doc.querySelector(".rvhist-round"); r1.open = true; r1.dispatchEvent(new win.Event("toggle"));
+    await until(() => r1.querySelector("pre").textContent.includes("NO: A module repo"), "the round's results");
+    click(seg(doc, "r2", "yes")); await saved();
+    click(bar.querySelector(".round-close"));
+    await until(() => w().document.querySelector(".rvhist > summary") && /History \(2 rounds\)/.test(w().document.querySelector(".rvhist > summary").textContent), "two rounds");
+    const p = await pageFile("demo/pf-history");
+    eq(p.rounds.length, 3); match(p.rounds[1].results, /- \[r2\] YES: The web app/);
+  });
+
+  await t("send: partial confirm, an inbox file, and the delivery state", async () => {
+    const { win, doc, bar } = await load("/demo/pf-send");
+    const send = bar.querySelector(".send-btn"); ok(send, "a Send button"); eq(send.textContent, "Send to ops");
+    click(seg(doc, "r1", "yes"));
+    const asked = []; win.confirm = m => { asked.push(m); return true; };
+    click(send);
+    await until(() => /^Sent \d\d:\d\d/.test(bar.querySelector(".dlv").textContent), "the delivery state");
+    match(asked[0], /^Send now\? 3 items are still open\./);
+    match(bar.querySelector(".dlv").textContent, /ops isn't listening/);
+    const p = await pageFile("demo/pf-send");
+    eq(p.submissions[0].kind, "send"); eq(p.submissions[0].state, "sent");
+  });
+
+  await t("thread: earlier answers and replies show under the item", async () => {
+    const { doc } = await load("/demo/pf-thread");
+    const th = card(doc, "r1").querySelector(".rvthread"); ok(th, "a thread under r1");
+    const lines = Array.from(th.querySelectorAll("p")).map(p => p.textContent);
+    eq(lines.length, 2); match(lines[0], /Round 1 · you.*Changes: Name the module/); match(lines[1], /app.*Renamed to core\./);
+    match(doc.querySelector("main .page-thread").textContent, /Round 2 is ready\./);
+  });
+
+  await t("restart: Restart from a checkpoint opens a new round and carries the steps", async () => {
+    const { win, doc } = await load("/demo/pf-journey");
+    const b = doc.querySelector('.rvrestart button[data-cp="after-install"]'); ok(b, "Restart from after-install");
+    click(b);
+    await until(() => card(w().document, "j2") && card(w().document, "j2").dataset.answer === "", "the redraw after restart");
+    const p = await pageFile("demo/pf-journey");
+    eq(p.rounds.length, 2); eq(p.rounds[1].restart, "after-install"); eq(p.rounds[1].answers.j1.answer, "yes");
+    eq(card(w().document, "j1").dataset.answer, "yes");
+  });
+
+  await t("live: a change on the server redraws without a reload, after typing stops, keeping the note and scroll", async () => {
+    const { win, doc } = await load("/demo/pf-live");
+    win.__alive = true;
+    click(seg(doc, "r2", "no"));
+    const ta = card(doc, "r2").querySelector("textarea"); ta.focus(); ta.value = "Half typed"; ta.dispatchEvent(new win.Event("input"));
+    await saved();
+    win.scrollTo(0, 200); const y = win.scrollY;
+    await fetch("/_page/demo/pf-live/answers", { method: "PUT", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ answers: { r3: { answer: "yes", note: "" } } }) });
+    await tick(15000);
+    eq(card(doc, "r3").dataset.answer || "", "", "no redraw while typing");
+    eq(ta.value, "Half typed");
+    ta.blur();
+    await until(() => card(w().document, "r3").dataset.answer === "yes", "the redraw", 1200);
+    eq(w().__alive, true, "no reload");
+    eq(card(w().document, "r2").querySelector("textarea").value, "Half typed");
+    ok(Math.abs(w().scrollY - y) < 5, "scroll kept: " + w().scrollY + " vs " + y);
+  });
+
+  await t("reference page: blocks render and there is no answer bar", async () => {
+    await open("/demo/pf-reference");
+    await until(() => d().querySelector("[data-item='n1']"), "the rendered item");
+    ok(!d().querySelector(".rvbar"), "no bar");
+    eq(d().querySelector("[data-item='n1'] p strong").textContent, "team");
+    ok(d().querySelector("[data-item='n1'] .copyblk button"), "a Copy button");
+    eq(d().querySelectorAll("[data-item='n1'] table tr").length, 2);
+  });
+})().catch(e => { results.harness = "FAIL " + String(e && e.stack || e); })
+  .finally(() => { document.getElementById("out").textContent = JSON.stringify(results); });
+</script></body></html>

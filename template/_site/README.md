@@ -194,7 +194,8 @@ A subfolder with no `.html` file in it is never a page, so the index leaves it o
   settings. Every name on the site comes from it.
 - **Server:** `nohup python3 -u _site/serve.py --directory . >> server.log 2>&1 &` (host and port from
   `site.json`; flags override). Writable endpoints: `PUT /_save/<name>.json` and `POST /_stale`,
-  `POST /_round-close`; nothing else. `_saved/` (history included) is never served directly, only read
+  `POST /_round-close`, plus the page file writes under `/_page/` (see `PAGE-FILE.md`); nothing else.
+  `_inbox/` is never served. `_saved/` (history included) is never served directly, only read
   through `GET /_history/<page-key>/` and `GET /_history/<page-key>/<file>`.
 - **Stale deletes for real:** after the owner's confirm, `POST /_stale {folder, page}` checks the page is
   listed in that folder's `_status.json` and lies inside that folder (never `_site/`, `_old/`, a folder

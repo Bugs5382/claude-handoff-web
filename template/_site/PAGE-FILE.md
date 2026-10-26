@@ -4,8 +4,9 @@ A page file is one JSON file per page, `<folder>/<slug>.json`, in the `handoff.p
 page definition, every round of answers with who and when, and a reply thread per item. The full design is in
 `docs/design/json-pages.md` in the repo.
 
-This first part is the file format and the one module that writes it. The server endpoints, the `page.py`
-command line and the renderer come next; until then, HTML pages work as they always have.
+This covers the file format, the one module that writes it, and the server endpoints that read and write it
+(listed in `docs/operating.md` in the repo). The `page.py` command line and the renderer come next; until
+then, HTML pages work as they always have.
 
 ## Before you start
 
@@ -101,7 +102,10 @@ is refused.
 | `restart(path, checkpoint, by=...)` | restarts a journey from a checkpoint already reached: the steps up to it carry over as Yes, later steps start open |
 | `reply(path, id, frm, text, action=..., reason=..., ref=...)` | appends a reply under an item or `_page`; `action="reopen"` reopens the item |
 | `set_route(path, to, mode)` | the operator's route for the page |
+| `set_status(path, state, note=..., chips=..., priority=...)` | the index card |
+| `add_submission(path, record)`, `mark_taken(path, n)` | record a Send, Blocker or Restart, and its pick-up |
 | `item_states(doc)` | where each answerable item stands: its answer, whether an earlier Yes hides it, and why it reopened |
+| `summary(doc)` | the bar's counts: open, blocked, Yes, reopened, approved, and a backlog's per-choice tally |
 
 ```python
 import pagefile

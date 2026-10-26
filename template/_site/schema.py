@@ -24,6 +24,7 @@ MODES = ("send", "copy", "both")
 ACTIONS = ("filed", "fixed", "reopen", "unblock", "wontfix", "info")
 TONES = ("info", "warn", "ok", "danger")
 SUBMISSION_KINDS = ("send", "blocker", "restart")
+SUBMISSION_STATES = ("sent", "taken")
 BLOCKS = ("p", "list", "olist", "code", "image", "table", "diff", "copy", "note", "html")
 BLOCK_EXTRAS = {"code": ("lang",), "image": ("alt", "caption"), "note": ("tone",)}
 
@@ -460,10 +461,17 @@ def _submissions(v, subs):
         if not isinstance(s, dict):
             v.err(p, "expected an object")
             continue
+        v.keys(s, p, ("n", "kind", "at", "to", "round", "rev", "items", "file", "state", "takenAt"), ("n", "kind", "at"))
         if s.get("n") != i:
             v.err(_join(p, "n"), f"expected {i}")
         v.choice(s, "kind", p, SUBMISSION_KINDS)
         v.string(s, "at", p, required=True)
+        for k in ("to", "file", "takenAt"):
+            v.string(s, k, p)
+        v.integer(s, "round", p, minimum=1)
+        v.integer(s, "rev", p, minimum=0)
+        v.strings(s, "items", p)
+        v.choice(s, "state", p, SUBMISSION_STATES)
 
 
 def main(argv):

@@ -10,8 +10,18 @@ Serves a directory exactly like `python3 -m http.server`, and adds:
   GET  /_history/<page-key>/<file>      one archived round, read-only
   POST /_round-close       {"name": "<page-key>", "results_text": "..." (optional)}: archive the
                            current round by hand, same as an automatic rollover
-Nothing else is writable, and <root>/_saved/ is never served directly (history is only reachable
-through /_history/).
+Page files (<folder>/<slug>.json in handoff.page/v1, written only through pagefile.py; see PAGE-FILE.md):
+  GET  /<folder>/<slug>                  the renderer shell, _site/page.html; an old <slug>.html URL redirects here
+  GET  /_page/<folder>/<slug>            {page, states, summary, route, listening}, with an ETag for If-None-Match
+  PUT  /_page/<folder>/<slug>/answers    {"base": rev, "answers": {id: {answer, note}}}: merge into the open round
+  POST /_page/<folder>/<slug>/round      {"results": "..."}: Save round now
+  POST /_page/<folder>/<slug>/restart    {"checkpoint": "...", "results": "..."}: restart a journey, send a restart
+  POST /_page/<folder>/<slug>/send       {"kind": "send"|"blocker", "items": [ids], "results": "..."}: write the
+                                         submission to _inbox/<agent>/ for the page's route
+  GET  /_index/ and /_index/<folder>     index cards built from the page files, merged with _status.json pages
+  POST /_stale on a page file marks it done and moves it to <folder>/_old/ instead of deleting it.
+Nothing else is writable, and <root>/_saved/ and <root>/_inbox/ are never served directly (history is only
+reachable through /_history/).
 Files under any _old/ folder older than prune_old_days are deleted hourly (logged in
 _saved/prune-log.json); _saved/ itself, including history, is never walked by the pruner.
 
@@ -25,13 +35,16 @@ overwritten. Stale deletes the page itself but never its history.
 Settings come from <root>/site.json (all optional here):
   {"owner": "<owner>", "host": "127.0.0.1", "port": 8000, "timezone": "UTC", "tz_label": "UTC",
    "protected": ["folder/page/"], "builders": {"folder": "../its-own-builder.py"},
-   "prune_old": true, "prune_old_days": 7}
+   "prune_old": true, "prune_old_days": 7,
+   "operator": "ops", "routes": {"folder": {"to": "app", "mode": "send"}}}
 Command-line flags override host and port.
 """
 import argparse
 import datetime as dt
 import functools
+import hashlib
 import html
+import importlib.util
 import json
 import os
 import posixpath
@@ -46,7 +59,13 @@ from http import HTTPStatus
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import unquote, urlsplit
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import pagefile  # noqa: E402
+
 MAX_BODY = 256 * 1024
+PAGE_SEG_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,80}$")
+AGENT_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,40}$")
+PAGE_ACTIONS = {"PUT": ("answers",), "POST": ("round", "restart", "send")}
 SAVE_RE = re.compile(r"^/_save/([a-z0-9._-]{1,120})\.json$")
 FOLDER_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,60}$")
 PAGE_KEY_RE = r"[a-z0-9][a-z0-9._-]{0,119}"
@@ -351,6 +370,151 @@ def pruner(root, save_dir):
         time.sleep(3600)
 
 
+def page_file(root, rel):
+    """Resolve "<folder>/<slug>" (or deeper) to its handoff.page/v1 file inside root, or None."""
+    parts = rel.split("/")
+    if len(parts) < 2 or not all(PAGE_SEG_RE.match(x) for x in parts):
+        return None
+    fn = os.path.join(root, *parts) + ".json"
+    if os.path.realpath(fn) != os.path.join(os.path.realpath(root), *parts) + ".json" or not os.path.isfile(fn):
+        return None
+    try:
+        with open(fn) as f:
+            doc = json.load(f)
+    except (OSError, ValueError):
+        return None
+    return fn if isinstance(doc, dict) and doc.get("schema") == pagefile.SCHEMA else None
+
+
+def is_listening(root, agent):
+    """True while _inbox/<agent>/.listening names a live process."""
+    try:
+        with open(os.path.join(root, "_inbox", agent, ".listening")) as f:
+            pid = int(f.read().strip())
+        if pid <= 0:
+            return False
+        os.kill(pid, 0)
+    except PermissionError:
+        return True
+    except (OSError, ValueError):
+        return False
+    return True
+
+
+def page_route(cfg, folder, doc):
+    """The page's own route, else the folder's in site.json "routes", else send to the operator."""
+    for rt in (doc.get("route"), (cfg.get("routes") or {}).get(folder)):
+        if (isinstance(rt, dict) and isinstance(rt.get("to"), str) and AGENT_RE.match(rt["to"])
+                and rt.get("mode") in ("send", "copy", "both")):
+            return {"to": rt["to"], "mode": rt["mode"]}
+    op = cfg.get("operator")
+    return {"to": op if isinstance(op, str) and AGENT_RE.match(op) else "ops", "mode": "send"}
+
+
+def submission_name(kind, rel, when):
+    """Inbox file name: blockers and restarts (0) sort before sends (5); "{n}" is filled by pagefile."""
+    prio = 5 if kind == "send" else 0
+    return f"{prio}-{when.astimezone(dt.timezone.utc):%Y%m%dT%H%M%SZ}-{rel.replace('/', '-')}-{{n}}.json"
+
+
+def discover_page_files(root, folder):
+    """(rel, path) for every page file under a folder, at any depth, skipping _ and . folders."""
+    out = []
+    fdir = os.path.join(root, folder)
+    for dirpath, dirnames, filenames in os.walk(fdir):
+        dirnames[:] = sorted(d for d in dirnames if not d.startswith(("_", ".")))
+        for fn in sorted(filenames):
+            if not fn.endswith(".json") or fn.startswith(("_", ".")):
+                continue
+            rel = os.path.relpath(os.path.join(dirpath, fn[:-5]), root).replace(os.sep, "/")
+            path = page_file(root, rel)
+            if path:
+                out.append((rel, path))
+    return out
+
+
+def page_card(folder, rel, path):
+    """One index card for a page file, in the same shape gen-index.py's collect() gives an HTML page."""
+    doc = pagefile.load(path)
+    s = pagefile.summary(doc)
+    states = pagefile.item_states(doc)
+    st = doc.get("status") or {}
+    # Open questions never hold up approval, so they keep only a questions page in Needs you.
+    questions = doc["kind"] == "questions" and any(
+        pagefile.item_type(doc, it) == "question" and not states[it["id"]]["answer"] for it in doc["items"])
+    if st.get("state"):
+        state = st["state"]
+    elif doc["kind"] in ("reference", "status"):
+        state = "reference"
+    else:
+        # Done only once approved: a No or Changes answer keeps the page up top until the next round.
+        state = "done" if s["approved"] and not questions else "needs-you"
+    chips = []
+    if state == "needs-you" and (s["open"] or questions or s["tally"] is not None):
+        chips.append("To review")
+    if s["reopened"]:
+        chips.append("Reopened")
+    if s["approved"]:
+        chips.append("Approved")
+    chips.append({"reference": "Reference", "done": "Done"}.get(state, ""))
+    chips += [c for c in st.get("chips", []) if c]
+    chips = [c for i, c in enumerate(chips) if c and c not in chips[:i]]
+    tally = None
+    if s["tally"] is not None:
+        labels = {c["value"]: c["label"].lower() for c in doc["options"]["choices"]}
+        tally = " · ".join(f"{n} {labels[v]}" for v, n in s["tally"].items())
+    try:
+        first = dt.datetime.fromisoformat(doc["rounds"][0]["opened"]).timestamp()
+    except (ValueError, KeyError, IndexError):
+        first = os.path.getmtime(path)
+    return {"folder": folder, "key": rel[len(folder) + 1:], "href": "/" + rel, "title": doc["title"],
+            "note": st.get("note", ""), "state": state, "chips": chips, "mtime": os.path.getmtime(path), "first": first,
+            "open": s["open"] if state == "needs-you" and tally is None else None, "priority": st.get("priority", 50),
+            "tally": tally, "kind": doc["kind"]}
+
+
+def load_gen_index(root):
+    """The site's own gen-index.py as a module, for its collect() and order_pages(); None if it won't load."""
+    fn = os.path.join(root, "gen-index.py")
+    try:
+        spec = importlib.util.spec_from_file_location("site_gen_index", fn)
+        if not spec or not spec.loader:
+            return None
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+    except Exception:
+        return None
+
+
+def folder_cards(root, folder, gen):
+    """Every card for a folder: page files plus the HTML pages gen-index.py finds, in index order."""
+    cards = [page_card(folder, rel, path) for rel, path in discover_page_files(root, folder)]
+    if gen is None:
+        return sorted(cards, key=lambda c: (c["priority"], c["key"]))
+    try:
+        with open(os.path.join(root, folder, "_status.json")) as f:
+            manifest = list(json.load(f))
+    except (OSError, ValueError):
+        manifest = []
+    return gen.order_pages(gen.collect(folder) + cards, manifest)
+
+
+def site_folders(root, cfg):
+    """(id, name, blurb) for every folder, in the root index's order (focus.json, then site.json order)."""
+    folders = cfg.get("folders") or [{"id": e, "name": e} for e in sorted(os.listdir(root))
+                                     if not e.startswith((".", "_")) and os.path.isdir(os.path.join(root, e))]
+    try:
+        with open(os.path.join(root, "_site", "focus.json")) as f:
+            order = json.load(f).get("order") or cfg.get("order", [])
+    except (OSError, ValueError, AttributeError):
+        order = cfg.get("order", [])
+    ids = [f["id"] for f in folders]
+    ranked = [d for d in order if d in ids] + [d for d in ids if d not in order]
+    by = {f["id"]: f for f in folders}
+    return [(d, by[d].get("name", d), by[d].get("blurb", "")) for d in ranked]
+
+
 class Handler(SimpleHTTPRequestHandler):
     save_dir = ""
     root = ""
@@ -361,7 +525,8 @@ class Handler(SimpleHTTPRequestHandler):
 
     def end_headers(self):
         p = self._path()
-        if p.startswith(("/_save/", "/_history/", "/_stale", "/_round-close")) or p.endswith(".html") or p.endswith("/"):
+        if (p.startswith(("/_save/", "/_history/", "/_stale", "/_round-close", "/_page/", "/_index/")) or p.endswith(".html")
+                or p.endswith("/") or getattr(self, "_shell", False)):
             self.send_header("Cache-Control", "no-store")
         super().end_headers()
 
@@ -392,21 +557,115 @@ class Handler(SimpleHTTPRequestHandler):
 
     def _blocked(self):
         p = posixpath.normpath(unquote(self._path()))
-        return p == "/_saved" or p.startswith("/_saved/")
+        return any(p == d or p.startswith(d + "/") for d in ("/_saved", "/_inbox"))
 
     def do_GET(self):
-        if self._path().startswith("/_save/"):
+        p = self._path()
+        if p.startswith("/_save/"):
             return self._get_save()
-        if self._path().startswith("/_history/"):
+        if p.startswith("/_history/"):
             return self._get_history()
+        if p.startswith("/_page/"):
+            return self._get_page()
+        if p.startswith("/_index/"):
+            return self._get_index()
         if self._blocked():
             return self._plain(HTTPStatus.NOT_FOUND, "Not found")
+        if self._page_url():
+            return
         return super().do_GET()
 
     def do_HEAD(self):
-        if self._path().startswith(("/_save/", "/_history/")) or self._blocked():
+        if self._path().startswith(("/_save/", "/_history/", "/_page/", "/_index/")) or self._blocked():
             return self._plain(HTTPStatus.NOT_FOUND)
         return super().do_HEAD()
+
+    def _page_url(self):
+        """Serve the renderer shell for /<folder>/<slug>, or redirect a converted page's old .html URL.
+        Anything that exists on disk is served as a file first."""
+        p = self._path()
+        if os.path.exists(self.translate_path(p)):
+            return False
+        rel = unquote(p).strip("/")
+        if rel.endswith(".html") and page_file(self.root, rel[:-5]):
+            self.send_response(HTTPStatus.MOVED_PERMANENTLY)
+            self.send_header("Location", "/" + rel[:-5])
+            self.send_header("Content-Length", "0")
+            self.end_headers()
+            return True
+        if p.endswith("/") or not page_file(self.root, rel):
+            return False
+        with open(os.path.join(self.root, "_site", "page.html"), "rb") as f:
+            data = f.read()
+        self._shell = True
+        self.send_response(HTTPStatus.OK)
+        self.send_header("Content-Type", "text/html; charset=utf-8")
+        self.send_header("Content-Length", str(len(data)))
+        self.end_headers()
+        self.wfile.write(data)
+        return True
+
+    def _etag_json(self, obj):
+        """200 with an ETag, or 304 when the browser's If-None-Match already has this body."""
+        body = json.dumps(obj, ensure_ascii=False).encode()
+        etag = '"' + hashlib.sha256(body).hexdigest()[:20] + '"'
+        if self.headers.get("If-None-Match") == etag:
+            self.send_response(HTTPStatus.NOT_MODIFIED)
+            self.send_header("ETag", etag)
+            self.end_headers()
+            return
+        self.send_response(HTTPStatus.OK)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("ETag", etag)
+        self.end_headers()
+        self.wfile.write(body)
+
+    def _page_target(self, method):
+        """(rel, path, action) for a /_page/ request, or None. A PUT or POST names its action last."""
+        rel = unquote(self._path())[len("/_page/"):].strip("/")
+        action = None
+        if method in PAGE_ACTIONS:
+            rel, _, action = rel.rpartition("/")
+        path = page_file(self.root, rel)
+        return (rel, path, action) if path else None
+
+    def _get_page(self):
+        t = self._page_target("GET")
+        if not t:
+            return self._plain(HTTPStatus.NOT_FOUND, "Not found")
+        rel, path, _ = t
+        cfg = load_config(self.root)
+        doc = pagefile.load(path)
+        self._note_taken(path, doc)
+        doc = pagefile.load(path)
+        route = page_route(cfg, rel.split("/")[0], doc)
+        self._etag_json({"page": doc, "states": pagefile.item_states(doc), "summary": pagefile.summary(doc),
+                         "route": route, "listening": is_listening(self.root, route["to"])})
+
+    def _note_taken(self, path, doc):
+        """Record "picked up" for every sent submission an agent has moved to its inbox's taken/ folder."""
+        for sub in doc.get("submissions", []):
+            if sub.get("state") != "sent" or not sub.get("to") or not sub.get("file"):
+                continue
+            taken = os.path.join(self.root, "_inbox", sub["to"], "taken", sub["file"])
+            if os.path.isfile(taken):
+                at = dt.datetime.fromtimestamp(os.stat(taken).st_ctime).astimezone().isoformat(timespec="seconds")
+                pagefile.mark_taken(path, sub["n"], at=at)
+
+    def _get_index(self):
+        cfg = load_config(self.root)
+        folder = self._path()[len("/_index/"):].strip("/")
+        folders = site_folders(self.root, cfg)
+        gen = load_gen_index(self.root)
+        if not folder:
+            return self._etag_json({"title": cfg.get("title", ""), "folders": [
+                {"id": d, "name": name, "blurb": blurb, "pages": folder_cards(self.root, d, gen)} for d, name, blurb in folders]})
+        match = [f for f in folders if f[0] == folder]
+        if not match or not os.path.isdir(os.path.join(self.root, folder)):
+            return self._plain(HTTPStatus.NOT_FOUND, "Not found")
+        d, name, blurb = match[0]
+        self._etag_json({"folder": d, "name": name, "blurb": blurb, "pages": folder_cards(self.root, d, gen)})
 
     def _get_save(self):
         name = self._save_name()
@@ -488,6 +747,8 @@ class Handler(SimpleHTTPRequestHandler):
         self._plain(code, str(e))
 
     def do_PUT(self):
+        if self._path().startswith("/_page/"):
+            return self._page_write("PUT")
         name = self._save_name()
         if not name:
             return self._plain(HTTPStatus.METHOD_NOT_ALLOWED, "Only /_save/<name>.json is writable")
@@ -522,6 +783,8 @@ class Handler(SimpleHTTPRequestHandler):
         p = self._path()
         if p == "/_round-close":
             return self._do_round_close()
+        if p.startswith("/_page/"):
+            return self._page_write("POST")
         if p != "/_stale":
             return self._not_allowed()
         try:
@@ -534,7 +797,10 @@ class Handler(SimpleHTTPRequestHandler):
         except (KeyError, TypeError):
             return self._json(HTTPStatus.BAD_REQUEST, {"error": "Body must be JSON {folder, page}"})
         with STALE_LOCK:
-            code, out = self._stale(folder, page)
+            if FOLDER_RE.match(folder) and page_file(self.root, f"{folder}/{page}"):
+                code, out = self._stale_page(folder, page)
+            else:
+                code, out = self._stale(folder, page)
         self.log_message("stale %s/%s -> %d %s", folder, page, code, out.get("error", out.get("deleted", "")))
         self._json(code, out)
 
@@ -603,6 +869,123 @@ class Handler(SimpleHTTPRequestHandler):
                 warnings.append(f"{os.path.basename(cmd[1])} exited {r.returncode}")
                 self.log_error("%s failed: %s", cmd[1], (r.stderr or r.stdout).strip()[-400:])
         return HTTPStatus.OK, {"deleted": entry["deleted"], "warnings": warnings}
+
+    def _page_write(self, method):
+        t = self._page_target(method)
+        if t and t[2] not in PAGE_ACTIONS[method]:
+            return self._plain(HTTPStatus.METHOD_NOT_ALLOWED, "Unknown page action")
+        if not t:
+            return self._plain(HTTPStatus.NOT_FOUND, "Not found")
+        rel, path, action = t
+        try:
+            _, req = self._json_body(MAX_BODY)
+            if not isinstance(req, dict):
+                raise ValueError("Body must be a JSON object")
+        except (PermissionError, LookupError, OverflowError, ValueError) as e:
+            return self._body_error(e)
+        cfg = load_config(self.root)
+        try:
+            out = getattr(self, "_page_" + action)(rel, path, req, cfg)
+        except pagefile.PageError as e:
+            return self._json(HTTPStatus.BAD_REQUEST, {"errors": e.errors})
+        except (TypeError, ValueError, AttributeError) as e:
+            return self._json(HTTPStatus.BAD_REQUEST, {"errors": [str(e)]})
+        if isinstance(out, tuple):
+            return self._json(*out)
+        self.log_message("page %s %s -> %s", action, rel, out)
+        self._json(HTTPStatus.OK, out)
+
+    def _page_answers(self, rel, path, req, cfg):
+        answers = req.get("answers")
+        if not isinstance(answers, dict) or not all(isinstance(a, dict) for a in answers.values()):
+            raise ValueError("answers must be an object of {answer, note} by item id")
+        when = now_local(cfg).isoformat(timespec="seconds")
+        return {"rev": pagefile.save_answers(path, answers, by=cfg.get("owner", "owner"), base=req.get("base"), now=when)}
+
+    def _page_round(self, rel, path, req, cfg):
+        results = req.get("results") if isinstance(req.get("results"), str) else None
+        return {"round": pagefile.new_round(path, results=results, now=now_local(cfg).isoformat(timespec="seconds"))}
+
+    def _page_restart(self, rel, path, req, cfg):
+        checkpoint = req.get("checkpoint")
+        if not isinstance(checkpoint, str):
+            raise ValueError("checkpoint must be a string")
+        results = req.get("results") if isinstance(req.get("results"), str) else None
+        when = now_local(cfg)
+        n = pagefile.restart(path, checkpoint, by=cfg.get("owner", "owner"), results=results, now=when.isoformat(timespec="seconds"))
+        out = self._submit(rel, path, cfg, "restart", [], results or f"Restart from {checkpoint}", when)
+        if isinstance(out, tuple):
+            return out
+        return {"round": n, **out}
+
+    def _page_send(self, rel, path, req, cfg):
+        kind = req.get("kind")
+        if kind not in ("send", "blocker"):
+            raise ValueError("kind must be send or blocker")
+        doc = pagefile.load(path)
+        ids = {it["id"] for it in doc["items"]}
+        items = req.get("items")
+        if items is None:
+            items = [i for i in doc["rounds"][-1]["answers"] if i in ids]
+        if not isinstance(items, list) or any(i not in ids for i in items):
+            raise ValueError("items must be ids of items on this page")
+        if kind == "blocker" and len(items) != 1:
+            raise ValueError("a blocker sends exactly one item")
+        results = req.get("results") if isinstance(req.get("results"), str) else ""
+        return self._submit(rel, path, cfg, kind, items, results, now_local(cfg))
+
+    def _submit(self, rel, path, cfg, kind, items, results, when):
+        """Record the submission on the page, then write it to the route's inbox atomically."""
+        doc = pagefile.load(path)
+        route = page_route(cfg, rel.split("/")[0], doc)
+        if route["mode"] == "copy":
+            return HTTPStatus.CONFLICT, {"error": "This page copies its results; it doesn't send them"}
+        sub = pagefile.add_submission(path, {"kind": kind, "to": route["to"], "items": items,
+                                             "file": submission_name(kind, rel, when)}, now=when.isoformat(timespec="seconds"))
+        doc = pagefile.load(path)
+        answers = doc["rounds"][-1]["answers"]
+        pos = {it["id"]: n for n, it in enumerate(doc["items"], 1)}
+        host = cfg.get("host", "127.0.0.1")
+        port = self.server.server_address[1] if self.server else cfg.get("port", 8000)
+        payload = {"schema": "handoff.submission/v1", "n": sub["n"], "kind": kind, "page": rel,
+                   "url": f"http://{host}:{port}/{rel}", "title": doc["title"], "build": doc.get("build"),
+                   "round": sub["round"], "rev": sub["rev"], "at": sub["at"],
+                   "items": [{"id": i, "n": pos[i], "answer": (answers.get(i) or {}).get("answer", ""),
+                              "note": (answers.get(i) or {}).get("note", ""), "blocker": kind == "blocker"} for i in items],
+                   "results": results}
+        idir = os.path.join(self.root, "_inbox", route["to"])
+        os.makedirs(idir, exist_ok=True)
+        atomic_write(os.path.join(idir, sub["file"]), (json.dumps(payload, indent=2, ensure_ascii=False) + "\n").encode())
+        return {"n": sub["n"], "file": sub["file"], "to": route["to"], "listening": is_listening(self.root, route["to"])}
+
+    def _stale_page(self, folder, page):
+        """Stale on a page file: mark it done (kept in the file) and move it to <folder>/_old/."""
+        cfg = load_config(self.root)
+        rel = f"{folder}/{page}"
+        path = page_file(self.root, rel)
+        if rel in cfg.get("protected", []):
+            return HTTPStatus.FORBIDDEN, {"error": "That page is a live checklist; it can't be marked stale"}
+        doc = pagefile.load(path)
+        st = doc.get("status") or {}
+        if st.get("state") == "done":
+            return HTTPStatus.CONFLICT, {"error": "Already done"}
+        when = now_local(cfg)
+        who = cfg.get("owner", "owner")
+        note = f"Stale ({who}, {when:%Y-%m-%d %H:%M} {cfg.get('tz_label', when.tzname())})"
+        pagefile.set_status(path, "done", note=note, chips=st.get("chips"), priority=st.get("priority"))
+        dest_dir = os.path.join(self.root, folder, "_old", *page.split("/")[:-1])
+        os.makedirs(dest_dir, exist_ok=True)
+        base = os.path.join(dest_dir, page.split("/")[-1])
+        dest, i = base + ".json", 1
+        while os.path.exists(dest):
+            dest, i = f"{base}-{i}.json", i + 1
+        os.replace(path, dest)
+        if os.path.exists(path + ".lock"):
+            os.replace(path + ".lock", dest + ".lock")
+        moved = os.path.relpath(dest, self.root).replace(os.sep, "/")
+        append_log(self.save_dir, "stale-log.json", {"at": when.isoformat(timespec="seconds"), "folder": folder,
+                                                     "page": page, "by": who, "moved": moved})
+        return HTTPStatus.OK, {"moved": moved, "warnings": []}
 
     def _round_meta_path(self, name):
         return os.path.join(self.save_dir, "_round-meta", name + ".json")

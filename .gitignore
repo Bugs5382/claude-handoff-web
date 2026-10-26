@@ -20,6 +20,8 @@ plan/
 # A running site is working memory: never commit an instance's state.
 _saved/
 _old/
+_inbox/
+*.json.lock
 **/_status.json
 !example/**/_status.json
 server.log

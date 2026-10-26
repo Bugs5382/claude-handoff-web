@@ -302,6 +302,27 @@ const seg = (doc, id, v) => card(doc, id).querySelector('.seg button[data-v="' +
     ok(d().querySelector("[data-item='n1'] .copyblk button"), "a Copy button");
     eq(d().querySelectorAll("[data-item='n1'] table tr").length, 2);
   });
+  await t("mixed page: a section, a two-answer section, a question, a choice, a step and an info item each answer their own way", async () => {
+    const { win, doc, bar } = await load("/demo/pf-mixed");
+    const vals = id => Array.from(card(doc, id).querySelectorAll(".seg button")).map(b => b.dataset.v).join(",");
+    eq(vals("s1"), "yes,no,chg", "a section answers Yes / No / Changes");
+    eq(vals("s2"), "yes,no", "its own answers set");
+    eq(vals("j1"), "yes,no,chg,skip", "a step adds Skipped");
+    eq(vals("c1"), "start,hold", "a choice uses the page's options");
+    ok(card(doc, "c1").querySelector(".seg button.def"), "the default choice is marked");
+    ok(card(doc, "q1").querySelector("textarea.qans"), "a question takes free text");
+    ok(!doc.querySelector('[data-item="i1"] .seg'), "an info item has no answers");
+    click(seg(doc, "s1", "yes")); click(seg(doc, "s2", "no")); click(seg(doc, "c1", "start"));
+    click(card(doc, "q1").querySelector(".suggest-btn"));
+    click(seg(doc, "j1", "skip"));
+    ok(bar.classList.contains("all-done"), bar.querySelector(".cnt").textContent);
+    await saved();
+    const a = await answers("demo/pf-mixed");
+    eq(a.s1.answer, "yes"); eq(a.s2.answer, "no"); eq(a.c1.answer, "start"); eq(a.q1.answer, "UTC"); eq(a.j1.answer, "skipped");
+    const asked = []; win.confirm = m => { asked.push(m); return true; }; let alerted = ""; win.alert = m => { alerted = m; };
+    click(bar.querySelector(".all-no"));
+    eq(alerted, "Every item already has an answer.");
+  });
 })().catch(e => { results.harness = "FAIL " + String(e && e.stack || e); })
   .finally(() => { document.getElementById("out").textContent = JSON.stringify(results); });
 </script></body></html>

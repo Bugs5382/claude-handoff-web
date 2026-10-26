@@ -21,9 +21,12 @@ draws the page from `GET /_page/<folder>/<slug>` into the same markup an HTML pa
 
 - each answerable item is a numbered card (`<section data-review-question>`), and `info` items are plain
   sections;
-- the page's settings become the body attributes `review.js` reads: the build, Skipped on checklists and
-  journeys, a backlog's choices, what's blocked (an unmet `dependsOn`, or a `blockedBy` with no `unblock`
-  reply), the earlier-round Yes items to hide, and the reopened items with their reasons;
+- each item answers its own way, so one page can mix them: a section takes Yes / No / Changes (or its own
+  `answers` set), a check or step adds Skipped, `skip: true` adds Skipped to that item only, a choice uses the
+  page's `options` and default, and a question takes free text;
+- the page's settings become the body attributes `review.js` reads: the build, what's blocked (an unmet
+  `dependsOn`, or a `blockedBy` with no `unblock` reply), the earlier-round Yes items to hide, and the reopened
+  items with their reasons;
 - how-tos become `<template data-howto>`, pictures open in the picture pop-out, and diff items and blocks
   are drawn by the server with `diff.py`, with the Diff | Final switch;
 - `reference` and `status` pages have no answer bar.

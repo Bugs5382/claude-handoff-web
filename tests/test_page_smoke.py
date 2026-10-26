@@ -45,6 +45,7 @@ SCENARIOS = [
     "restart: Restart from a checkpoint opens a new round and carries the steps",
     "live: a change on the server redraws without a reload, after typing stops, keeping the note and scroll",
     "reference page: blocks render and there is no answer bar",
+    "mixed page: a section, a two-answer section, a question, a choice, a step and an info item each answer their own way",
 ]
 
 T0 = "2026-10-26T07:42:10-04:00"
@@ -81,6 +82,16 @@ REFERENCE = {"schema": "handoff.page/v1", "kind": "reference", "title": "Notes",
     {"id": "n1", "title": "Email draft", "body": [{"p": "Hello **team**."}, {"copy": "Dear team,"}, {"table": [["A", "B"], ["1", "2"]]}]}]}
 
 
+MIXED = {"schema": "handoff.page/v1", "kind": "review", "title": "Mixed",
+         "options": {"choices": [{"value": "start", "label": "Start"}, {"value": "hold", "label": "Hold"}], "default": "hold"},
+         "items": [{"id": "s1", "title": "Defaults look right"},
+                   {"id": "s2", "title": "Keep the old name", "answers": ["yes", "no"]},
+                   {"id": "q1", "type": "question", "title": "Which timezone?", "suggested": "UTC"},
+                   {"id": "c1", "type": "choice", "title": "Import the old data"},
+                   {"id": "j1", "type": "step", "title": "Run the installer", "steps": ["Run it"]},
+                   {"id": "i1", "type": "info", "title": "Background", "body": [{"p": "Read this first."}]}]}
+
+
 def write_pages(root):
     demo = root / "demo"
     w = pagefile.write_definition
@@ -115,6 +126,7 @@ def write_pages(root):
     pagefile.save_answers(demo / "pf-journey.json", {"j1": {"answer": "yes", "note": ""}, "j2": {"answer": "no", "note": "Broken"}},
                           by="Alex", now=T0)
     w(demo / "pf-reference.json", REFERENCE, now=T0)
+    w(demo / "pf-mixed.json", MIXED, now=T0)
 
 
 @pytest.fixture(scope="module")

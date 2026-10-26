@@ -13,6 +13,9 @@
   const ANS_IN = { yes: "yes", no: "no", changes: "chg", skipped: "skip" };
   const ANS_OUT = { yes: "yes", no: "no", chg: "changes", skip: "skipped" };
   const ANS_LABEL = { yes: "Yes", no: "No", changes: "Changes", skipped: "Skipped" };
+  // The answers each type offers, as review.js names them (pagefile.allowed_answers is the server's copy).
+  const TYPE_ANSWERS = { section: ["yes", "no", "chg"], screen: ["yes", "no", "chg"], contract: ["yes", "no", "chg"], diff: ["yes", "no", "chg"],
+    check: ["yes", "no", "chg", "skip"], step: ["yes", "no", "chg", "skip"] };
   const TYPE_BY_KIND = { review: "section", checklist: "check", journey: "step", backlog: "choice", questions: "question", reference: "info", status: "info" };
   let data = null, etag = null, baseline = {}, lastAct = 0, pending = null, reviewLoaded = false;
 
@@ -113,7 +116,16 @@
     inner += threadHtml(it.id);
     const group = it.section ? '<h2 class="group-h">' + esc(it.section) + "</h2>" : "";
     if (!answerable(it)) return group + '<section class="info" data-item="' + id + '">' + inner + "</section>";
-    const q = t === "question" ? ' data-review-type="question"' + (it.suggested ? ' data-suggested="' + esc(it.suggested) + '"' : "") : "";
+    // Each item carries its own answers, so one page can mix sections, questions, choices and steps.
+    let q = "";
+    if (t === "question") q = ' data-review-type="question"' + (it.suggested ? ' data-suggested="' + esc(it.suggested) + '"' : "");
+    else if (t === "choice") q = ' data-review-options="' + esc(data.page.options.choices.map(c => c.value + ":" + c.label).join(",")) + '"' +
+      (data.page.options.default ? ' data-review-default="' + esc(data.page.options.default) + '"' : "");
+    else {
+      let set = it.answers ? it.answers.map(a => ANS_IN[a] || a) : TYPE_ANSWERS[t].slice();
+      if (it.skip && !set.includes("skip")) set = set.concat("skip");
+      q = ' data-review-answers="' + esc(set.join(",")) + '"';
+    }
     return group + '<section data-item="' + id + '" data-review-question="' + id + '" data-title="' + esc(it.title) + '"' + q + ">" + inner + "</section>";
   }
 
@@ -126,11 +138,6 @@
     set("data-review-page", "/" + rel);
     set("data-build", p.build);
     if (p.kind === "reference" || p.kind === "status") set("data-review-controls", "off");
-    if (p.kind === "checklist" || p.kind === "journey" || p.items.some(it => it.skip)) set("data-review-skip", "on");
-    if (p.options) {
-      set("data-review-options", p.options.choices.map(c => c.value + ":" + c.label).join(","));
-      set("data-review-default", p.options.default);
-    }
     const bl = blockers();
     set("data-review-blocked", Object.entries(bl).map(([k, v]) => k + "=" + v).join("|"));
     set("data-review-approved", Object.entries(data.states).filter(([, s]) => s.hidden).map(([k]) => k).join(","));
@@ -328,7 +335,7 @@
       setTimeout(boot, POLL); return;
     }
     render();
-    if (!reviewLoaded) { reviewLoaded = true; loadScript("/_site/review.js?v=26"); }
+    if (!reviewLoaded) { reviewLoaded = true; loadScript("/_site/review.js?v=27"); }
     setInterval(() => { if (!document.hidden) refresh(false).catch(() => {}); }, POLL);
   })();
 })();

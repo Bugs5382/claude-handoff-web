@@ -29,7 +29,7 @@ completes, set it to `done` and it moves to "Completed". To retire a page, the o
 <link rel="stylesheet" href="/_site/site.css?v=23">
 <script src="/_site/theme.js?v=20"></script>   <!-- in <head>: light / dark before first paint -->
 ...
-<script src="/_site/review.js?v=26"></script>   <!-- review pages: just before </body> -->
+<script src="/_site/review.js?v=27"></script>   <!-- review pages: just before </body> -->
 ```
 
 - `review.js` turns every `<h2>` section (and every `[data-review-question="id" data-title="..."]`) into an
@@ -60,6 +60,9 @@ completes, set it to `done` and it moves to "Completed". To retire a page, the o
 - Converted pages wrap each item in `<section data-review-question="id" data-title="...">` and set
   `<body data-review-h2="off">` so only those sections are items. `data-review-skip="on"` adds Skipped (locked)
   for test checklists; `data-review-import="oldKey|prefix"` imports answers an older checklist saved.
+- `data-review-answers="yes,no"` on one item gives it its own set from `yes`, `no`, `chg` and `skip`, in place of
+  the page's (the renderer sets it on every page-file item, so one page can mix Yes / No items, choices and
+  questions). Mark unanswered leaves out items that don't offer the answer.
 - `data-review-stale="a.html|b/"` (set by build-review.py from `_saved/stale-log.json`, last 7 days) lists
   those pages as `STALE: <page>` in Copy results.
 - `data-review-type="question"` on an `<h2>` or `[data-review-question]` item makes it an open question: a

@@ -179,7 +179,7 @@ def save_answers(path, answers, *, by, base=None, now=None):
                 errors.append(f"{iid}: Changes needs a note")
                 continue
             old = rnd["answers"].get(iid)
-            if old is None and not answer:
+            if old is None and not answer and not note.strip():
                 continue
             if old is not None and old["answer"] == answer and old.get("note", "") == note:
                 continue

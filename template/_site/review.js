@@ -28,6 +28,11 @@
 // item with a one-line summary and the same Copy results text, never expanded automatically and
 // never ahead of the page's own content.
 // The page also polls itself (/_site/live.js) and soft-reloads when it changes.
+// Page files: on a page drawn by render.js (window.sitePage), the items come from the renderer, answers are
+// saved through sitePage (PUT /_page/<page>/answers) instead of /_save/, History comes from the page's own
+// rounds, Blocker sends the item to the page's route ("Blocker: send now", unless the route only copies), the
+// bar gains "Send to <agent>" and a delivery line, and render.js redraws the page in place through
+// siteReview.unmount() and siteReviewMount() instead of a reload.
 // "How to test": an item's test steps open in their own pop-out window (named "howto", reused so it
 // stays where he put it), never inline with the answers. Sources, per item:
 //   <template data-howto>...steps...</template>   inside the item (or its h2 section)
@@ -141,11 +146,12 @@ if (!window.siteTheme) { const t = document.createElement("script"); t.src = "/_
 
 (function () {
   const body = document.body;
+  const PF = window.sitePage || null;
   if (body.getAttribute("data-review-controls") === "off") { loadLive(); return; }
   const page = body.getAttribute("data-review-page") || location.pathname.replace(/\/index\.html$/, "/");
   // Set once per install (install.sh writes both from site.json: key_prefix, blocker_to).
   const KEY_PREFIX = "review:";
-  const BLOCKER_TO = "the operator session";
+  let BLOCKER_TO = "the operator session";
   const KEY = KEY_PREFIX + page;
 
   // ---------- box storage (/_save/<page-key>.json, see SAVE-API.md) ----------
@@ -159,7 +165,8 @@ if (!window.siteTheme) { const t = document.createElement("script"); t.src = "/_
   const HIST_URL = "/_history/" + HIST_NAME + "/";
   const TZ = body.getAttribute("data-tz") || undefined;
   const hhmm = d => d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hourCycle: "h23", timeZone: TZ });
-  const store = { seq: 0, sent: 0, timer: null, busy: false, fails: 0, loadPending: false, migrate: false, touched: new Set(), msg: "", bad: false, lastMod: null };
+  const freshStore = () => ({ seq: 0, sent: 0, timer: null, busy: false, fails: 0, loadPending: false, migrate: false, touched: new Set(), msg: "", bad: false, lastMod: null });
+  const store = freshStore();
   async function getBox() {
     const r = await fetch(SAVE_URL, { cache: "no-store" });
     if (r.status === 404) return null;
@@ -197,7 +204,10 @@ if (!window.siteTheme) { const t = document.createElement("script"); t.src = "/_
     return box;
   }
 
-  (async function boot() {
+  if (PF) {
+    window.siteReviewMount = () => { Object.assign(store, freshStore(), { lastMod: PF.lastSaved() }); run(PF.state()); };
+    window.siteReviewMount();
+  } else (async function boot() {
     let state = {};
     try {
       const b = await getBox();
@@ -213,6 +223,9 @@ if (!window.siteTheme) { const t = document.createElement("script"); t.src = "/_
   })();
 
   function run(state) {
+  // Listeners on window and document go through on(), so unmount() can take them off before a redraw.
+  const offs = [];
+  const on = (t, ev, fn, o) => { t.addEventListener(ev, fn, o); offs.push(() => t.removeEventListener(ev, fn, o)); };
   function setStatus(text, bad) { store.msg = text; store.bad = !!bad; const el = document.querySelector(".rvbar .svst"); if (el) { el.textContent = text; el.classList.toggle("bad", !!bad); el.closest(".rvbar").classList.toggle("save-bad", !!bad); } }
   function persist(id) {
     if (id) store.touched.add(id);
@@ -234,7 +247,7 @@ if (!window.siteTheme) { const t = document.createElement("script"); t.src = "/_
         }
         store.loadPending = false;
       }
-      await putBox(state);
+      await (PF ? PF.save(state) : putBox(state));
       store.sent = seq; store.fails = 0;
       setStatus("Saved " + hhmm(new Date()));
       if (store.migrate) { const back = await getBox(); if (back && JSON.stringify(back) === JSON.stringify(state)) { localStorage.removeItem(KEY); store.migrate = false; } }
@@ -251,11 +264,14 @@ if (!window.siteTheme) { const t = document.createElement("script"); t.src = "/_
   function softReload() {
     const a = document.activeElement;
     if (a && (a.tagName === "TEXTAREA" || a.isContentEditable)) { setTimeout(softReload, 2000); return; }
-    location.reload();
+    if (PF) PF.redraw(); else location.reload();
   }
-  addEventListener("beforeunload", e => {
+  on(window, "beforeunload", e => {
     if (!unsaved()) return;
-    try { fetch(SAVE_URL, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(state), keepalive: true }); } catch (x) {}
+    try {
+      if (PF) PF.saveKeepalive(state);
+      else fetch(SAVE_URL, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(state), keepalive: true });
+    } catch (x) {}
     e.preventDefault(); e.returnValue = "";
   });
 
@@ -310,8 +326,10 @@ if (!window.siteTheme) { const t = document.createElement("script"); t.src = "/_
     return { opts, def: opts.some(o => o[0] === d) ? d : "" };
   }
   const items = [];
+  // A page file: the renderer hands over its items (each one a section card it drew).
+  if (PF) PF.items.forEach(x => items.push({ id: x.id, title: x.title, at: x.el, nodes: [x.el], type: x.type, suggested: x.suggested, ch: choicesOf(x.el) }));
   // data-review-h2="off": only [data-review-question] elements are items (converted pages).
-  if (body.getAttribute("data-review-h2") !== "off") Array.from(document.querySelectorAll("h2")).forEach((h, i) => {
+  else if (body.getAttribute("data-review-h2") !== "off") Array.from(document.querySelectorAll("h2")).forEach((h, i) => {
     const id = "s" + (i + 1);
     let anchor = h; let n = h.nextElementSibling;
     const nodes = [h];
@@ -319,7 +337,7 @@ if (!window.siteTheme) { const t = document.createElement("script"); t.src = "/_
     const hc = h.cloneNode(true); hc.querySelectorAll(".howto-btn").forEach(x => x.remove());
     items.push({ id, title: hc.textContent.trim(), after: anchor, nodes, type: h.getAttribute("data-review-type") || "", suggested: h.getAttribute("data-suggested") || "", ch: choicesOf(h) });
   });
-  document.querySelectorAll("[data-review-question]").forEach(el => {
+  if (!PF) document.querySelectorAll("[data-review-question]").forEach(el => {
     items.push({ id: el.getAttribute("data-review-question"), title: el.getAttribute("data-title") || el.textContent.trim(), at: el, nodes: [el], type: el.getAttribute("data-review-type") || "", suggested: el.getAttribute("data-suggested") || "", ch: choicesOf(el) });
   });
   const isQ = it => it.type === "question";
@@ -373,6 +391,9 @@ if (!window.siteTheme) { const t = document.createElement("script"); t.src = "/_
   // its id and status pill on top; <h2> items and unified-page items get the controls in their own card.
   // Answers are a segmented group of real buttons; pressing the chosen one again clears it.
   const ANS = { yes: "Yes", no: "No", chg: "Changes", skip: "Skipped (locked)" };
+  // On a page file, Blocker and Send go to the page's route unless it only copies.
+  const SENDS = !!PF && PF.route.mode !== "copy";
+  if (PF) BLOCKER_TO = PF.route.to;
   const UNIFIED = body.classList.contains("unified");
   function place(it, box) {
     const det = it.at && it.at.querySelector(":scope > .rv-details");
@@ -455,7 +476,9 @@ if (!window.siteTheme) { const t = document.createElement("script"); t.src = "/_
     const addNote = document.createElement("button"); addNote.type = "button"; addNote.className = "add-note"; addNote.textContent = "Add a note";
     const sp = document.createElement("span"); sp.className = "sp";
     const bk = document.createElement("button"); bk.type = "button"; bk.className = "blocker-btn";
-    bk.textContent = "Blocker: copy now"; bk.title = "Something stops you testing or using it: copy this one item and paste it to " + BLOCKER_TO + " straight away";
+    bk.textContent = SENDS ? "Blocker: send now" : "Blocker: copy now";
+    bk.title = SENDS ? "Something stops you testing or using it: send this one item to " + BLOCKER_TO + " straight away"
+      : "Something stops you testing or using it: copy this one item and paste it to " + BLOCKER_TO + " straight away";
     row.append(addNote, sp, bk);
     box.appendChild(row);
     const nl = document.createElement("label"); nl.className = "notel";
@@ -484,6 +507,19 @@ if (!window.siteTheme) { const t = document.createElement("script"); t.src = "/_
       state[it.id] = Object.assign({}, cur, { n, blocker: true }); persist(it.id); paint();
       const build = body.getAttribute("data-build");
       const out = "BLOCKER: " + document.title + " (" + page + (build ? ", build " + build : "") + ")\n- [" + it.id + "] " + it.title + "\n    Note: " + n.replace(/\n/g, " ") + "\n";
+      if (SENDS) {
+        try {
+          if (!(await flushNow())) throw new Error("the answers aren't saved yet");
+          const sent = await PF.send("blocker", [it.id], out);
+          setDelivery("Sent " + hhmm(new Date()) + (sent.listening ? "" : " · " + sent.to + " isn't listening; Copy results instead"));
+          alert("Blocker sent to " + sent.to + "." + (sent.listening ? "" : " " + sent.to + " isn't listening right now, so paste it to them as well."));
+          if (!sent.listening) await copyText(out);
+        } catch (err) {
+          await copyText(out);
+          alert("Couldn't send the blocker (" + err.message + "), so it's copied. Paste it to " + BLOCKER_TO + " now.");
+        }
+        return;
+      }
       await copyText(out);
       alert("Blocker copied. Paste it to " + BLOCKER_TO + " now.");
     });
@@ -565,9 +601,16 @@ if (!window.siteTheme) { const t = document.createElement("script"); t.src = "/_
     '<span class="bkr" hidden></span><span class="cnt" role="status" aria-live="polite"></span></span>' +
     '<span class="svst" aria-live="polite"></span>' +
     '<a class="back" hidden></a>' +
+    (SENDS ? '<button class="send-btn" type="button"></button><span class="dlv" aria-live="polite"></span>' : "") +
     '<span class="more"><button class="more-btn" type="button" aria-haspopup="menu" aria-expanded="false">More ▾</button></span>' +
     '</div>';
   body.appendChild(bar);
+  function setDelivery(text) { const el = bar.querySelector(".dlv"); if (el) el.textContent = text; }
+  const sendBtn = bar.querySelector(".send-btn");
+  if (sendBtn) {
+    sendBtn.textContent = "Send to " + PF.route.to;
+    setDelivery(PF.delivery());
+  }
   const menu = bar.querySelector(".menu"), moreBtn = bar.querySelector(".more-btn"), idsBtn = bar.querySelector(".ids");
   const picker = bar.querySelector(".rvids"), pickIn = picker.querySelector("input"), pickList = picker.querySelector(".rvids-list"), pickHead = picker.querySelector(".rvids-h");
   const choicePage = items.some(isC) && !items.some(it => !isQ(it) && !isC(it));
@@ -584,8 +627,8 @@ if (!window.siteTheme) { const t = document.createElement("script"); t.src = "/_
   }
   moreBtn.addEventListener("click", e => { e.stopPropagation(); showIds(false); showMenu(menu.hidden); });
   idsBtn.addEventListener("click", e => { e.stopPropagation(); showMenu(false); showIds(picker.hidden); });
-  document.addEventListener("click", e => { if (!bar.contains(e.target)) { showMenu(false); showIds(false); } });
-  document.addEventListener("keydown", e => {
+  on(document, "click", e => { if (!bar.contains(e.target)) { showMenu(false); showIds(false); } });
+  on(document, "keydown", e => {
     if (e.key !== "Escape") return;
     if (!picker.hidden) { showIds(false); idsBtn.focus(); } else if (!menu.hidden) { showMenu(false); moreBtn.focus(); }
   });
@@ -699,6 +742,7 @@ if (!window.siteTheme) { const t = document.createElement("script"); t.src = "/_
     bar.classList.toggle("all-done", c.allDone);
     bar.classList.toggle("approved", c.approved);
     bar.classList.toggle("has-blocker", c.blockers > 0);
+    if (sendBtn) sendBtn.classList.toggle("ready", c.allDone);
     const back = bar.querySelector(".back");
     back.hidden = !(c.allDone && folder); back.href = FOLDER_URL; back.textContent = "\u2190 Back to " + FOLDER_PAGES;
     if (wasDone === false && c.allDone && folder) actToast((c.approved ? "Approved." : "Every item answered.") + " Copy results from More, then", "back to " + FOLDER_PAGES);
@@ -759,7 +803,7 @@ if (!window.siteTheme) { const t = document.createElement("script"); t.src = "/_
   }
   bar.querySelector(".next").addEventListener("click", () => step(1));
   bar.querySelector(".prev").addEventListener("click", () => step(-1));
-  document.addEventListener("keydown", e => {
+  on(document, "keydown", e => {
     if (e.ctrlKey || e.metaKey || e.altKey || /^(INPUT|TEXTAREA|SELECT)$/.test((e.target || {}).tagName || "")) return;
     if (e.key === "n") step(1); else if (e.key === "p") step(-1);
   });
@@ -854,7 +898,7 @@ if (!window.siteTheme) { const t = document.createElement("script"); t.src = "/_
     if (!confirm("Clear your answers on this page? Approved and Skipped (locked) items stay.")) return;
     for (const it of items) if (!hidden.has(it.id) && !(state[it.id] || {}).locked) { delete state[it.id]; store.touched.add(it.id); }
     persist();
-    if (await flushNow()) location.reload();
+    if (await flushNow()) { if (PF) PF.redraw(); else location.reload(); }
     else { paint(); alert("Cleared here, but the box can't be reached yet. It keeps retrying; don't close the page until it says Saved."); }
   });
   // ---------- round history (/_history/<page-key>/, see SAVE-API.md) ----------
@@ -879,18 +923,20 @@ if (!window.siteTheme) { const t = document.createElement("script"); t.src = "/_
       d.append(pre, cp);
       d.addEventListener("toggle", async () => {
         if (!d.open || d.dataset.loaded) return;
-        d.dataset.loaded = "1"; pre.textContent = "Loading...";
-        try {
-          const resp = await fetch(HIST_URL + r.file, { cache: "no-store" });
-          const entry = await resp.json();
-          pre.textContent = entry.results_text || "";
-          cp.disabled = false;
-          cp.addEventListener("click", async () => {
-            const t = entry.results_text || "";
-            try { await navigator.clipboard.writeText(t); } catch (e) { const ta = document.createElement("textarea"); ta.value = t; body.appendChild(ta); ta.select(); document.execCommand("copy"); ta.remove(); }
-            cp.textContent = "Copied"; setTimeout(() => { cp.textContent = "Copy results"; }, 1500);
-          });
-        } catch (e) { pre.textContent = "Couldn't load this round."; }
+        d.dataset.loaded = "1";
+        // A page file's rounds carry their text; an HTML page's history entry is fetched.
+        let text = r.results;
+        if (text === undefined) {
+          pre.textContent = "Loading...";
+          try { text = (await (await fetch(HIST_URL + r.file, { cache: "no-store" })).json()).results_text || ""; }
+          catch (e) { pre.textContent = "Couldn't load this round."; return; }
+        }
+        pre.textContent = text;
+        cp.disabled = false;
+        cp.addEventListener("click", async () => {
+          try { await navigator.clipboard.writeText(text); } catch (e) { const ta = document.createElement("textarea"); ta.value = text; body.appendChild(ta); ta.select(); document.execCommand("copy"); ta.remove(); }
+          cp.textContent = "Copied"; setTimeout(() => { cp.textContent = "Copy results"; }, 1500);
+        });
       });
       outer.appendChild(d);
     }
@@ -904,7 +950,7 @@ if (!window.siteTheme) { const t = document.createElement("script"); t.src = "/_
       if (r.ok) renderHistory(await r.json());
     } catch (e) { /* offline: History stays disabled until the next load */ }
   }
-  loadHistory();
+  if (PF) renderHistory(PF.history()); else loadHistory();
   historyBtn.addEventListener("click", () => {
     showMenu(false);
     if (!histBlock) return;
@@ -915,6 +961,14 @@ if (!window.siteTheme) { const t = document.createElement("script"); t.src = "/_
     showMenu(false);
     if (!confirm("Save this round to history now? The next change starts a new round.")) return;
     if (!(await flushNow())) { alert("Can't save yet: the box can't be reached. Try again once it says Saved."); return; }
+    if (PF) {
+      try {
+        const out = await PF.closeRound(results());
+        await PF.redraw();
+        alert("Saved as Round " + (out.round - 1) + ".");
+      } catch (e) { alert("Couldn't save the round: " + e.message); }
+      return;
+    }
     try {
       const r = await fetch("/_round-close", { method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: HIST_NAME, results_text: results() }), cache: "no-store" });
@@ -925,7 +979,26 @@ if (!window.siteTheme) { const t = document.createElement("script"); t.src = "/_
     } catch (e) { alert("Couldn't save the round: " + e.message); }
   });
 
-  window.siteReview = { results, unsaved, saveUrl: SAVE_URL };
+  if (sendBtn) sendBtn.addEventListener("click", async () => {
+    const c = rvCount(kinds(), state, { hidden, blocked });
+    const left = c.total - c.answered;
+    if (!c.allDone && !confirm("Send now? " + left + " item" + (left === 1 ? " is" : "s are") + " still open.")) return;
+    if (!(await flushNow())) { alert("Can't send yet: the answers aren't saved. Try again once it says Saved."); return; }
+    try {
+      const sent = await PF.send("send", null, results());
+      setDelivery("Sent " + hhmm(new Date()) + (sent.listening ? "" : " · " + sent.to + " isn't listening; Copy results instead"));
+    } catch (e) { alert("Couldn't send: " + e.message + ". Use Copy results instead."); }
+  });
+  // Before a redraw: take this page's listeners, bar, notes and History off, so mounting again starts clean.
+  function unmount() {
+    offs.splice(0).forEach(off => off());
+    clearTimeout(store.timer); store.timer = null;
+    if (backTimer) { clearTimeout(backTimer); backTimer = null; }
+    bar.remove();
+    if (histBlock) histBlock.remove();
+    document.querySelectorAll(".rvdone, .site-toast.act").forEach(x => x.remove());
+  }
+  window.siteReview = { results, unsaved, saveUrl: SAVE_URL, state: () => state, flushNow, unmount };
   const target = location.hash && document.getElementById(location.hash.slice(1));
   if (target) for (let d = target.closest("details"); d; d = d.parentElement && d.parentElement.closest("details")) d.open = true;
 
@@ -934,15 +1007,17 @@ if (!window.siteTheme) { const t = document.createElement("script"); t.src = "/_
 
   function loadLive() {
     if (document.querySelector('script[src*="/_site/live.js"]')) return;
-    const sc = document.createElement("script"); sc.src = "/_site/live.js?v=21"; sc.setAttribute("data-mode", "page"); body.appendChild(sc);
+    const sc = document.createElement("script"); sc.src = "/_site/live.js?v=22"; sc.setAttribute("data-mode", PF ? "file" : "page"); body.appendChild(sc);
   }
 })();
 
 // Diff blocks: a Diff / Final switch per block, and one for the whole page when it has several. Final hides
 // removed text and shows the rest plainly. The choice is kept for this tab, so a live reload doesn't undo it.
-(function () {
+// render.js runs it again after each redraw (window.siteDiff); blocks that already have a switch are left alone.
+window.siteDiff = function () {
   const blocks = Array.from(document.querySelectorAll(".rvdiff"));
-  if (!blocks.length) return;
+  if (!blocks.length || blocks.every(b => b.dataset.diffWired)) return;
+  document.querySelectorAll(".rvdiff-mode").forEach(g => g.remove());
   const KEY = "rvdiff-mode:" + location.pathname;
   let saved = [];
   try { saved = JSON.parse(sessionStorage.getItem(KEY) || "[]"); } catch (e) {}
@@ -965,6 +1040,7 @@ if (!window.siteTheme) { const t = document.createElement("script"); t.src = "/_
   }
   function set(block, v) { block.classList.toggle("final", v === "final"); press(block.previousElementSibling, v); }
   blocks.forEach((b, i) => {
+    b.dataset.diffWired = "1";
     // A sentence removed whole has nothing left to show in Final.
     b.querySelectorAll("p").forEach(p => {
       if (p.querySelector("del") && !Array.from(p.childNodes).some(n => n.nodeName !== "DEL" && n.textContent.trim())) p.classList.add("gone");
@@ -978,4 +1054,5 @@ if (!window.siteTheme) { const t = document.createElement("script"); t.src = "/_
     (document.querySelector("main") || document.body).prepend(all);
   }
   sync();
-})();
+};
+window.siteDiff();

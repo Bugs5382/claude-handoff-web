@@ -41,8 +41,8 @@ This repository holds only the generic template and the fake `example/`. Never c
 | `POST` | `/_stale` | `{folder, page}`: Stale |
 | `GET` | `/_history/<name>/`, `/_history/<name>/<file>` | round history, read-only (see `_site/SAVE-API.md`) |
 | `POST` | `/_round-close` | `{name, results_text?}`: close a round by hand |
-| `GET` | `/<folder>/<slug>` | a page file's renderer shell (`_site/page.html`); a converted page's old `.html` URL redirects here |
-| `GET` | `/_page/<folder>/<slug>` | the page file with its item states, counts, route and whether the route's agent is listening; send `If-None-Match` with the last `ETag` for a cheap 304 |
+| `GET` | `/<folder>/<slug>` | a page file, drawn by `_site/render.js` in the `_site/page.html` shell; a converted page's old `.html` URL redirects here |
+| `GET` | `/_page/<folder>/<slug>` | the page file with its item states, counts, route, whether the route's agent is listening, and server-drawn diffs; send `If-None-Match` with the last `ETag` for a cheap 304 |
 | `PUT` | `/_page/<folder>/<slug>/answers` | `{base, answers: {id: {answer, note}}}`: merge one tab's answers; returns `{rev}` |
 | `POST` | `/_page/<folder>/<slug>/round` | `{results?}`: Save round now; returns `{round}` |
 | `POST` | `/_page/<folder>/<slug>/restart` | `{checkpoint, results?}`: restart a journey and send a `restart` submission |

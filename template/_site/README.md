@@ -24,7 +24,7 @@ completes, set it to `done` and it moves to "Completed". To retire a page, the o
 <link rel="stylesheet" href="/_site/site.css?v=23">
 <script src="/_site/theme.js?v=20"></script>   <!-- in <head>: light / dark before first paint -->
 ...
-<script src="/_site/review.js?v=25"></script>   <!-- review pages: just before </body> -->
+<script src="/_site/review.js?v=26"></script>   <!-- review pages: just before </body> -->
 ```
 
 - `review.js` turns every `<h2>` section (and every `[data-review-question="id" data-title="..."]`) into an
@@ -84,6 +84,9 @@ completes, set it to `done` and it moves to "Completed". To retire a page, the o
   review.js adds a Diff | Final switch per block (and Diff for all | Final for all when there are several).
   See `docs/page-types.md` "(k) Diff item".
 - Pages without review.js (checklists, indexes) load `/_site/live.js` (`data-mode="page"` on non-index pages).
+- Page files (`<folder>/<slug>.json`, see `PAGE-FILE.md`) need none of this: `render.js` draws them into this
+  same markup and loads `review.js`, which then saves through the page file; `live.js` runs in `data-mode="file"`
+  there (the picture pop-out only), because `render.js` does the live redraw.
 - Element styles apply only under `<body class="site">`; design mocks can load site.css without losing their look.
 
 ## Rounds and history

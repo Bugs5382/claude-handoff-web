@@ -37,7 +37,7 @@ testpaths = ["tests"]
 
 [tool.mypy]
 python_version = "3.10"
-files = ["template/_site/serve.py", "template/_site/schema.py", "template/_site/pagefile.py"]
+files = ["template/_site/serve.py", "template/_site/schema.py", "template/_site/pagefile.py", "template/_site/page.py"]
 mypy_path = "template/_site"
 ignore_missing_imports = true
 

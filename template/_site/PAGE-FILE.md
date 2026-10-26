@@ -4,9 +4,9 @@ A page file is one JSON file per page, `<folder>/<slug>.json`, in the `handoff.p
 page definition, every round of answers with who and when, and a reply thread per item. The full design is in
 `docs/design/json-pages.md` in the repo.
 
-This covers the file format, the one module that writes it, and the server endpoints that read and write it
-(listed in `docs/operating.md` in the repo). The `page.py` command line and the renderer come next; until
-then, HTML pages work as they always have.
+This covers the file format, the one module that writes it, the `page.py` command line for agents, and the
+server endpoints that read and write it (listed in `docs/operating.md` in the repo). The renderer comes next;
+until then, HTML pages work as they always have.
 
 ## Before you start
 
@@ -87,6 +87,56 @@ and every other list by position counted from 1.
 items[c1].steps: expected a list of strings
 items[s2].body[#3].tone: expected one of info, warn, ok, danger
 ```
+
+## The command line
+
+Agents use `page.py`; it writes through `pagefile.py`, so it takes the same lock. A page is named
+`<folder>/<slug>`, and `--root` sets the site folder (the default is the folder above `_site/`).
+
+| Command | What it does |
+|---|---|
+| `page.py new app/design --from design.json` | creates a page (the definition comes from stdin without `--from`) |
+| `page.py set app/design --from design.json` | replaces the definition; a `build` or `reset` change opens a round |
+| `page.py reply app/design s1 --from app --reopen "fixed in #70" "Fixed in #70."` | a reply under an item, or `_page`; `--action` takes `filed`, `fixed`, `reopen`, `unblock`, `wontfix` or `info`, with `--reason` and `--ref` |
+| `page.py status app/design done --note "Shipped" --chip Shipped --priority 10` | the index card |
+| `page.py route app/design --to app --mode send` | the page's route (the operator's call) |
+| `page.py round-close app/design --results "..."` | Save round now |
+| `page.py check app/design` | validates a page or a `.json` file; errors give the JSON path, exit 1 on any |
+| `page.py wait app` | blocks until a submission is in `_inbox/app/`, prints the files (blockers first) and exits |
+| `page.py hook app` | prints one line when the inbox has untaken files or nothing is listening |
+| `page.py convert app/design.html` | turns a review.js page into a page file next to it (`--print` shows the definition only) |
+
+### Waiting for submissions
+
+Run `page.py wait <agent>` as a background command and act when it exits:
+
+1. Read the files it printed, blockers first.
+2. Take each one by moving it to `_inbox/<agent>/taken/`; the page then shows it as picked up.
+3. Do the work and answer with `page.py reply`.
+4. Start `page.py wait <agent>` again.
+
+It exits at once when files are already waiting, and waits about 200 ms after the first file so a Send and a
+Blocker that land together are both listed. While it runs it keeps its pid in `_inbox/<agent>/.listening`, so
+the page can say whether the agent is listening. It uses kqueue where there is one, and otherwise checks the
+folder every 2 seconds (`--poll` forces that). `--timeout S` gives up after S seconds with exit code 3.
+
+`page.py hook <agent>` is for a hook that runs whenever the agent is next spoken to: it stays quiet while the
+agent is listening and its inbox is empty, and otherwise prints one line saying what to do.
+
+### Converting an HTML page
+
+`page.py convert <folder>/<page>.html` maps a review.js page to a page file beside it and leaves the HTML in
+place, so both can be checked side by side:
+
+- each `<h2>` becomes an item `s1`, `s2` and so on, and on a `data-review-h2="off"` page each
+  `[data-review-question]` section becomes an item with its own id, so saved answers still match;
+- `data-build`, `data-review-reset`, `data-review-options` and `data-review-default`, `data-review-skip`,
+  `data-review-blocked` (a dependsOn when it names an item, else a blockedBy), question items and
+  `<template data-howto>` carry over, and the folder's `_status.json` entry becomes `status`;
+- paragraphs, lists, code, pictures, tables and `.rvdiff` blocks become blocks; anything else is kept as a
+  flagged `html` block and named on stderr;
+- the saved answers (`_saved/<page-key>.json`) become the open round, with `data-review-approved` items as
+  Yes and `data-review-reopen` as reopened, and the round history files become closed rounds.
 
 ## Writing a file
 

@@ -62,9 +62,9 @@ from urllib.parse import unquote, urlsplit
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import diff as site_diff  # noqa: E402
 import pagefile  # noqa: E402
+from pageindex import PAGE_SEG_RE, discover_page_files, page_card, page_file  # noqa: E402,F401
 
 MAX_BODY = 256 * 1024
-PAGE_SEG_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,80}$")
 AGENT_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,40}$")
 PAGE_ACTIONS = {"PUT": ("answers",), "POST": ("round", "restart", "send")}
 SAVE_RE = re.compile(r"^/_save/([a-z0-9._-]{1,120})\.json$")
@@ -371,22 +371,6 @@ def pruner(root, save_dir):
         time.sleep(3600)
 
 
-def page_file(root, rel):
-    """Resolve "<folder>/<slug>" (or deeper) to its handoff.page/v1 file inside root, or None."""
-    parts = rel.split("/")
-    if len(parts) < 2 or not all(PAGE_SEG_RE.match(x) for x in parts):
-        return None
-    fn = os.path.join(root, *parts) + ".json"
-    if os.path.realpath(fn) != os.path.join(os.path.realpath(root), *parts) + ".json" or not os.path.isfile(fn):
-        return None
-    try:
-        with open(fn) as f:
-            doc = json.load(f)
-    except (OSError, ValueError):
-        return None
-    return fn if isinstance(doc, dict) and doc.get("schema") == pagefile.SCHEMA else None
-
-
 def is_listening(root, agent):
     """True while _inbox/<agent>/.listening names a live process."""
     try:
@@ -418,22 +402,6 @@ def submission_name(kind, rel, when):
     return f"{prio}-{when.astimezone(dt.timezone.utc):%Y%m%dT%H%M%SZ}-{rel.replace('/', '-')}-{{n}}.json"
 
 
-def discover_page_files(root, folder):
-    """(rel, path) for every page file under a folder, at any depth, skipping _ and . folders."""
-    out = []
-    fdir = os.path.join(root, folder)
-    for dirpath, dirnames, filenames in os.walk(fdir):
-        dirnames[:] = sorted(d for d in dirnames if not d.startswith(("_", ".")))
-        for fn in sorted(filenames):
-            if not fn.endswith(".json") or fn.startswith(("_", ".")):
-                continue
-            rel = os.path.relpath(os.path.join(dirpath, fn[:-5]), root).replace(os.sep, "/")
-            path = page_file(root, rel)
-            if path:
-                out.append((rel, path))
-    return out
-
-
 def page_diffs(doc):
     """Word-diff markup (diff.py) for every diff item ("<id>") and diff block ("<id>/body/<n>", "<id>/howto/<n>")."""
     out = {}
@@ -446,46 +414,6 @@ def page_diffs(doc):
                     d = b["diff"]
                     out[f"{it['id']}/{key}/{n}"] = site_diff.diff_html(d.get("old", ""), d.get("new", ""), code=bool(d.get("code")))
     return out
-
-
-def page_card(folder, rel, path):
-    """One index card for a page file, in the same shape gen-index.py's collect() gives an HTML page."""
-    doc = pagefile.load(path)
-    s = pagefile.summary(doc)
-    states = pagefile.item_states(doc)
-    st = doc.get("status") or {}
-    # Open questions never hold up approval, so they keep only a questions page in Needs you.
-    questions = doc["kind"] == "questions" and any(
-        pagefile.item_type(doc, it) == "question" and not states[it["id"]]["answer"] for it in doc["items"])
-    if st.get("state"):
-        state = st["state"]
-    elif doc["kind"] in ("reference", "status"):
-        state = "reference"
-    else:
-        # Done only once approved: a No or Changes answer keeps the page up top until the next round.
-        state = "done" if s["approved"] and not questions else "needs-you"
-    chips = []
-    if state == "needs-you" and (s["open"] or questions or s["tally"] is not None):
-        chips.append("To review")
-    if s["reopened"]:
-        chips.append("Reopened")
-    if s["approved"]:
-        chips.append("Approved")
-    chips.append({"reference": "Reference", "done": "Done"}.get(state, ""))
-    chips += [c for c in st.get("chips", []) if c]
-    chips = [c for i, c in enumerate(chips) if c and c not in chips[:i]]
-    tally = None
-    if s["tally"] is not None:
-        labels = {c["value"]: c["label"].lower() for c in doc["options"]["choices"]}
-        tally = " · ".join(f"{n} {labels[v]}" for v, n in s["tally"].items())
-    try:
-        first = dt.datetime.fromisoformat(doc["rounds"][0]["opened"]).timestamp()
-    except (ValueError, KeyError, IndexError):
-        first = os.path.getmtime(path)
-    return {"folder": folder, "key": rel[len(folder) + 1:], "href": "/" + rel, "title": doc["title"],
-            "note": st.get("note", ""), "state": state, "chips": chips, "mtime": os.path.getmtime(path), "first": first,
-            "open": s["open"] if state == "needs-you" and tally is None else None, "priority": st.get("priority", 50),
-            "tally": tally, "kind": doc["kind"]}
 
 
 def load_gen_index(root):
@@ -503,16 +431,11 @@ def load_gen_index(root):
 
 
 def folder_cards(root, folder, gen):
-    """Every card for a folder: page files plus the HTML pages gen-index.py finds, in index order."""
-    cards = [page_card(folder, rel, path) for rel, path in discover_page_files(root, folder)]
+    """Every card for a folder in index order: gen-index.py's collect() lists the HTML pages and the page files."""
     if gen is None:
+        cards = [page_card(folder, rel, path) for rel, path in discover_page_files(root, folder)]
         return sorted(cards, key=lambda c: (c["priority"], c["key"]))
-    try:
-        with open(os.path.join(root, folder, "_status.json")) as f:
-            manifest = list(json.load(f))
-    except (OSError, ValueError):
-        manifest = []
-    return gen.order_pages(gen.collect(folder) + cards, manifest)
+    return gen.collect(folder)
 
 
 def site_folders(root, cfg):
@@ -586,7 +509,7 @@ class Handler(SimpleHTTPRequestHandler):
             return self._get_index()
         if self._blocked():
             return self._plain(HTTPStatus.NOT_FOUND, "Not found")
-        if self._page_url():
+        if self._page_url() or self._index_page():
             return
         return super().do_GET()
 
@@ -613,6 +536,37 @@ class Handler(SimpleHTTPRequestHandler):
         with open(os.path.join(self.root, "_site", "page.html"), "rb") as f:
             data = f.read()
         self._shell = True
+        self.send_response(HTTPStatus.OK)
+        self.send_header("Content-Type", "text/html; charset=utf-8")
+        self.send_header("Content-Length", str(len(data)))
+        self.end_headers()
+        self.wfile.write(data)
+        return True
+
+    def _index_page(self):
+        """Build /, /<folder>/ and /<folder>/history/ on request when page files are involved, with gen-index.py's
+        own HTML, so their cards are always current. Folders without page files keep their static index.html."""
+        p = self._path()
+        m = re.match(r"^/(?:([a-z0-9][a-z0-9_-]{0,60})/(history/)?)?$", p)
+        if not m:
+            return False
+        folder, hist = m.group(1), bool(m.group(2))
+        folders = [d for d, _, _ in site_folders(self.root, load_config(self.root))]
+        if folder and folder not in folders:
+            return False
+        scope = [folder] if folder else folders
+        if not any(os.path.isdir(os.path.join(self.root, d)) and discover_page_files(self.root, d) for d in scope):
+            return False
+        gen = load_gen_index(self.root)
+        if gen is None:
+            return False
+        if not folder:
+            page = gen.root_html({d: gen.collect(d) for d in folders if d in gen.FOLDERS})
+        elif hist:
+            page = gen.history_html(folder, gen.collect(folder))
+        else:
+            page = gen.folder_html(folder, gen.collect(folder))
+        data = page.encode()
         self.send_response(HTTPStatus.OK)
         self.send_header("Content-Type", "text/html; charset=utf-8")
         self.send_header("Content-Length", str(len(data)))

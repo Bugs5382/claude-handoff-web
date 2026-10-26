@@ -252,3 +252,62 @@ def test_concurrent_writers_never_lose_a_write(path):
     doc = json.loads(path.read_text())
     assert len(doc["rounds"][0]["answers"]) == 60
     assert doc["rev"] == 61
+
+
+def test_set_status_writes_the_index_card(path):
+    make(path)
+    pagefile.set_status(path, "done", note="Stale (Alex, 2026-10-26 08:00 UTC)", chips=["Shipped"], priority=10)
+    assert pagefile.load(path)["status"] == {"state": "done", "note": "Stale (Alex, 2026-10-26 08:00 UTC)", "chips": ["Shipped"],
+                                             "priority": 10}
+    with pytest.raises(pagefile.PageError, match="status.state: expected one of needs-you, reference, done"):
+        pagefile.set_status(path, "later")
+
+
+def test_submissions_are_numbered_from_1_and_marked_taken(path):
+    make(path)
+    first = pagefile.add_submission(path, {"kind": "send", "to": "ops", "items": ["s1"], "file": "5-a.json"}, now=T0)
+    second = pagefile.add_submission(path, {"kind": "blocker", "to": "ops", "items": ["s2"], "file": "0-b.json"}, now=T1)
+    assert (first["n"], second["n"]) == (1, 2)
+    sub = pagefile.load(path)["submissions"][0]
+    assert sub == {"n": 1, "kind": "send", "at": T0, "to": "ops", "round": 1, "rev": 1, "items": ["s1"], "file": "5-a.json",
+                   "state": "sent"}
+    pagefile.mark_taken(path, 1, at=T2)
+    sub = pagefile.load(path)["submissions"][0]
+    assert sub["state"] == "taken" and sub["takenAt"] == T2
+
+
+def test_summary_counts_open_items_like_the_bar(path):
+    d = review(items=[
+        {"id": "a", "title": "A"},
+        {"id": "b", "title": "B", "dependsOn": ["a"]},
+        {"id": "c", "title": "C", "blockedBy": "example-org/app#70"},
+        {"id": "d", "title": "D"},
+        {"id": "q", "type": "question", "title": "Q"},
+        {"id": "i", "type": "info", "title": "I"},
+    ])
+    make(path, d)
+    s = pagefile.summary(pagefile.load(path))
+    assert (s["open"], s["blocked"], s["counted"], s["yes"], s["reopened"]) == (2, 2, 4, 0, 0)
+    pagefile.save_answers(path, {"a": {"answer": "yes", "note": ""}, "d": {"answer": "yes", "note": ""}}, by="Alex")
+    pagefile.reply(path, "c", "app", "Landed.", action="unblock")
+    s = pagefile.summary(pagefile.load(path))
+    assert (s["open"], s["blocked"], s["yes"], s["approved"]) == (2, 0, 2, False)
+    pagefile.save_answers(path, {"b": {"answer": "yes", "note": ""}, "c": {"answer": "yes", "note": ""}}, by="Alex")
+    s = pagefile.summary(pagefile.load(path))
+    assert (s["open"], s["approved"]) == (0, True)
+
+
+def test_summary_runs_journey_steps_in_order(path):
+    make(path, journey())
+    s = pagefile.summary(pagefile.load(path))
+    assert (s["open"], s["blocked"]) == (1, 2)
+
+
+def test_summary_counts_backlog_choices_with_the_default(path):
+    d = {"schema": "handoff.page/v1", "kind": "backlog", "title": "Backlog",
+         "options": {"choices": [{"value": "start", "label": "Start"}, {"value": "hold", "label": "Hold"}], "default": "hold"},
+         "items": [{"id": "b1", "title": "One"}, {"id": "b2", "title": "Two"}, {"id": "b3", "title": "Three"}]}
+    make(path, d)
+    pagefile.save_answers(path, {"b2": {"answer": "start", "note": ""}}, by="Alex")
+    s = pagefile.summary(pagefile.load(path))
+    assert s["tally"] == {"start": 1, "hold": 2} and s["open"] == 0

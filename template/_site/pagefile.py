@@ -249,6 +249,46 @@ def reply(path, item_id, frm, text, *, action=None, reason=None, ref=None, now=N
         return entry["n"]
 
 
+def set_status(path, state, *, note=None, chips=None, priority=None):
+    """The page's index card. Returns the rev."""
+    with _locked(path) as p:
+        doc = load(p)
+        st = {"state": state}
+        for k, val in (("note", note), ("chips", chips), ("priority", priority)):
+            if val is not None:
+                st[k] = val
+        doc["status"] = st
+        return _commit(p, doc)
+
+
+def add_submission(path, record, *, now=None):
+    """Record a Send, Blocker or Restart on the page. Returns the stored record, numbered from 1.
+
+    record["file"] may hold "{n}", filled with the submission's number under the lock.
+    """
+    with _locked(path) as p:
+        doc = load(p)
+        n = len(doc["submissions"]) + 1
+        sub = {"n": n, "kind": record["kind"], "at": now or now_iso(), "to": record["to"],
+               "round": doc["rounds"][-1]["round"], "rev": doc["rev"], "items": list(record.get("items", [])),
+               "file": record["file"].replace("{n}", str(n)), "state": "sent"}
+        doc["submissions"].append(sub)
+        _commit(p, doc)
+        return sub
+
+
+def mark_taken(path, n, *, at=None):
+    """An agent took submission n from its inbox. Returns the rev."""
+    with _locked(path) as p:
+        doc = load(p)
+        sub = doc["submissions"][n - 1]
+        if sub.get("state") == "taken":
+            return doc["rev"]
+        sub["state"] = "taken"
+        sub["takenAt"] = at or now_iso()
+        return _commit(p, doc)
+
+
 def item_states(doc):
     """Where each answerable item stands in the open round.
 
@@ -283,3 +323,53 @@ def item_states(doc):
         out[iid] = state
     return out
 
+
+def _unblocked(doc, iid):
+    return any(r.get("action") == "unblock" for r in doc["thread"].get(iid, []))
+
+
+def summary(doc):
+    """The bar's counts for the open round: what's open, blocked, Yes and reopened, and a backlog's tally.
+
+    An item is blocked while a dependsOn item isn't Yes (a journey step depends on the one before it unless
+    it says otherwise) or while its blockedBy hasn't had an unblock reply.
+    """
+    states = item_states(doc)
+    out = {"open": 0, "blocked": 0, "counted": 0, "yes": 0, "reopened": 0, "approved": False, "tally": None}
+    choices = doc.get("options") or {}
+    tally = {c["value"]: 0 for c in choices.get("choices", [])}
+    prev_step = None
+    for it in doc["items"]:
+        typ = item_type(doc, it)
+        if typ == "info":
+            continue
+        st = states[it["id"]]
+        if typ == "choice":
+            pick = st["answer"] or choices.get("default", "")
+            if pick in tally:
+                tally[pick] += 1
+            continue
+        deps = it.get("dependsOn")
+        if deps is None:
+            deps = [prev_step] if typ == "step" and prev_step else []
+        if typ == "step":
+            prev_step = it["id"]
+        if typ == "question":
+            continue
+        out["counted"] += 1
+        if st["reopened"]:
+            out["reopened"] += 1
+        blocked = (it.get("blockedBy") and not _unblocked(doc, it["id"])) or any(
+            states.get(d, {}).get("answer") != "yes" for d in deps)
+        if blocked:
+            out["blocked"] += 1
+        elif st["answer"] == "yes":
+            out["yes"] += 1
+        elif st["answer"] == "skipped":
+            pass
+        elif not st["answer"] or st["reopened"]:
+            out["open"] += 1
+    if tally:
+        out["tally"] = tally
+    out["approved"] = out["counted"] > 0 and out["yes"] == out["counted"]
+    return out

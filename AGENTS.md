@@ -34,8 +34,10 @@ attributes in `template/_site/README.md`, the save API in `template/_site/SAVE-A
 - `docs/` - quick start, page types, operating notes
 - `memory/` - the drop-in memory file for Claude sessions
 - `install.sh` - installer (refuses git work trees)
-- `tests/` - end-to-end tests against a real `serve.py` in a temp folder; `test_review_choices.py` drives
-  `review.js` in headless Chrome (skipped when no Chrome or Chromium is installed; `CHROME` names one)
+- `tests/` - end-to-end tests against a real `serve.py` in a temp folder; the browser suites drive `review.js`
+  and `render.js` in `chrome-headless-shell` when it's installed (no Dock icon on a Mac:
+  `npx @puppeteer/browsers install chrome-headless-shell@stable --path ~/.cache/puppeteer`), else headless
+  Chrome or Chromium, and skip when there's none; `CHROME` names one
 
 ## Build, test, lint
 

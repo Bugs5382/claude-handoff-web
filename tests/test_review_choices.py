@@ -25,8 +25,18 @@ ROOT = Path(__file__).resolve().parent.parent
 MAC_CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
 
 
+def _cached_shells():
+    # Where `npx @puppeteer/browsers install chrome-headless-shell@stable --path ~/.cache/puppeteer` puts it.
+    cache = Path(os.path.expanduser("~")) / ".cache" / "puppeteer" / "chrome-headless-shell"
+    found = cache.glob("*/chrome-headless-shell-*/chrome-headless-shell")
+    version = lambda p: tuple(int(n) for n in re.findall(r"\d+", p.parent.parent.name))  # noqa: E731
+    return [str(p) for p in sorted(found, key=version, reverse=True)]
+
+
 def find_chrome():
-    for c in (os.environ.get("CHROME"), "google-chrome", "google-chrome-stable", "chromium", "chromium-browser", "chrome", MAC_CHROME):
+    """chrome-headless-shell first: it has no app bundle, so a Mac shows no Dock icon while the suites run."""
+    for c in (os.environ.get("CHROME"), "chrome-headless-shell", *_cached_shells(),
+              "google-chrome", "google-chrome-stable", "chromium", "chromium-browser", "chrome", MAC_CHROME):
         if c and (shutil.which(c) or os.path.isfile(c)):
             return shutil.which(c) or c
     return None

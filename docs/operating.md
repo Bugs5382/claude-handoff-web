@@ -37,7 +37,7 @@ This repository holds only the generic template and the fake `example/`. Never c
 | Method | Path | What |
 |---|---|---|
 | `GET` | any static path | files, like `python3 -m http.server`; `_saved/` and `_inbox/` are never served |
-| `GET`, `PUT` | `/_save/<name>.json` | answers (see `_site/SAVE-API.md`) |
+| `GET`, `PUT` | `/_save/<name>.json` | answers on HTML pages (see `_site/SAVE-API.md`) |
 | `POST` | `/_stale` | `{folder, page}`: Stale |
 | `GET` | `/_history/<name>/`, `/_history/<name>/<file>` | round history, read-only (see `_site/SAVE-API.md`) |
 | `POST` | `/_round-close` | `{name, results_text?}`: close a round by hand |

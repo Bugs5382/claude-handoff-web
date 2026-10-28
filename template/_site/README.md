@@ -1,6 +1,8 @@
 # The hand-off site
 
-Served by `_site/serve.py` from this folder, at the host and port in `site.json`. The operator owns the root,
+Served by `_site/serve.py` from this folder, at the host and port in `site.json`. New pages are page files
+(`<folder>/<slug>.json`, written with `page.py`; see `PAGE-FILE.md` and `PAGE-API.md`): the renderer draws them,
+and they need none of the manifest or HTML steps below, which are for HTML pages not converted yet. The operator owns the root,
 `site.json` and `_site/`; each session publishes only into its own folder. Run one server only.
 
 ## Mark a page

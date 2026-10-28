@@ -1,35 +1,21 @@
 ---
 name: handoff-web
-description: How to publish pages for the owner on the claude-handoff-web review site (one server, own folder, _status.json, review rules)
+description: How to publish pages for the owner on the claude-handoff-web review site (page files, page.py, the inbox, review rules)
 type: reference
 ---
 - The site is a working folder served by `_site/serve.py` at `http://<host>:<port>/` (see its `site.json`); it is scratch memory, never a git repo, never committed.
 - One server, one port, run by the operator session. Never start another server; never open a browser for the owner. Give links as plain text.
-- Publish only into your own folder (`/<folder>/`). Every page gets a `_status.json` entry (`needs-you`, `reference` or `done` plus a one-line note); then run `python3 gen-index.py`.
-- Load `/_site/site.css?v=23` and `/_site/theme.js?v=20` in `<head>` and `/_site/review.js?v=27` before `</body>`; use `<body class="site">`.
-- Review pages: each `<h2>` or `[data-review-question]` item gets Yes / No / Changes (Changes needs a note); checklists add Skipped with `data-review-skip="on"`.
-- Answers are saved on the server (`/_save/`), never only in the browser; the owner pastes "Copy results" back to you.
-- Set `data-review-approved` from the pasted results (hidden, kept in Copy results); bring items back with `data-review-reopen="id=reason"`.
-- Blockers ("Blocker: copy now") go to the front of the queue. Dependent items use `data-review-blocked="id=blocker"`.
-- Something that isn't a choice (a free-text answer) is an open question, not a Yes/No/Changes item:
-  `data-review-type="question"` (optional `data-suggested="..."`). It never blocks approval and is never
-  counted in the open-items count; Copy results lists it as `Q <id>: <answer>`.
-- A page whose items all answer from their own short list (a backlog: Start or Hold) sets
-  `<body data-review-options="start:Start,hold:Hold" data-review-default="hold">`. Items show those choices
-  and an optional comment box, count as the default until picked, and never block approval; Copy results
-  lists `- [id] HOLD: title` and ends with the counts (`1 start · 2 hold`).
-- A rewrite to review: put a word diff in the item, `<div class="rvdiff">` from `python3 _site/diff.py OLD NEW`
-  (added green and underlined, removed red and struck through, unchanged sentences grey). Pictures go in a
-  `<div class="rvdiff-pics">` as before and after figures. A fenced code block uses `diff.py --code` (monospace, line by line). Each block gets a Diff | Final switch.
-- Pictures: `<a href="img/x.png" target="_blank"><img src="img/x.png" alt="caption"></a>`. A click opens one
-  reused pop-out that swaps to each picture clicked. An `img/` folder (any subfolder with no `.html` file)
-  is never a card, so it needs no `_status.json` entry.
-- Keep one unified page per session: `python3 _site/build-review.py <folder>` builds `/<folder>/review/`.
+- Publish only into your own folder. A page is one JSON file, `<folder>/<slug>.json` (`handoff.page/v1`), created with `python3 _site/page.py new <folder>/<slug> --from def.json` and changed with `page.py set`. Never edit it by hand. Its link is `http://<host>:<port>/<folder>/<slug>`.
+- A page file needs no `_status.json` entry and no index rebuild: its card comes from the file (`page.py status <page> needs-you|reference|done --note "..."`).
+- Kinds: `review` (Yes / No / Changes), `checklist` (adds Skipped, needs a `build`), `journey` (ordered steps, checkpoints, Restart from), `backlog` (the page's own `options`, such as Start / Hold), `questions` (free text), `reference` and `status` (no answers). Any item can set its own `type`, so one page can mix sections, questions, choices, steps and info items.
+- Changes needs a note. Free-text questions never block approval. Choices count as their default until picked.
+- Answers are saved in the page file as the owner goes. Send and "Blocker: send now" land in `_inbox/<agent>/`; keep `python3 _site/page.py wait <agent>` running in the background, take each file (move it to `taken/`), act, then answer on the page with `page.py reply <page> <id> --from <agent> "..."`.
+- Reopen an item with `page.py reply ... --reopen "reason"`; clear a `blockedBy` with `--action unblock`. An earlier Yes stays hidden unless the item's content changes.
+- A new `build` or `reset` opens a new round; rounds stay in the file and show under History and `/<folder>/history/`.
+- Pictures are files next to the page (`img/x.png`), never embedded. A rewrite to review is a `diff` item or block (`old`, `new`).
 - Never ask twice: if a checklist answered it, close the review item from that answer.
-- The owner's Stale button deletes a page for good; `_old/` copies are pruned after 7 days. A page's round
-  history is never deleted by Stale or the `_old/` prune.
-- A round is one pass of answers under one `data-build` or `data-review-reset` version; bumping either one
-  archives the round it replaces automatically (`_saved/history/`). Nothing to do beyond keeping those
-  attributes current. Past rounds: a collapsed "History" block per page, the More menu, `/<folder>/history/`.
+- The owner's Stale button marks a page done and moves the file to `_old/`, pruned after 7 days.
+- Check a file with `page.py check <page>`; every error names its JSON path.
+- HTML pages not converted yet keep the old rules (`_status.json`, `gen-index.py`, `/_save/`); convert one with `page.py convert <folder>/<page>.html`.
 - Scratch files go in your own temp folder, not the site.
-- Page designs and skeletons: `docs/page-types.md` in the template repo; operating notes: `_site/README.md`.
+- Page kinds with examples: `docs/page-types.md` in the template repo; the format: `_site/PAGE-FILE.md`; the API and inbox: `_site/PAGE-API.md`.

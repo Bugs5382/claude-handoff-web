@@ -43,3 +43,7 @@ def test_the_example_folder_holds_only_valid_page_files():
     for f in files:
         if f.is_file():
             assert schema.validate(json.loads(f.read_text())) == [], f.name
+
+
+def test_the_template_claude_md_is_the_same_as_agents_md():
+    assert (ROOT / "template" / "CLAUDE.md").read_text() == (ROOT / "template" / "AGENTS.md").read_text()

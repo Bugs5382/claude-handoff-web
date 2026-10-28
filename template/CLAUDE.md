@@ -2,7 +2,8 @@
 
 This folder is a running instance of claude-handoff-web: a review and sign-off site where agents publish
 pages and the owner (`site.json` `owner`) answers them. Every agent or session that touches it follows
-these rules. Full how-to: `_site/README.md`; page designs: the template's `docs/page-types.md`.
+these rules. Full how-to: `_site/README.md`, `_site/PAGE-FILE.md` and `_site/PAGE-API.md`; page kinds with examples: the
+template's `docs/page-types.md`.
 
 ## Working memory, never a repo
 
@@ -17,29 +18,38 @@ these rules. Full how-to: `_site/README.md`; page designs: the template's `docs/
   Never start another web server.
 - Each session publishes only into its own folder (listed in `site.json` `folders`). The operator owns the
   root, `site.json` and `_site/`.
-- Every page you add gets an entry in your folder's `_status.json` (`needs-you`, `reference` or `done`,
-  with a one-line note), then run `python3 gen-index.py`.
-- Give links as plain text (`http://<host>:<port>/<folder>/<page>.html`). Never open a browser for the
-  owner unless asked.
+- Every new page is a page file in your folder, `<folder>/<slug>.json`, created and changed only with
+  `python3 _site/page.py` (`new`, `set`, `reply`, `status`). Never edit a page file by hand: `page.py` holds the
+  lock. A page file needs no `_status.json` entry and no index rebuild.
+- Give links as plain text (`http://<host>:<port>/<folder>/<slug>`). Never open a browser for the owner unless
+  asked.
+
+## Your inbox
+
+- Send and "Blocker: send now" write to `_inbox/<agent>/` for the page's route (set by the operator). Keep
+  `python3 _site/page.py wait <agent>` running in the background; when it exits, take each file it printed
+  (blockers first) by moving it to `_inbox/<agent>/taken/`, act, answer on the page with `page.py reply`, and
+  start the wait again.
+- `python3 _site/page.py hook <agent>` prints one line when files are waiting or nothing is listening. Run it
+  from a hook when you're next spoken to, so a lost wait is picked up again.
 
 ## Stale and _old/
 
-- The owner's Stale button deletes a page for good and marks it done; don't recreate it unless asked.
+- The owner's Stale button marks a page done; a page file moves to its folder's `_old/`, an HTML page is
+  deleted. Don't recreate it unless asked.
 - Before you replace a file, copy it to its folder's `_old/`. Files in `_old/` are pruned after 7 days.
 
 ## Reviews
 
-- Every item gets Yes / No / Changes unless the page sets its own choices (data-review-options, data-review-default).
-  Notes are required for Changes; test checklists add Skipped (locked).
-- Approved items are hidden (set them from the owner's pasted results with `data-review-approved`) and stay
-  in Copy results. An answered item comes back only when a change alters it, marked Reopened with the reason
-  (`data-review-reopen`).
-- Every item has "Blocker: copy now"; a pasted blocker goes to the front of the queue.
-- Items that need another item to pass first are `data-review-blocked`: greyed and not counted until the
-  blocker is fixed.
-- Never ask twice: when a checklist already answered something a review asks, close the review item from
-  that answer.
-- Each session keeps one unified page at `/<folder>/review/` (`python3 _site/build-review.py <folder>`)
-  holding every open item from its review pages. Nothing is built or merged until every item is Yes.
-- Answers are saved on the server through `/_save/` (see `_site/SAVE-API.md`); a page never keeps answers
-  only in the browser.
+- Each item answers its own way: Yes / No / Changes (Changes needs a note), Skipped on checks and steps, the
+  page's own choices on a backlog, free text on an open question. One page can mix them.
+- An item answered Yes in an earlier round is hidden and stays in Copy results. It comes back only when its
+  content changes ("changed since round N") or you reopen it with `page.py reply ... --reopen "reason"`.
+- `dependsOn` greys an item until the items it names are Yes; `blockedBy` holds it until you reply with
+  `--action unblock`.
+- Never ask twice: when a checklist already answered something a review asks, close the review item from that
+  answer.
+- A new `build` or `reset` in the definition opens a new round; past rounds stay in the file and show under
+  History. Nothing is built or merged until every item is Yes.
+- HTML pages not converted yet keep their old rules: a `_status.json` entry, `gen-index.py`, answers through
+  `/_save/` (`_site/SAVE-API.md`). Convert them with `python3 _site/page.py convert <folder>/<page>.html`.

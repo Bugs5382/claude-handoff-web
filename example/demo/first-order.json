@@ -1,0 +1,62 @@
+{
+  "schema": "handoff.page/v1",
+  "kind": "journey",
+  "title": "Journey 1: first order",
+  "build": "1.4.0-rc.2",
+  "summary": "Order a product end to end on a fresh install, in order.",
+  "status": {
+    "state": "needs-you",
+    "note": "Run it start to finish; restart from a checkpoint after a fix."
+  },
+  "items": [
+    {
+      "id": "j1",
+      "title": "Install and sign in as the first admin",
+      "steps": [
+        "Run the installer",
+        "Sign in as the first admin"
+      ],
+      "checkpoint": "after-install"
+    },
+    {
+      "id": "j2",
+      "title": "Add a product",
+      "steps": [
+        "Open Admin, Products",
+        "Add a product called Demo laptop with a price"
+      ],
+      "checkpoint": "catalog-ready"
+    },
+    {
+      "id": "j3",
+      "title": "Order it as a user",
+      "steps": [
+        "Sign in as demo-user",
+        "Order the Demo laptop",
+        "Check the order shows as Placed"
+      ]
+    },
+    {
+      "id": "q1",
+      "type": "question",
+      "title": "Should an order need a manager's approval?",
+      "suggested": "Only above 1,000"
+    }
+  ],
+  "rev": 1,
+  "rounds": [
+    {
+      "round": 1,
+      "build": "1.4.0-rc.2",
+      "reset": null,
+      "opened": "2026-10-28T06:47:00-04:00",
+      "closed": null,
+      "openedBy": "created",
+      "answers": {},
+      "checkpoints": {},
+      "reopened": {}
+    }
+  ],
+  "thread": {},
+  "submissions": []
+}

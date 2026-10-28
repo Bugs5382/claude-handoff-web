@@ -323,6 +323,19 @@ const seg = (doc, id, v) => card(doc, id).querySelector('.seg button[data-v="' +
     click(bar.querySelector(".all-no"));
     eq(alerted, "Every item already has an answer.");
   });
+  await t("example pages: every page in example/demo renders, and the answerable ones answer", async () => {
+    const want = { "design-review": 4, "signoff-checklist": 3, "backlog": 3, "first-order": 4 };
+    for (const [slug, n] of Object.entries(want)) {
+      const { doc, bar } = await load("/demo/" + slug);
+      eq(doc.querySelectorAll("main section[data-review-question]").length, n, slug + " items");
+      const b = doc.querySelector(".rv .seg button");
+      click(b);
+      ok(/answered|picked/.test(bar.querySelector(".cnt").textContent), slug + ": " + bar.querySelector(".cnt").textContent);
+    }
+    await open("/demo/release-notes");
+    await until(() => d().querySelector("[data-item='n2'] .copyblk"), "the reference page");
+    ok(!d().querySelector(".rvbar"), "no bar on a reference page");
+  });
 })().catch(e => { results.harness = "FAIL " + String(e && e.stack || e); })
   .finally(() => { document.getElementById("out").textContent = JSON.stringify(results); });
 </script></body></html>

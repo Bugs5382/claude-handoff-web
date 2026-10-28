@@ -1,0 +1,79 @@
+{
+  "schema": "handoff.page/v1",
+  "kind": "checklist",
+  "title": "Example app 1.4.0: sign-off checklist",
+  "build": "1.4.0-rc.2",
+  "status": {
+    "state": "needs-you",
+    "note": "Test build 1.4.0-rc.2 in order."
+  },
+  "items": [
+    {
+      "id": "t1",
+      "title": "Install",
+      "body": [
+        {
+          "p": "The installer finishes and the service starts."
+        }
+      ],
+      "howto": [
+        {
+          "olist": [
+            "Run the installer:"
+          ]
+        },
+        {
+          "code": "./install.sh --prefix /opt/example-app"
+        },
+        {
+          "p": "2. Check the service is up:"
+        },
+        {
+          "code": "curl -s http://localhost:8080/healthz"
+        }
+      ]
+    },
+    {
+      "id": "t2",
+      "title": "Sign in",
+      "body": [
+        {
+          "p": "A new user can sign in and lands on the dashboard."
+        }
+      ],
+      "howto": [
+        {
+          "p": "Open the app, sign in as `demo-user`, check the dashboard loads."
+        }
+      ]
+    },
+    {
+      "id": "t3",
+      "title": "Export a report",
+      "body": [
+        {
+          "p": "Exporting the weekly report downloads a CSV with today's rows."
+        }
+      ],
+      "dependsOn": [
+        "t2"
+      ]
+    }
+  ],
+  "rev": 2,
+  "rounds": [
+    {
+      "round": 1,
+      "build": "1.4.0-rc.2",
+      "reset": null,
+      "opened": "2026-10-28T06:47:00-04:00",
+      "closed": null,
+      "openedBy": "imported",
+      "answers": {},
+      "checkpoints": {},
+      "reopened": {}
+    }
+  ],
+  "thread": {},
+  "submissions": []
+}

@@ -1,0 +1,53 @@
+{
+  "schema": "handoff.page/v1",
+  "kind": "reference",
+  "title": "Release 1.4.0 notes",
+  "summary": "What ships in 1.4.0, and the announcement draft.",
+  "status": {
+    "state": "reference",
+    "note": "The notes and the email draft for 1.4.0."
+  },
+  "items": [
+    {
+      "id": "n1",
+      "title": "What's in it",
+      "body": [
+        {
+          "list": [
+            "Settings screen with tabs",
+            "CSV export of the weekly report",
+            "Faster sign-in"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "n2",
+      "title": "Email draft",
+      "body": [
+        {
+          "p": "Send this to the team once 1.4.0 is out."
+        },
+        {
+          "copy": "Hi all,\n\n1.4.0 is out today: a new settings screen, CSV export and faster sign-in.\n\nThanks,\nSam"
+        }
+      ]
+    }
+  ],
+  "rev": 1,
+  "rounds": [
+    {
+      "round": 1,
+      "build": null,
+      "reset": null,
+      "opened": "2026-10-28T06:47:00-04:00",
+      "closed": null,
+      "openedBy": "created",
+      "answers": {},
+      "checkpoints": {},
+      "reopened": {}
+    }
+  ],
+  "thread": {},
+  "submissions": []
+}

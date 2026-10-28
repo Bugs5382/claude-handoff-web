@@ -166,14 +166,20 @@ agent is listening and its inbox is empty, and otherwise prints one line saying 
 place, so both can be checked side by side:
 
 - each `<h2>` becomes an item `s1`, `s2` and so on, and on a `data-review-h2="off"` page each
-  `[data-review-question]` section becomes an item with its own id, so saved answers still match;
+  `[data-review-question]` section becomes an item with its own id in lower case, so saved answers still match
+  (two ids that differ only by case stop the convert);
+- a page that doesn't load `review.js` becomes a `reference` page;
 - `data-build`, `data-review-reset`, `data-review-options` and `data-review-default`, `data-review-skip`,
   `data-review-blocked` (a dependsOn when it names an item, else a blockedBy), question items and
   `<template data-howto>` carry over, and the folder's `_status.json` entry becomes `status`;
-- paragraphs, lists, code, pictures, tables and `.rvdiff` blocks become blocks; anything else is kept as a
-  flagged `html` block and named on stderr;
-- the saved answers (`_saved/<page-key>.json`) become the open round, with `data-review-approved` items as
-  Yes and `data-review-reopen` as reopened, and the round history files become closed rounds.
+- paragraphs, lists, code, pictures, tables and `.rvdiff` blocks become blocks; a table with merged cells and
+  anything else is kept as a flagged `html` block and named on stderr;
+- the saved answers (`_saved/<page-key>.json`) become the open round and the round history files become
+  closed rounds, with their numbers kept;
+- a `data-review-approved` item counts as Yes, and one that was already Yes in the last closed round stays
+  hidden, as it was on the HTML page;
+- a `data-review-reopen` item is reopened, unless it was answered again since; then the reason becomes an
+  `info` reply from the operator under the item.
 
 ## Writing a file
 

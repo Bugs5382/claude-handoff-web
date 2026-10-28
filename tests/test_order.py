@@ -10,6 +10,8 @@ from pathlib import Path
 
 import pytest
 
+from sites import html_example
+
 ROOT = Path(__file__).resolve().parent.parent
 
 
@@ -18,7 +20,7 @@ def site(tmp_path):
     root = tmp_path / "site"
     shutil.copytree(ROOT / "template", root)
     for d in ("demo", "guide"):
-        shutil.copytree(ROOT / "example" / d, root / d)
+        shutil.copytree(html_example(d), root / d)
     shutil.copy(ROOT / "example" / "site.json", root / "site.json")
     return root
 

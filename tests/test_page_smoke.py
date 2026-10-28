@@ -46,6 +46,7 @@ SCENARIOS = [
     "live: a change on the server redraws without a reload, after typing stops, keeping the note and scroll",
     "reference page: blocks render and there is no answer bar",
     "mixed page: a section, a two-answer section, a question, a choice, a step and an info item each answer their own way",
+    "example pages: every page in example/demo renders, and the answerable ones answer",
 ]
 
 T0 = "2026-10-26T07:42:10-04:00"

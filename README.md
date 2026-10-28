@@ -47,10 +47,11 @@ Then open `http://127.0.0.1:8000/` (host and port come from `site.json`).
 ## 📚 Docs
 
 - 🏁 **[Quick start](docs/quick-start.md):** install, run, publish a first page.
-- 🧱 **[Page types](docs/page-types.md):** the design and a working skeleton for every page an agent makes.
+- 🧱 **[Page types](docs/page-types.md):** every kind of page an agent makes, with a JSON example of each.
 - 🛠️ **[Operating the site](docs/operating.md):** config, endpoints, Stale, `_old/` pruning, the no-git rule.
-- 💾 **[Save API](template/_site/SAVE-API.md):** how pages store answers on the server.
-- 🗂️ **[Page files](template/_site/PAGE-FILE.md):** the JSON page format and the one module that writes it.
+- 🗂️ **[Page files](template/_site/PAGE-FILE.md):** the JSON page format, the writer, `page.py` and the renderer.
+- 🔌 **[Page API](template/_site/PAGE-API.md):** page files over HTTP, Send and Blocker, and the agent's inbox.
+- 💾 **[Save API](template/_site/SAVE-API.md):** how HTML pages that aren't converted yet store answers.
 - 🤖 **[Agent rules](template/AGENTS.md)** and a **[memory file](memory/handoff-web.md)** for Claude sessions.
 
 ## 🧪 Develop

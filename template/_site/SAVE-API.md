@@ -1,5 +1,9 @@
 # Save API: keeping answers on the server
 
+This is the store HTML pages use. Page files (`<folder>/<slug>.json`) keep their answers in the file itself,
+through the page API in `PAGE-API.md`; new pages are page files. This store stays for HTML pages until they
+are converted with `page.py convert`.
+
 Answers on review pages and checklists are stored on the server that serves the site, never only in the
 browser. `_site/review.js` already does this. A page with its own answer script (a checklist that sets
 `<body data-review-controls="off">`) follows this spec to do the same.

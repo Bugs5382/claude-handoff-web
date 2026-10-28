@@ -28,26 +28,30 @@ Open `http://127.0.0.1:8000/`. The server refuses to start inside a git work tre
 
 ## 3. Publish a page
 
-1. Write `app/design-review.html` from a skeleton in [page-types.md](page-types.md).
-2. Add it to `app/_status.json`:
+1. Write the page's definition, `design.json`:
 
    ```json
-   { "design-review.html": { "state": "needs-you", "note": "Three sections to approve." } }
+   {"schema": "handoff.page/v1", "kind": "review", "title": "Settings screen: design review",
+    "items": [{"id": "s1", "title": "Purpose", "body": [{"p": "Change your display name and theme."}]},
+              {"id": "s2", "title": "Layout", "body": [{"p": "Tabs across the top."}]}]}
    ```
 
-3. Rebuild the indexes and the folder's unified review page:
+2. Create the page in your folder:
 
    ```bash
-   python3 _site/build-review.py app
-   python3 gen-index.py
+   python3 _site/page.py new app/design-review --from design.json
    ```
 
-The owner's open tabs update by themselves. Answers are saved on the server; the owner presses More, Copy
-results and pastes the result back to you.
+3. Open `http://127.0.0.1:8000/app/design-review`. The page is on the folder and root indexes already; there
+   is no manifest to edit and no index to rebuild.
+
+Answers are saved in the page file as they are given. When the owner presses Send, the
+result lands in `_inbox/<agent>/` for the page's route. Run `python3 _site/page.py wait <agent>` in the
+background to hear about it the moment it arrives. Every kind of page, with examples: [page-types.md](page-types.md).
 
 ## 4. Teach your agents
 
 - Each instance carries `CLAUDE.md` and `AGENTS.md` with the operating rules.
 - Copy [`memory/handoff-web.md`](../memory/handoff-web.md) into a Claude session's memory folder.
-- More: [operating.md](operating.md), [`_site/README.md`](../template/_site/README.md) and
-  [`SAVE-API.md`](../template/_site/SAVE-API.md).
+- More: [operating.md](operating.md), [`_site/README.md`](../template/_site/README.md),
+  [`PAGE-FILE.md`](../template/_site/PAGE-FILE.md) and [`PAGE-API.md`](../template/_site/PAGE-API.md).

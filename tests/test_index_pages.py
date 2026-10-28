@@ -15,6 +15,7 @@ sys.path.insert(0, str(ROOT / "template" / "_site"))
 
 import pagefile  # noqa: E402
 
+from sites import html_example  # noqa: E402
 from test_serve import request, site  # noqa: E402, F401
 
 T0 = "2026-10-26T07:42:10-04:00"
@@ -30,7 +31,7 @@ def tree(tmp_path):
     root = tmp_path / "site"
     shutil.copytree(ROOT / "template", root)
     for d in ("demo", "guide"):
-        shutil.copytree(ROOT / "example" / d, root / d)
+        shutil.copytree(html_example(d), root / d)
     cfg = json.loads((ROOT / "example" / "site.json").read_text())
     cfg["folders"].append({"id": "app", "name": "App", "blurb": "Only page files"})
     (root / "site.json").write_text(json.dumps(cfg))

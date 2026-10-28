@@ -1,0 +1,68 @@
+{
+  "schema": "handoff.page/v1",
+  "kind": "backlog",
+  "title": "Demo app backlog",
+  "summary": "Three backlog items. Each is on Hold until you pick Start.",
+  "status": {
+    "state": "needs-you",
+    "note": "Three backlog items: Start or Hold."
+  },
+  "options": {
+    "choices": [
+      {
+        "value": "start",
+        "label": "Start"
+      },
+      {
+        "value": "hold",
+        "label": "Hold"
+      }
+    ],
+    "default": "hold"
+  },
+  "items": [
+    {
+      "id": "s1",
+      "title": "Export reports as PDF",
+      "body": [
+        {
+          "p": "A PDF button next to the CSV export on the weekly report. About two days."
+        }
+      ]
+    },
+    {
+      "id": "s2",
+      "title": "Dark theme",
+      "body": [
+        {
+          "p": "A third theme option on the settings screen that follows the system setting. About one day."
+        }
+      ]
+    },
+    {
+      "id": "s3",
+      "title": "Single sign-on",
+      "body": [
+        {
+          "p": "Sign in with the company identity provider. Needs a decision on which provider first."
+        }
+      ]
+    }
+  ],
+  "rev": 2,
+  "rounds": [
+    {
+      "round": 1,
+      "build": null,
+      "reset": null,
+      "opened": "2026-10-28T06:47:00-04:00",
+      "closed": null,
+      "openedBy": "imported",
+      "answers": {},
+      "checkpoints": {},
+      "reopened": {}
+    }
+  ],
+  "thread": {},
+  "submissions": []
+}

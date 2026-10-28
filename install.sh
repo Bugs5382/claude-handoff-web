@@ -150,11 +150,7 @@ s = re.sub(r'const KEY_PREFIX = ".*?";', "const KEY_PREFIX = " + json.dumps(cfg.
 s = re.sub(r'const BLOCKER_TO = ".*?";', "const BLOCKER_TO = " + json.dumps(cfg.get("blocker_to", "the operator session")) + ";", s, count=1)
 js.write_text(s)
 for f in cfg.get("folders", []):
-    d = root / f["id"]
-    d.mkdir(exist_ok=True)
-    m = d / "_status.json"
-    if not m.exists():
-        m.write_text("{}\n")
+    (root / f["id"]).mkdir(exist_ok=True)
 PY
 
 cd "$TARGET"

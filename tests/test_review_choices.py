@@ -19,6 +19,8 @@ from pathlib import Path
 
 import pytest
 
+from sites import html_example
+
 ROOT = Path(__file__).resolve().parent.parent
 MAC_CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
 
@@ -116,7 +118,7 @@ def browser(tmp_path_factory):
     root = tmp / "site"
     shutil.copytree(ROOT / "template", root)
     for d in ("demo", "guide"):
-        shutil.copytree(ROOT / "example" / d, root / d)
+        shutil.copytree(html_example(d), root / d)
     shutil.copy(ROOT / "example" / "site.json", root / "site.json")
     (root / "harness.html").write_text(HARNESS)
     port = free_port()

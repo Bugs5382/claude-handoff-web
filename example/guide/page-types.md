@@ -1,428 +1,283 @@
 # Page types
 
-The pages an agent creates on the hand-off site, what each is for, and a skeleton that works as-is with the
-shared `/_site/` assets. Replace `<folder>`, `<owner>` and the placeholder text. Every page you add also
-gets an entry in `<folder>/_status.json`; then run `python3 gen-index.py`.
+Every page an agent makes is one JSON file, `<folder>/<slug>.json`, in the `handoff.page/v1` format. The file
+holds the page, every round of answers with who and when, and a reply thread per item. The site draws every page
+from its file with one renderer, so a page never carries its own HTML, styles or scripts.
 
-Common rules:
+The format in full, the writer and the command line: [`PAGE-FILE.md`](../template/_site/PAGE-FILE.md). The HTTP
+API and the inbox: [`PAGE-API.md`](../template/_site/PAGE-API.md). Working examples of most kinds are in
+`example/demo/`.
 
-- `<body class="site">` turns on the shared look; `<header class="top"><div class="wrap">` and
-  `<main class="wrap">` give the standard frame.
-- Review pages load `/_site/review.js?v=27` just before `</body>`; it brings `live.js` itself. Other pages
-  load `/_site/live.js?v=22` with `data-mode="page"`.
-- Answers are saved on the server; Copy results is what the owner pastes back to you.
-- Pictures: wrap each `<img>` in a link to its own file. A click shows it in one reused pop-out window,
-  and the next picture swaps into that window (see `_site/README.md` "Pictures (pop-out)").
-- A round is one pass of answers under one `data-build` value or `data-review-reset` version. Bump either
-  one and the server archives the round it replaces on its own (see `_site/SAVE-API.md` "Round history");
-  nothing else is needed. Past rounds show in a collapsed "History" block at the page's bottom, in the More
-  menu, and at `/<folder>/history/`.
+## Before you start
 
-## (a) Folder index card and manifest entry
+- A running site (see [quick-start.md](quick-start.md)) and its folder for your pages, listed in `site.json`.
+- Commands below run from the site folder. `page.py` lives in `_site/`.
 
-**When:** always. The folder index (`/<folder>/`) and the root "Needs you now" list are generated from
-`_status.json`; you never write index HTML.
+## Publish a page
 
-**Required:** one key per page (`page.html`, `dir/` or `dir/page.html`), a `state`, a one-line `note`.
-A `dir/` is a page only when it holds an `.html` file; asset folders such as `img/` are never cards.
-Optional: `chips` (custom labels), `priority` (lower sorts first, default 50).
+1. Write the definition: `schema`, `kind`, `title` and `items`, plus whatever the kind needs.
+2. Create the page:
 
-Cards are listed in a fixed order, never by when a page last changed: `priority`, then the unified
-`review/` page, then by number. Number your pages in their titles ("1. Sign in", "2. Settings") or file
-names (`design-review-2-layout.html`) and they run 1, 2, ... 10 naturally; a numbered series sits where
-its first page sits in `_status.json`, and unnumbered pages keep their `_status.json` order.
+   ```bash
+   python3 _site/page.py new app/design --from design.json
+   ```
+
+3. Give the owner the link: `http://<host>:<port>/app/design`. The page shows up on the folder and root
+   indexes by itself; there is no `_status.json` entry to write and no index to rebuild.
+4. Wait for answers in the background and act when the wait exits:
+
+   ```bash
+   python3 _site/page.py wait app
+   ```
+
+   It prints the submission files (blockers first). Move each one to `_inbox/app/taken/`, act on it, then
+   answer on the page with `page.py reply`, and start the wait again.
+
+To change a page, write the whole definition again with `page.py set app/design --from design.json`. Answers
+are kept: an item whose content changed after a Yes comes back as "changed since round N", and a new `build`
+or `reset` opens a new round. Never edit a page file by hand; every write goes through `page.py`, which holds
+the lock.
+
+## Kinds
+
+A page's `kind` sets the default item type and what the page is for. Any item can set its own `type`, so one
+page can mix them (see [Mixing item types](#mixing-item-types)).
+
+| Kind | Default item | Answers | For |
+|---|---|---|---|
+| `review` | `section` | Yes / No / Changes | designs, plans, contracts, screens and re-reviews |
+| `checklist` | `check` | Yes / No / Changes / Skipped | sign-off of delivered work; needs a `build` |
+| `journey` | `step` | Yes / No / Changes / Skipped | ordered steps with checkpoints and Restart from |
+| `backlog` | `choice` | the page's `options` | Start / Hold and the like; needs `options` |
+| `questions` | `question` | free text | a page of open questions |
+| `reference` | `info` | none | hand-off notes, email drafts, "what's built" |
+| `status` | `info` | none | a live status page the agent rewrites as things move |
+
+### review
+
+Each item is a card with Yes / No / Changes; Changes needs a note. Items answered Yes in an earlier round are
+hidden in the next one and stay in Copy results.
 
 ```json
 {
-  "review/": { "state": "needs-you", "note": "The one place to answer: every open item from this folder." },
-  "design-review.html": { "state": "needs-you", "note": "Three layout choices for the settings screen.", "chips": ["Decision needed"] },
-  "release-notes-draft.html": { "state": "reference", "note": "Draft notes for the next release." },
-  "old-plan.html": { "state": "done", "note": "Replaced by the design review." }
+  "schema": "handoff.page/v1",
+  "kind": "review",
+  "title": "Settings screen: design review",
+  "summary": "Three sections to approve before the settings screen is built.",
+  "status": {"state": "needs-you", "note": "Three sections of the settings screen design."},
+  "items": [
+    {"id": "s1", "title": "Purpose and behaviour",
+     "body": [{"p": "A signed-in user changes their display name, notification e-mails and theme."}]},
+    {"id": "s2", "title": "Layout",
+     "body": [{"code": "[ Profile ]  [ Notifications ]  [ Theme ]"},
+              {"image": "img/settings-tabs-top.svg", "alt": "Chosen: tabs across the top"}]},
+    {"id": "s3", "title": "Errors and empty states",
+     "body": [{"p": "A failed save keeps the typed value and shows **Couldn't save, retrying**."}]}
+  ]
 }
 ```
 
-```bash
-python3 gen-index.py
-```
+### checklist
 
-The card shows the title (the page's `<title>`), the note, chips (New, Updated, To review, Approved,
-Reopened, plus yours), the open item count for review pages (counted like the bottom bar: open questions,
-approved and blocked items never count), and a Stale button for needs-you pages. A
-choices page (see (j)) has no open items: its card shows its per-choice counts instead (`1 start · 2 hold`)
-and never the Approved chip.
-On the root index each folder's "Needs you now" heading adds up its cards' open items, leaving out the
-unified page (`review/`), whose items are already counted on their own pages.
-
-## (b) Design or review page
-
-**When:** the owner has to approve content section by section: a design, a plan, screens, a walk-through.
-
-**Required:** one `<h2>` per item (each becomes Yes / No / Changes), content under it, review.js. A section
-is instead an open question (see (i)) when the answer isn't a choice between options.
-**Body attributes:** `data-review-approved`, `data-review-reopen`, `data-review-reset` (see `_site/README.md`).
-
-```html
-<!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Settings screen: design review</title>
-<meta name="description" content="Three sections to approve before the settings screen is built.">
-<link rel="stylesheet" href="/_site/site.css?v=23">
-<script src="/_site/theme.js?v=20"></script>
-</head>
-<body class="site" data-review-approved="" data-review-reopen="">
-<header class="top"><div class="wrap">
-<h1>Settings screen: design review</h1>
-<p>Answer each section Yes, No or Changes, then More, Copy results, and paste it back.</p>
-</div></header>
-<main class="wrap">
-<h2>Purpose and behaviour</h2>
-<p>What the screen is for and what each control does.</p>
-<h2>Layout</h2>
-<pre>+-----------------------------+
-| Profile | Security | Alerts  |
-+-----------------------------+</pre>
-<p><a href="img/layout.png" target="_blank" rel="noopener"><img src="img/layout.png" alt="Layout mock" width="320"></a></p>
-<h2>Errors and empty states</h2>
-<p>What the owner sees when a save fails or there is nothing to show.</p>
-</main>
-<script src="/_site/review.js?v=27"></script>
-</body></html>
-```
-
-## (c) Unified review page
-
-**When:** always, once a folder has more than one review page. It is the one place the owner answers.
-
-**Required:** the source pages are `needs-you` in `_status.json`; build with the script. Never hand-edit
-the output; set attributes on the source pages and rebuild.
-
-```bash
-python3 _site/build-review.py <folder>      # writes <folder>/review/index.html
-```
+One item per feature or fix, in test order. Each check can carry a `howto`, opened in its own pop-out window
+with a Copy button on every code block. `dependsOn` keeps an item greyed and uncounted until the items it names
+are Yes; `blockedBy` holds it until an agent replies with `--action unblock`.
 
 ```json
-"review/": { "state": "needs-you", "note": "The one place to answer: every open item from this folder." }
+{
+  "schema": "handoff.page/v1",
+  "kind": "checklist",
+  "title": "Example app 1.4.0: sign-off checklist",
+  "build": "1.4.0-rc.2",
+  "items": [
+    {"id": "t1", "title": "Install", "body": [{"p": "The installer finishes and the service starts."}],
+     "howto": [{"olist": ["Run the installer, then check the service is up."]},
+               {"code": "./install.sh --prefix /opt/example-app"},
+               {"code": "curl -s http://localhost:8080/healthz"}]},
+    {"id": "t2", "title": "Sign in", "body": [{"p": "A new user can sign in and lands on the dashboard."}]},
+    {"id": "t3", "title": "Export a report", "dependsOn": ["t2"],
+     "body": [{"p": "Exporting the weekly report downloads a CSV with today's rows."}]}
+  ]
+}
 ```
 
-Each source page becomes a collapsed group (one open at a time): title, summary, open count, chips,
-"Full page" and Stale. Item ids are prefixed with the page (`design-review.s2`), and the source page's
-approved, reopened, blocked and reset attributes carry through. Each group's "N open" chip and the header
-total update as the owner answers, counting the same items as the bottom bar.
-Each group's Copy button copies only that page's results, in the same format as Copy results.
-A choices page (see (j)) keeps its own choices in its group; its chip shows the per-choice counts
-("1 start · 2 hold") instead of "N open", and it adds nothing to the header's open total.
+### journey
 
-## (d) Sign-off checklist
+Steps run in order: each step depends on the one before it unless it sets its own `dependsOn` (`[]` for none).
+A Yes on a step with a `checkpoint` records that checkpoint. "Restart from" offers each checkpoint reached:
+the steps up to it carry over as Yes, later steps start open, and the restart is sent to the page's route so
+the agent can reset the environment.
 
-**When:** delivered work (features, fixes, a release) needs the owner to test it on the real thing.
-
-**Required:**
-
-- items in logical test order (install, setup, sign-in, features, update, revert), never by issue number;
-- each item a `<section data-review-question="id" data-title="...">` with what to check;
-- test steps in a `<template data-howto>` (they open in a pop-out with Copy buttons on every `<pre>`);
-- `data-build` (the build under test), `data-review-skip="on"` (adds Skipped, locked),
-  `data-review-h2="off"` (only the sections are items);
-- dependencies in `data-review-blocked="id=what blocks it|..."`: greyed, locked and shown as "Blocked by
-  <what blocks it>", not counted until fixed.
-
-When every open item is answered the bottom bar turns green; all Yes shows APPROVED.
-
-```html
-<!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Example app 1.4.0: sign-off checklist</title>
-<link rel="stylesheet" href="/_site/site.css?v=23">
-<script src="/_site/theme.js?v=20"></script>
-</head>
-<body class="site" data-review-h2="off" data-review-skip="on" data-build="1.4.0-rc.2"
-      data-review-blocked="t3=t2 (sign-in must pass first)">
-<header class="top"><div class="wrap">
-<h1>Example app 1.4.0: sign-off checklist</h1>
-<p>Build 1.4.0-rc.2. Test in order; mark Yes, No, Changes or Skipped.</p>
-</div></header>
-<main class="wrap">
-<section data-review-question="t1" data-title="Install">
-  <h2>1. Install</h2>
-  <p>The installer finishes and the service starts.</p>
-  <template data-howto>
-    <ol><li>Run the installer:</li></ol>
-    <pre>./install.sh --prefix /opt/example-app</pre>
-    <ol start="2"><li>Check the service is up:</li></ol>
-    <pre>curl -s http://localhost:8080/healthz</pre>
-  </template>
-</section>
-<section data-review-question="t2" data-title="Sign in">
-  <h2>2. Sign in</h2>
-  <p>A new user can sign in and lands on the dashboard.</p>
-  <template data-howto><p>Open the app, sign in as <code>demo-user</code>, check the dashboard loads.</p></template>
-</section>
-<section data-review-question="t3" data-title="Export a report">
-  <h2>3. Export a report</h2>
-  <p>Exporting the weekly report downloads a CSV with today's rows.</p>
-</section>
-</main>
-<script src="/_site/review.js?v=27"></script>
-</body></html>
+```json
+{
+  "schema": "handoff.page/v1",
+  "kind": "journey",
+  "title": "Journey 1: first order",
+  "build": "1.4.0-rc.2",
+  "items": [
+    {"id": "j1", "title": "Install and sign in as the first admin",
+     "steps": ["Run the installer", "Sign in as the first admin"], "checkpoint": "after-install"},
+    {"id": "j2", "title": "Add a product",
+     "steps": ["Open Admin, Products", "Add a product called Demo laptop"], "checkpoint": "catalog-ready"},
+    {"id": "j3", "title": "Order it as a user", "steps": ["Sign in as demo-user", "Order the Demo laptop"]}
+  ]
+}
 ```
 
-## (e) Decision page
+### backlog
 
-**When:** a choice needs context a chat question can't carry (screens, trade-offs, a table), but only a few
-options. One section per decision.
+The page's `options` replace Yes / No / Changes. An item nobody picked counts as the default; the comment is
+optional. Choices never block approval, and the card shows the counts ("1 start · 2 hold").
 
-**Required:** the options, the recommended one marked, and what Yes / No / Changes mean, stated in the
-section.
-
-```html
-<!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Decision: where exports are stored</title>
-<link rel="stylesheet" href="/_site/site.css?v=23">
-<script src="/_site/theme.js?v=20"></script>
-</head>
-<body class="site">
-<header class="top"><div class="wrap"><h1>Decision: where exports are stored</h1>
-<p>One decision. Yes takes the recommended option.</p></div></header>
-<main class="wrap">
-<h2>Storage for exported reports</h2>
-<table>
-  <tr><th>Option</th><th>Good</th><th>Costs</th></tr>
-  <tr><td><b>A. Object storage (Recommended)</b></td><td>Cheap, scales</td><td>One more credential</td></tr>
-  <tr><td>B. Database table</td><td>No new service</td><td>Grows the database</td></tr>
-  <tr><td>C. Local disk</td><td>Simplest</td><td>Lost on redeploy</td></tr>
-</table>
-<p class="muted">Yes = A. No = none of these (say why). Changes = B or C (say which).</p>
-</main>
-<script src="/_site/review.js?v=27"></script>
-</body></html>
+```json
+{
+  "schema": "handoff.page/v1",
+  "kind": "backlog",
+  "title": "Demo app backlog",
+  "options": {"choices": [{"value": "start", "label": "Start"}, {"value": "hold", "label": "Hold"}], "default": "hold"},
+  "items": [
+    {"id": "b1", "title": "Export reports as PDF", "body": [{"p": "About two days."}]},
+    {"id": "b2", "title": "Dark theme", "body": [{"p": "About one day."}]}
+  ]
+}
 ```
 
-## (f) Walk-through or ASCII mock
+### questions
 
-**When:** showing a flow or a screen before it exists: one step or screen per section.
+Open questions take free text and never block anything. `suggested` adds a "Use suggestion" button. Use a
+question only when the answer isn't a choice.
 
-**Required:** one `<h2>` per step, the mock in a `<pre>`, one line on what happens next.
-
-```html
-<!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>First-run setup: walk-through</title>
-<link rel="stylesheet" href="/_site/site.css?v=23">
-<script src="/_site/theme.js?v=20"></script>
-</head>
-<body class="site">
-<header class="top"><div class="wrap"><h1>First-run setup: walk-through</h1>
-<p>Four screens. Approve each one.</p></div></header>
-<main class="wrap">
-<h2>1. Welcome</h2>
-<pre>+----------------------------------+
-|  Welcome to Example App          |
-|  [ Start setup ]                 |
-+----------------------------------+</pre>
-<p>Start setup goes to the admin account screen.</p>
-<h2>2. Admin account</h2>
-<pre>+----------------------------------+
-|  Admin name  [______________]    |
-|  Password    [______________]    |
-|  [ Back ]            [ Next ]    |
-+----------------------------------+</pre>
-<p>Next checks the password rules, then goes to the network screen.</p>
-</main>
-<script src="/_site/review.js?v=27"></script>
-</body></html>
+```json
+{
+  "schema": "handoff.page/v1",
+  "kind": "questions",
+  "title": "Open questions for the release",
+  "items": [
+    {"id": "q1", "title": "How long should a changed e-mail stay unverified?", "suggested": "30 days",
+     "body": [{"p": "The old e-mail stays active until the new one is verified."}]},
+    {"id": "q2", "title": "Who signs off the release notes?"}
+  ]
+}
 ```
 
-## (g) Handoff note or email draft
+### reference
 
-**When:** text the owner sends on to someone else. Reference, not a review: state `reference` in
-`_status.json`, or add one `<h2>` and review.js if the wording needs approval.
+No answers and no bar: notes, drafts and "what's built". A `copy` block has its own Copy button.
 
-**Required:** the text in one block with a Copy button.
-
-```html
-<!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Email draft: maintenance window</title>
-<link rel="stylesheet" href="/_site/site.css?v=23">
-<script src="/_site/theme.js?v=20"></script>
-</head>
-<body class="site">
-<header class="top"><div class="wrap"><h1>Email draft: maintenance window</h1>
-<p>To: the operations list. Press Copy, paste into your mail client.</p></div></header>
-<main class="wrap">
-<p><button type="button" id="copy">Copy</button></p>
-<pre id="text">Subject: Maintenance window on Saturday
-
-Hello team,
-
-Example App will be offline on Saturday from 06:00 to 07:00 for an upgrade.
-Nothing is needed from you.
-
-Thanks</pre>
-</main>
-<script>
-document.getElementById("copy").addEventListener("click", async e => {
-  await navigator.clipboard.writeText(document.getElementById("text").textContent);
-  e.target.textContent = "Copied";
-});
-</script>
-<script src="/_site/live.js?v=22" data-mode="page"></script>
-</body></html>
+```json
+{
+  "schema": "handoff.page/v1",
+  "kind": "reference",
+  "title": "Release 1.4.0 notes",
+  "status": {"state": "reference", "note": "The notes and the email draft for 1.4.0."},
+  "items": [
+    {"id": "n1", "title": "What's in it", "body": [{"list": ["Settings screen with tabs", "CSV export"]}]},
+    {"id": "n2", "title": "Email draft", "body": [{"copy": "Hi all,\n\n1.4.0 is out today.\n\nThanks,\nSam"}]}
+  ]
+}
 ```
 
-## (h) Live status page
+### status
 
-**When:** something runs for a while (a rollout, a migration, a long test) and the owner wants to watch it.
-Reference: state `reference` while it runs, `done` when it ends.
+Like a reference page, but the agent rewrites it with `page.py set` as things move. Open tabs redraw in place.
 
-**Required:** live.js in page mode. Rewrite the file as things change; the page reloads itself (never while
-the owner is typing) and keeps the scroll position.
-
-```html
-<!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Rollout status: example app 1.4.0</title>
-<link rel="stylesheet" href="/_site/site.css?v=23">
-<script src="/_site/theme.js?v=20"></script>
-</head>
-<body class="site">
-<header class="top"><div class="wrap"><h1>Rollout status: example app 1.4.0</h1>
-<p>Updated 10:42. This page refreshes itself.</p></div></header>
-<main class="wrap">
-<table>
-  <tr><th>Step</th><th>State</th><th>When</th></tr>
-  <tr><td>Build</td><td><span class="chip c-done">Done</span></td><td>10:05</td></tr>
-  <tr><td>Deploy to test</td><td><span class="chip c-done">Done</span></td><td>10:20</td></tr>
-  <tr><td>Smoke tests</td><td><span class="chip c-review">Running</span></td><td>10:40</td></tr>
-  <tr><td>Deploy to production</td><td><span class="chip">Waiting</span></td><td></td></tr>
-</table>
-</main>
-<script src="/_site/live.js?v=22" data-mode="page"></script>
-</body></html>
+```json
+{
+  "schema": "handoff.page/v1",
+  "kind": "status",
+  "title": "Migration status",
+  "items": [
+    {"id": "now", "title": "Now", "body": [{"p": "Copying the orders table: 62% done."}]},
+    {"id": "next", "title": "Next", "body": [{"list": ["Switch reads to the new database", "Turn off the old one"]}]}
+  ]
+}
 ```
 
-## (i) Open question
+## Item types
 
-**When:** something an item on a review or design page needs from the owner isn't a choice between
-options: a free-text answer. Use one only for that; a choice with options is still Yes / No / Changes or
-an `AskUserQuestion`-style decision, never this.
+| Type | Answers | Extra fields |
+|---|---|---|
+| `section` | Yes / No / Changes | `body` |
+| `check` | adds Skipped | `body`, `howto`, `dependsOn`, `blockedBy` |
+| `step` | adds Skipped | `steps`, `checkpoint`, `howto`, `dependsOn`, `blockedBy` |
+| `screen` | Yes / No / Changes | `images` (`[{src, alt, caption}]`), `fields` (`[{name, type, rule}]`), `body` |
+| `contract` | Yes / No / Changes | `fields`, `forms` (`[{name, fields}]`), `body` |
+| `diff` | Yes / No / Changes | `old`, `new`, `code`: drawn as a word diff with a Diff / Final switch |
+| `question` | free text | `body`, `suggested` |
+| `choice` | the page's `options` | `body` |
+| `info` | none | `body` |
 
-**Required:** `data-review-type="question"` on the `<h2>` (or the `[data-review-question]` element on a
-converted page), the question as its title, context in the content under it. Optional: `data-suggested`
-with a suggested answer; review.js adds a "Use suggestion" button that fills it in.
+Any answerable item can also set `answers` (its own set, such as `["yes", "no"]`), `skip: true` (adds Skipped
+to that item), `dependsOn`, `blockedBy` and `section` (a group heading above it). The body blocks (`p`, `list`,
+`olist`, `code`, `image`, `table`, `diff`, `copy`, `note`, `html`) are listed in `PAGE-FILE.md`.
 
-**Not a blocker:** a question has no Blocker button, is never counted in the open-items count and never
-holds up the page's approval. It gets its own small count ("n questions unanswered") and, in Copy
-results, its own `Q <id>: <answer>` line in a block at the end, after the approval line.
+### Mixing item types
 
-```html
-<h2 data-review-type="question" data-suggested="Nightly, 02:00 US/Eastern">When should the sync job run?</h2>
-<p>Pick a schedule that doesn't land in the middle of the backup window.</p>
+One page can hold any mix. Each item answers its own way: here a section, a section with only Yes and No, a
+question, a choice (which uses the page's `options`), a step and an info item.
+
+```json
+{
+  "schema": "handoff.page/v1",
+  "kind": "review",
+  "title": "System defaults review",
+  "options": {"choices": [{"value": "keep", "label": "Keep"}, {"value": "drop", "label": "Drop"}], "default": "keep"},
+  "items": [
+    {"id": "i1", "type": "info", "title": "Before you start", "body": [{"p": "Sign in as the first admin."}]},
+    {"id": "d1", "title": "Every default asset type is there"},
+    {"id": "d2", "title": "Default types can't be deleted", "answers": ["yes", "no"]},
+    {"id": "d3", "type": "question", "title": "Which timezone should new sites use?", "suggested": "UTC"},
+    {"id": "d4", "type": "choice", "title": "The sample data set"},
+    {"id": "d5", "type": "step", "title": "Create a first asset", "steps": ["Open Assets", "Add a laptop"]}
+  ]
+}
 ```
 
-## (j) Choices page (a backlog)
+### Screens, contracts and diffs
 
-**When:** every item answers from the same short list that isn't Yes / No / Changes, and nothing waits on
-it being "approved": a backlog where each item is Start or Hold, a triage list (Now, Later, Drop).
-
-**Required:** `data-review-options="value:Label,value:Label"` on `<body>` (the choices, in order) and
-`data-review-default="value"` (one of them). The rest is a normal review page: one `<h2>` (or
-`[data-review-question]` section) per item, review.js. Both attributes also work on a single `<h2>` or
-`[data-review-question]` item, which then overrides the page.
-
-**How it behaves:**
-
-- Every item shows the choices and a "Comments (optional)" box: no Blocker button, no Skipped, and no
-  "required for Changes" text.
-- An item nobody has picked shows and counts as the default, marked "Hold (default)".
-- Only what the owner picks or writes is saved, as `{ v: "start", n: "comment" }`; a comment on an item
-  nobody picked is saved as `{ v: "", n: "comment" }`. The default itself is never written, so changing
-  `data-review-default` later moves every item nobody picked, while picked ones keep their answer.
-- The bottom bar counts per choice ("2 start · 12 hold") instead of "n of m open items answered". Choice
-  items are never open, approved, hidden or blocking, so the page is never "not approved"; set
-  `data-review-approved` and the Approved chip don't apply to them.
-- Copy results lists each item as `- [id] START: title` or `- [id] HOLD: title`, a comment as
-  `    Note: ...` under it, and ends with the counts line (`1 start · 2 hold`) instead of the approval line.
-- The folder card shows no open-item count; the unified page shows the counts on the group's chip.
-
-```html
-<!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Demo app backlog</title>
-<meta name="description" content="Three backlog items. Each is on Hold until you pick Start.">
-<link rel="stylesheet" href="/_site/site.css?v=23">
-<script src="/_site/theme.js?v=20"></script>
-</head>
-<body class="site" data-review-options="start:Start,hold:Hold" data-review-default="hold">
-<header class="top"><div class="wrap">
-<h1>Demo app backlog</h1>
-<p>Every item stays on Hold until you pick Start. Add a comment if it helps, then More, Copy results, and paste it back.</p>
-</div></header>
-<main class="wrap">
-<h2>Export reports as PDF</h2>
-<p>A PDF button next to the CSV export on the weekly report. About two days.</p>
-<h2>Dark theme</h2>
-<p>A third theme option on the settings screen that follows the system setting. About one day.</p>
-</main>
-<script src="/_site/review.js?v=27"></script>
-</body></html>
+```json
+{
+  "schema": "handoff.page/v1",
+  "kind": "review",
+  "title": "Sign-up form",
+  "items": [
+    {"id": "f1", "type": "screen", "title": "The form",
+     "images": [{"src": "img/settings-tabs-top.svg", "alt": "The form as built"}],
+     "fields": [{"name": "email", "type": "text", "rule": "required, a valid address"}]},
+    {"id": "f2", "type": "contract", "title": "The sign-up call",
+     "fields": [{"name": "email", "type": "string", "rule": "required"}],
+     "forms": [{"name": "Response", "fields": [{"name": "id", "type": "uuid", "rule": "always set"}]}]},
+    {"id": "f3", "type": "diff", "title": "The welcome e-mail",
+     "old": "Welcome! Your account is ready.", "new": "Welcome, Sam! Your account is ready to use."}
+  ]
+}
 ```
 
-Item ids follow the usual rule (`s1`, `s2`, ... by `<h2>` order). Give each item a stable id with
-`<section data-review-question="pdf-export" data-title="Export reports as PDF">` and
-`<body data-review-h2="off">` when items get added or reordered between rounds, so saved answers stay on
-the right item.
+## Status and the index card
 
-## (k) Diff item
-
-**When:** an item reviews a rewrite of existing text (a section of a document, a story, a config file) and
-the owner should see exactly what changed rather than a summary of it.
-
-**Required:** a normal review item (an `<h2>` section or a `[data-review-question]` section) whose content
-holds a `<div class="rvdiff">` block. Build the block with `_site/diff.py`, never by hand:
+`status` is the page's index card: `state` (`needs-you`, `reference` or `done`), a one-line `note`, `chips`
+and a `priority` (lower sorts first). Without a `state`, a page stays in Needs you until every counted item is
+Yes, then shows as Done; reference and status pages show under Reference. Set it with:
 
 ```bash
-python3 _site/diff.py old.txt new.txt > item-diff.html
+python3 _site/page.py status app/design done --note "Shipped in 1.4.0"
 ```
 
-or from Python, `from diff import diff_html, diff_units` (with `_site/` on the path).
+## From today's page types
 
-**How it reads:**
+| Today's type | As a page file |
+|---|---|
+| Folder index card and manifest entry | the page's own `status`; no manifest |
+| Design or review page | `review` |
+| Unified review page | gone: each page is answered on its own page |
+| Sign-off checklist | `checklist` |
+| Decision page | a `review` whose items carry the options as content, or a `choice` item |
+| Walk-through or ASCII mock | a `review` with `code` blocks |
+| Hand-off note or email draft | a `reference` with a `copy` block |
+| Live status page | `status` |
+| Open question | a `question` item |
+| Choices page (a backlog) | `backlog` |
+| Diff item | a `diff` item or a `diff` block |
 
-- The texts are split into sentences (blank lines, list items, table rows and headings are their own
-  units; an indented line under a list item stays part of it), sentences are matched, and each changed
-  sentence gets a word-level diff.
-- Added words are `<ins>`: green and underlined. Removed words are `<del>`: red and struck through. The
-  underline and strikethrough carry the meaning without colour; the colours are theme tokens
-  (`--diff-ins`, `--diff-ins-bg`, `--diff-del`, `--diff-del-bg`) with at least 4.5:1 contrast in light and
-  dark.
-- Unchanged sentences stay as grey context (`<p class="same">`). `diff_html(old, new, same=False)` or
-  `diff_units(a, b, same=False)` leaves them out, which suits long lists such as diagram labels.
-- For a picture, put the label diff in the block and the before and after images in a
-  `<div class="rvdiff-pics">` of `<figure>`s, each image wrapped in a link to its file (the picture
-  pop-out). Add a key line with `<p class="rvdiff-key">` if the page needs one.
-- For code (a fenced block such as a GraphQL schema or a config file), pass `code=True` (or
-  `diff.py --code old.txt new.txt`): every line is its own unit, indentation and blank lines are kept, and
-  the block is `<div class="rvdiff code">`, set in monospace with long lines scrolling sideways. Diff the
-  fence's contents, not the fence markers. Line breaks inside any unit are kept, code or not.
-- review.js puts a **Diff | Final** switch before every block. Final shows the text as it now reads:
-  removed words and wholly removed sentences are hidden, and added and unchanged text are plain. A page
-  with more than one block also gets **Diff for all | Final for all** at the top of `<main>`; it shows
-  neither as pressed when the blocks differ. The choice is kept for the tab, so a live reload keeps it.
-  Nothing to add to the page: the switch comes from the `rvdiff` class.
-
-```html
-<section data-review-question="situation" data-title="README.md: Situation">
-  <h2>README.md: Situation</h2>
-  <div class="rvdiff"><p class="same">It never closes.</p>
-<p>The core ran at <del>10</del><ins>20</ins> Gb/s.</p></div>
-  <div class="rvdiff-pics">
-    <figure><a href="img/overview-before.png"><img src="img/overview-before.png" alt="Overview before"></a><figcaption>Before</figcaption></figure>
-    <figure><a href="img/overview-after.png"><img src="img/overview-after.png" alt="Overview after"></a><figcaption>After</figcaption></figure>
-  </div>
-</section>
-```
-
-Keep item ids stable when you rebuild a diff page after another round of edits, so answers already given
-stay on the right section.
+HTML pages keep working while a site moves over. `page.py convert <folder>/<page>.html` turns one into a page
+file beside it, bringing its saved answers and round history along; see `PAGE-FILE.md`.

@@ -18,6 +18,8 @@ sys.path.insert(0, str(SITE))
 
 import pagefile  # noqa: E402
 
+from sites import html_example  # noqa: E402
+
 DESIGN = {"schema": "handoff.page/v1", "kind": "review", "title": "Design", "items": [
     {"id": "s1", "title": "Purpose"}, {"id": "s2", "title": "Layout", "blockedBy": "example-org/app#70"}]}
 
@@ -177,7 +179,7 @@ def test_hook_is_quiet_only_when_listening_and_empty(root):
 def demo(tmp_path):
     r = tmp_path / "site"
     shutil.copytree(ROOT / "template", r)
-    shutil.copytree(ROOT / "example" / "demo", r / "demo")
+    shutil.copytree(html_example("demo"), r / "demo")
     shutil.copy(ROOT / "example" / "site.json", r / "site.json")
     return r
 

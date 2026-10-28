@@ -104,9 +104,10 @@ are Yes; `blockedBy` holds it until an agent replies with `--action unblock`.
 ### journey
 
 Steps run in order: each step depends on the one before it unless it sets its own `dependsOn` (`[]` for none).
-A Yes on a step with a `checkpoint` records that checkpoint. "Restart from" offers each checkpoint reached:
-the steps up to it carry over as Yes, later steps start open, and the restart is sent to the page's route so
-the agent can reset the environment.
+A Yes on a step with a `checkpoint` records that checkpoint. "Restart from a checkpoint" offers each checkpoint
+reached and asks before it acts: the steps up to it carry over as Yes, later steps start open, and the restart is
+sent to the page's route so the agent can reset the environment. The restart then shows whether the agent has
+picked it up or replied.
 
 ```json
 {

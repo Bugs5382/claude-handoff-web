@@ -307,7 +307,7 @@ if (!window.siteTheme) { const t = document.createElement("script"); t.src = "/_
   }
 
   if (!document.querySelector('link[href*="/_site/site.css"]')) {
-    const l = document.createElement("link"); l.rel = "stylesheet"; l.href = "/_site/site.css?v=23"; document.head.appendChild(l);
+    const l = document.createElement("link"); l.rel = "stylesheet"; l.href = "/_site/site.css?v=24"; document.head.appendChild(l);
   }
 
   // data-review-skip="on" (test checklists): adds Skipped; a skipped item is locked.
@@ -514,7 +514,7 @@ if (!window.siteTheme) { const t = document.createElement("script"); t.src = "/_
         try {
           if (!(await flushNow())) throw new Error("the answers aren't saved yet");
           const sent = await PF.send("blocker", [it.id], out);
-          setDelivery("Sent " + hhmm(new Date()) + (sent.listening ? "" : " · " + sent.to + " isn't listening; Copy results instead"));
+          await PF.redraw();
           alert("Blocker sent to " + sent.to + "." + (sent.listening ? "" : " " + sent.to + " isn't listening right now, so paste it to them as well."));
           if (!sent.listening) await copyText(out);
         } catch (err) {
@@ -604,11 +604,26 @@ if (!window.siteTheme) { const t = document.createElement("script"); t.src = "/_
     '<span class="bkr" hidden></span><span class="cnt" role="status" aria-live="polite"></span></span>' +
     '<span class="svst" aria-live="polite"></span>' +
     '<a class="back" hidden></a>' +
-    (SENDS ? '<button class="send-btn" type="button"></button><span class="dlv" aria-live="polite"></span>' : "") +
+    (SENDS ? '<button class="send-btn" type="button"></button><span class="dlv" role="status" aria-live="polite"></span>' : "") +
     '<span class="more"><button class="more-btn" type="button" aria-haspopup="menu" aria-expanded="false">More ▾</button></span>' +
     '</div>';
   body.appendChild(bar);
-  function setDelivery(text) { const el = bar.querySelector(".dlv"); if (el) el.textContent = text; }
+  // The delivery state from render.js: a dot, the line, and on "isn't listening" a Copy results button.
+  function setDelivery(dl) {
+    const el = bar.querySelector(".dlv"); if (!el) return;
+    el.textContent = "";
+    if (!dl) { delete el.dataset.state; return; }
+    el.dataset.state = dl.state;
+    const dot = document.createElement("span"); dot.className = "dlv-dot"; dot.setAttribute("aria-hidden", "true");
+    const t = document.createElement(dl.state === "replied" ? "a" : "span"); t.className = "dlv-t"; t.textContent = dl.text;
+    if (dl.state === "replied") { t.href = "#replies"; t.title = dl.full; }
+    el.append(dot, t);
+    if (dl.state === "deaf") {
+      const b = document.createElement("button"); b.type = "button"; b.className = "dlv-copy"; b.textContent = "Copy results instead";
+      b.addEventListener("click", async () => { await copyText(results()); b.textContent = "Copied"; });
+      el.appendChild(b);
+    }
+  }
   const sendBtn = bar.querySelector(".send-btn");
   if (sendBtn) {
     sendBtn.textContent = "Send to " + PF.route.to;
@@ -989,8 +1004,8 @@ if (!window.siteTheme) { const t = document.createElement("script"); t.src = "/_
     if (!c.allDone && !confirm("Send now? " + left + " item" + (left === 1 ? " is" : "s are") + " still open.")) return;
     if (!(await flushNow())) { alert("Can't send yet: the answers aren't saved. Try again once it says Saved."); return; }
     try {
-      const sent = await PF.send("send", null, results());
-      setDelivery("Sent " + hhmm(new Date()) + (sent.listening ? "" : " · " + sent.to + " isn't listening; Copy results instead"));
+      await PF.send("send", null, results());
+      await PF.redraw();
     } catch (e) { alert("Couldn't send: " + e.message + ". Use Copy results instead."); }
   });
   // Before a redraw: take this page's listeners, bar, notes and History off, so mounting again starts clean.

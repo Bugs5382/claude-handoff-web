@@ -17,6 +17,7 @@ from pathlib import Path
 
 import pytest
 
+from sites import html_example
 from test_review_choices import find_chrome
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -140,7 +141,7 @@ def smoke(tmp_path_factory):
     root = tmp / "site"
     shutil.copytree(ROOT / "template", root)
     for d in ("demo", "guide"):
-        shutil.copytree(ROOT / "example" / d, root / d)
+        shutil.copytree(html_example(d), root / d)
     shutil.copy(ROOT / "example" / "site.json", root / "site.json")
     shutil.copy(HARNESS, root / "harness.html")
     write_pages(root)

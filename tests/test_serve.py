@@ -16,6 +16,8 @@ from pathlib import Path
 
 import pytest
 
+from sites import html_example
+
 ROOT = Path(__file__).resolve().parent.parent
 SERVE = ROOT / "template" / "_site" / "serve.py"
 
@@ -51,7 +53,7 @@ def site(tmp_path):
     root = tmp_path / "site"
     shutil.copytree(ROOT / "template", root)
     for d in ("demo", "guide"):
-        shutil.copytree(ROOT / "example" / d, root / d)
+        shutil.copytree(html_example(d), root / d)
     shutil.copy(ROOT / "example" / "site.json", root / "site.json")
     port = free_port()
     proc = subprocess.Popen([sys.executable, str(root / "_site" / "serve.py"), str(port), "--bind", "127.0.0.1",
@@ -238,7 +240,7 @@ def test_round_archived_on_build_change(site):
 
 def test_round_text_for_a_choices_page_uses_its_labels_and_default():
     serve = load_serve()
-    src = (ROOT / "example" / "demo" / "backlog.html").read_text()
+    src = (html_example("demo") / "backlog.html").read_text()
     attrs = serve._body_attrs(src)
     text = serve._results_text("demo/backlog.html", "Demo app backlog", src, attrs,
                                {"s1": {"v": "start", "n": "Next sprint"}, "s2": {"v": "", "n": "Not before Q3"}}, 1, "")

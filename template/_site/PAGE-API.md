@@ -82,6 +82,10 @@ defaults to every item answered in the open round; a blocker sends exactly one. 
 from the page file, not from the request. A route whose `mode` is `copy` answers `409`: that page copies its
 results instead.
 
+The bar then shows where the latest Send or Blocker stands, from `submissions`, `listening` and the thread:
+sent, picked up once the agent moves the file to `taken/`, the agent's newest reply after it, or, while nobody is
+listening, "isn't listening." with a Copy results button.
+
 ## The inbox
 
 ```text

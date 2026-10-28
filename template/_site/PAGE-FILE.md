@@ -33,9 +33,13 @@ draws the page from `GET /_page/<folder>/<slug>` into the same markup an HTML pa
 
 `review.js` saves through the renderer (`PUT /_page/.../answers`, only the items this tab changed), and
 History lists the page's closed rounds. When the page's route sends, Blocker becomes "Blocker: send now" and
-the bar gains "Send to <agent>" with a delivery line (Sent, Picked up, the agent's reply, or "isn't
-listening; Copy results instead"). A journey shows "Restart from" with one button per checkpoint reached, and
-each item lists the answers from earlier rounds with the replies, oldest first.
+the bar gains "Send to <agent>" with the latest send's delivery state: "Sent 07:42", "Picked up by app 07:43",
+"app replied 07:50: ..." (a link to the page's replies), or "app isn't listening." with a Copy results instead
+button. A journey shows "Restart from a checkpoint" with one button per checkpoint reached; picking one asks
+first, on the page, and once restarted the restart shows its own delivery state. Under each item, a thread lists
+my answers from earlier rounds and the agents' replies, oldest first, with who, the round, when, and a tag for
+Filed, Fixed, Reopened (with the reason), Unblocked and Won't fix; past four entries the oldest fold behind
+"Show N earlier". Replies about the whole page (`_page`) sit in their own card at the top.
 
 The page polls every 10 seconds and redraws in place when the file changes: never while the owner is typing, within
 3 seconds of a click, or while answers are still unsaved, and it keeps the scroll position. When the only

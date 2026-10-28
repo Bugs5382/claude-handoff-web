@@ -250,29 +250,98 @@ const seg = (doc, id, v) => card(doc, id).querySelector('.seg button[data-v="' +
     click(seg(doc, "r1", "yes"));
     const asked = []; win.confirm = m => { asked.push(m); return true; };
     click(send);
-    await until(() => /^Sent \d\d:\d\d/.test(bar.querySelector(".dlv").textContent), "the delivery state");
+    const cur = () => w().document.querySelector(".rvbar .dlv");
+    await until(() => cur().dataset.state === "deaf", "the delivery state");
+    const dlv = cur();
     match(asked[0], /^Send now\? 3 items are still open\./);
-    match(bar.querySelector(".dlv").textContent, /ops isn't listening/);
+    match(dlv.querySelector(".dlv-t").textContent, /^Sent \d\d:\d\d · ops isn't listening\.$/);
+    const cp = dlv.querySelector(".dlv-copy"); ok(cp, "Copy results instead"); eq(cp.textContent, "Copy results instead");
+    click(cp); await tick(50);
+    match(win.__clip, /^Review: pf-send/);
     const p = await pageFile("demo/pf-send");
     eq(p.submissions[0].kind, "send"); eq(p.submissions[0].state, "sent");
   });
 
   await t("thread: earlier answers and replies show under the item", async () => {
     const { doc } = await load("/demo/pf-thread");
-    const th = card(doc, "r1").querySelector(".rvthread"); ok(th, "a thread under r1");
-    const lines = Array.from(th.querySelectorAll("p")).map(p => p.textContent);
-    eq(lines.length, 2); match(lines[0], /Round 1 · you.*Changes: Name the module/); match(lines[1], /app.*Renamed to core\./);
-    match(doc.querySelector("main .page-thread").textContent, /Round 2 is ready\./);
+    const th = card(doc, "r1").querySelector("ol.thread"); ok(th, "a thread under r1");
+    const rows = Array.from(th.querySelectorAll(":scope > li.te"));
+    eq(rows.length, 2);
+    eq(rows[0].dataset.kind, "answer"); eq(rows[0].querySelector(".te-who").textContent, "You");
+    eq(rows[0].querySelector(".te-round").textContent, "Round 1");
+    eq(rows[0].querySelector(".te-tag").textContent, "Changes"); ok(rows[0].querySelector(".te-tag").classList.contains("a-chg"));
+    eq(rows[0].querySelector(".te-text").textContent, "Name the module");
+    eq(rows[1].dataset.kind, "reply"); eq(rows[1].querySelector(".te-who").textContent, "app");
+    eq(rows[1].querySelector(".te-tag").textContent, "Fixed"); eq(rows[1].dataset.action, "fixed");
+    eq(rows[1].querySelector(".te-text").textContent, "Renamed to core.");
+    eq(rows[1].querySelector("time").getAttribute("datetime"), "2026-10-26T07:42:10-04:00");
+    eq(rows[1].querySelector("time").textContent, "Oct 26, 07:42");
+    const pt = doc.querySelector("main .pthread"); ok(pt, "the page thread");
+    eq(pt.querySelector("h2").textContent, "Replies about this page");
+    eq(pt.querySelector("li.te .te-text").textContent, "Round 2 is ready.");
   });
 
-  await t("restart: Restart from a checkpoint opens a new round and carries the steps", async () => {
+  await t("thread: filed, reopen, unblock and won't fix read at a glance; a long thread folds its oldest entries", async () => {
+    const { win, doc } = await load("/demo/pf-thread2");
+    const th = card(doc, "r1").querySelector("ol.thread");
+    const shown = () => Array.from(th.querySelectorAll(":scope > li.te")).filter(li => !li.hidden);
+    eq(shown().length, 4, "the newest four");
+    const more = th.querySelector("li.te-more button"); ok(more, "a fold button"); eq(more.textContent, "Show 2 earlier");
+    eq(shown().map(li => li.querySelector(".te-tag").textContent).join(","), "Fixed,Reopened,Unblocked,Won't fix");
+    const reo = shown()[1]; eq(reo.dataset.action, "reopen"); eq(reo.querySelector(".te-reason").textContent, "fixed in #70");
+    click(more);
+    eq(shown().length, 6); ok(!th.querySelector("li.te-more"), "the fold is gone");
+    const filed = shown()[1]; eq(filed.dataset.action, "filed"); eq(filed.querySelector(".te-ref").textContent, "example-org/app#70");
+    eq(shown()[0].querySelector(".te-tag").textContent, "No");
+  });
+
+  await t("delivery: sent to a listening agent, picked up, then the agent's reply, in the bar", async () => {
+    let r = await load("/demo/pf-dlv-sent");
+    click(seg(r.doc, "r1", "yes")); r.win.confirm = () => true;
+    click(r.bar.querySelector(".send-btn"));
+    await until(() => w().document.querySelector(".rvbar .dlv").dataset.state === "sent", "sent");
+    let dlv = w().document.querySelector(".rvbar .dlv");
+    match(dlv.querySelector(".dlv-t").textContent, /^Sent \d\d:\d\d$/); ok(!dlv.querySelector(".dlv-copy"), "no copy offer while listening");
+    r = await load("/demo/pf-dlv-taken");
+    dlv = r.bar.querySelector(".dlv");
+    eq(dlv.dataset.state, "taken"); eq(dlv.querySelector(".dlv-t").textContent, "Picked up by app 07:43");
+    r = await load("/demo/pf-dlv-replied");
+    dlv = r.bar.querySelector(".dlv");
+    eq(dlv.dataset.state, "replied"); eq(dlv.querySelector(".dlv-t").textContent, "app replied 07:50: All fixed, round 2 is ready.");
+    const go = dlv.querySelector("a.dlv-t"); ok(go, "the reply links to the page thread"); eq(go.getAttribute("href"), "#replies");
+    ok(r.doc.getElementById("replies"), "the page thread is the target");
+  });
+
+  await t("restart: Restart from a checkpoint asks first, opens a new round and carries the steps", async () => {
     const { win, doc } = await load("/demo/pf-journey");
-    const b = doc.querySelector('.rvrestart button[data-cp="after-install"]'); ok(b, "Restart from after-install");
+    const box = doc.querySelector(".rvrestart"); ok(box, "the restart bar");
+    eq(box.querySelector("h2").textContent, "Restart from a checkpoint");
+    const b = box.querySelector('button[data-cp="after-install"]'); ok(b, "Restart from after-install");
+    eq(b.querySelector(".cp-name").textContent, "After install"); eq(b.querySelector(".cp-step").textContent, "after step 1");
+    let asked = 0; win.confirm = () => { asked++; return true; };
+    const conf = box.querySelector(".restart-confirm"); ok(conf.hidden, "no confirm yet");
     click(b);
+    ok(!conf.hidden, "the confirm opens"); eq(asked, 0, "no browser dialog");
+    match(conf.querySelector(".restart-q").textContent, /^Restart from After install\? Step 2 starts open again, and ops resets the environment first\.$/);
+    click(conf.querySelector(".restart-cancel"));
+    ok(conf.hidden, "Cancel closes it");
+    eq((await pageFile("demo/pf-journey")).rounds.length, 1, "nothing restarted");
+    click(b); click(conf.querySelector(".restart-go"));
     await until(() => card(w().document, "j2") && card(w().document, "j2").dataset.answer === "", "the redraw after restart");
     const p = await pageFile("demo/pf-journey");
     eq(p.rounds.length, 2); eq(p.rounds[1].restart, "after-install"); eq(p.rounds[1].answers.j1.answer, "yes");
     eq(card(w().document, "j1").dataset.answer, "yes");
+  });
+
+  await t("restart: the restart shows its own delivery state", async () => {
+    const { doc } = await load("/demo/pf-journey2");
+    const box = doc.querySelector(".rvrestart");
+    ok(!box.querySelector(".restart-dlv"), "no state before a restart");
+    click(box.querySelector('button[data-cp="after-install"]')); click(box.querySelector(".restart-go"));
+    await until(() => w().document.querySelector(".rvrestart .restart-dlv"), "the restart's delivery state");
+    const dlv = w().document.querySelector(".rvrestart .restart-dlv");
+    eq(dlv.dataset.state, "deaf");
+    match(dlv.querySelector(".dlv-t").textContent, /^Restarted from After install \d\d:\d\d · ops isn't listening\.$/);
   });
 
   await t("live: a change on the server redraws without a reload, after typing stops, keeping the note and scroll", async () => {

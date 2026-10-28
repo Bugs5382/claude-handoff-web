@@ -32,8 +32,13 @@
   }
   const typeOf = it => it.type || TYPE_BY_KIND[data.page.kind];
   const answerable = it => typeOf(it) !== "info";
-  const hhmm = iso => { const d = new Date(iso); return isNaN(d) ? "" : d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hourCycle: "h23" }); };
-  const when = iso => String(iso || "").slice(0, 16).replace("T", " ");
+  // Page-file times read as the site's own clock, straight from the stored offset, so every viewer sees the same.
+  const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const clock = iso => String(iso || "").slice(11, 16);
+  const stamp = iso => { const m = /^\d{4}-(\d\d)-(\d\d)T(\d\d:\d\d)/.exec(iso || ""); return m ? MONTHS[+m[1] - 1] + " " + +m[2] + ", " + m[3] : ""; };
+  const ACTION_LABEL = { filed: "Filed", fixed: "Fixed", reopen: "Reopened", unblock: "Unblocked", wontfix: "Won't fix" };
+  const ANS_CLASS = { yes: "a-yes", no: "a-no", changes: "a-chg", skipped: "skp" };
+  const THREAD_SHOWN = 4;
 
   function block(b, key) {
     if ("p" in b) return "<p>" + inline(b.p) + "</p>";
@@ -69,21 +74,84 @@
       fields.map(f => "<tr><td>" + inline(f.name) + "</td><td>" + inline(f.type || "") + "</td><td>" + inline(f.rule || "") + "</td></tr>").join("") + "</tbody></table>";
   }
 
-  // My answers from closed rounds and the replies, oldest first, under each item.
+  // My answers from closed rounds and the replies, oldest first, under each item. Past the newest four, the
+  // oldest entries fold behind "Show N earlier".
+  function entryHtml(e) {
+    const head = '<span class="te-who">' + esc(e.who) + "</span>" + (e.round ? '<span class="te-round">Round ' + e.round + "</span>" : "") +
+      (e.tag ? '<span class="te-tag ' + e.tagClass + '">' + esc(e.tag) + "</span>" : "") +
+      '<time datetime="' + esc(e.at) + '">' + esc(stamp(e.at)) + "</time>";
+    let text = e.text ? '<span class="te-text">' + e.text + "</span>" : "";
+    if (e.reason && e.reason !== e.rawText) text += '<span class="te-reason">' + esc(e.reason) + "</span>";
+    if (e.ref) text += '<span class="te-ref">' + esc(e.ref) + "</span>";
+    return '<li class="te" data-kind="' + e.kind + '" data-action="' + esc(e.action) + '"' + (e.hidden ? " hidden" : "") + '><span class="te-mark" aria-hidden="true"></span>' +
+      '<div class="te-body"><p class="te-head">' + head + "</p>" + (text ? '<p class="te-line">' + text + "</p>" : "") + "</div></li>";
+  }
+  function threadList(entries, label) {
+    if (!entries.length) return "";
+    entries.sort((a, b) => String(a.at).localeCompare(String(b.at)));
+    const fold = entries.length > THREAD_SHOWN ? entries.length - THREAD_SHOWN : 0;
+    entries.forEach((e, i) => { e.hidden = i < fold; });
+    return '<ol class="thread" aria-label="' + esc(label) + '">' +
+      (fold ? '<li class="te-more"><button type="button">Show ' + fold + " earlier</button></li>" : "") +
+      entries.map(entryHtml).join("") + "</ol>";
+  }
+  function replyEntry(x) {
+    return { kind: "reply", at: x.at, who: x.from, action: x.action || "info", tag: ACTION_LABEL[x.action] || "",
+      tagClass: "t-" + (x.action || "info"), text: inline(x.text), rawText: x.text, reason: x.action === "reopen" ? x.reason : "", ref: x.ref || "" };
+  }
   function threadHtml(id) {
-    const rows = [];
-    const rounds = data.page.rounds;
-    for (const r of rounds.slice(0, -1)) {
+    const entries = [];
+    for (const r of data.page.rounds.slice(0, -1)) {
       const a = r.answers[id]; if (!a || (!a.answer && !a.note)) continue;
-      const label = ANS_LABEL[a.answer] || a.answer;
-      rows.push({ at: a.at, html: "<b>Round " + r.round + " · you</b> <span class=\"muted\">" + esc(when(a.at)) + "</span> " + esc([label, a.note].filter(Boolean).join(": ")) });
+      entries.push({ kind: "answer", at: a.at, who: "You", round: r.round, action: a.answer, tag: ANS_LABEL[a.answer] || a.answer,
+        tagClass: ANS_CLASS[a.answer] || "a-other", text: esc(a.note) });
     }
-    for (const x of (data.page.thread || {})[id] || []) {
-      rows.push({ at: x.at, html: "<b>" + esc(x.from) + (x.action ? " · " + esc(x.action) : "") + "</b> <span class=\"muted\">" + esc(when(x.at)) + "</span> " + inline(x.text) });
+    for (const x of (data.page.thread || {})[id] || []) entries.push(replyEntry(x));
+    return threadList(entries, "History of " + id);
+  }
+  // Where a Send, Blocker or Restart stands: sent, nobody listening, picked up, or answered by the agent.
+  function deliveryOf(s) {
+    const to = s.to || data.route.to;
+    const replies = Object.values(data.page.thread || {}).flat().filter(x => x.at > s.at).sort((a, b) => String(a.at).localeCompare(String(b.at)));
+    const reply = replies[replies.length - 1];
+    const label = s.kind === "restart" ? "Restarted from " + cpName(restartOf(s)) : s.kind === "blocker" ? "Blocker sent" : "Sent";
+    const out = { kind: s.kind, to };
+    if (reply) {
+      const t = reply.text.length > 90 ? reply.text.slice(0, 89) + "\u2026" : reply.text;
+      return Object.assign(out, { state: "replied", text: reply.from + " replied " + clock(reply.at) + ": " + t, full: reply.text });
     }
-    if (!rows.length) return "";
-    rows.sort((a, b) => String(a.at).localeCompare(String(b.at)));
-    return '<div class="rvthread">' + rows.map(r => "<p>" + r.html + "</p>").join("") + "</div>";
+    if (s.state === "taken") {
+      return Object.assign(out, { state: "taken", text: (s.kind === "restart" ? label + " " + clock(s.at) + " · picked up by " : "Picked up by ") + to + " " + clock(s.takenAt) });
+    }
+    const deaf = to === data.route.to && !data.listening;
+    return Object.assign(out, { state: deaf ? "deaf" : "sent", text: label + " " + clock(s.at) + (deaf ? " · " + to + " isn't listening." : "") });
+  }
+  const restartOf = s => (data.page.rounds.find(r => r.round === s.round) || {}).restart || "";
+  const cpName = cp => { const t = String(cp).replace(/[-_]+/g, " ").trim(); return t.charAt(0).toUpperCase() + t.slice(1); };
+  function deliveryHtml(dl, cls) {
+    const text = dl.state === "replied" ? '<a class="dlv-t" href="#replies" title="' + esc(dl.full) + '">' + esc(dl.text) + "</a>" : '<span class="dlv-t">' + esc(dl.text) + "</span>";
+    return '<p class="' + cls + '" data-state="' + dl.state + '" aria-live="polite"><span class="dlv-dot" aria-hidden="true"></span>' + text + "</p>";
+  }
+  function restartHtml(p) {
+    const reached = [];
+    for (const r of p.rounds) for (const cp of Object.keys(r.checkpoints || {})) if (!reached.includes(cp)) reached.push(cp);
+    if (!reached.length) return "";
+    const stepOf = cp => p.items.findIndex(it => it.checkpoint === cp) + 1;
+    const last = [...(p.submissions || [])].reverse().find(s => s.kind === "restart");
+    return '<section class="rvrestart" aria-labelledby="restart-h"><h2 id="restart-h">Restart from a checkpoint</h2>' +
+      '<p class="restart-why">The steps up to the checkpoint stay Yes and later steps start open. ' + esc(data.route.to) + " gets the restart and resets the environment.</p>" +
+      '<div class="restart-cps">' + reached.map(cp => '<button type="button" data-cp="' + esc(cp) + '"><span class="cp-name">' + esc(cpName(cp)) +
+        '</span><span class="cp-step">after step ' + stepOf(cp) + "</span></button>").join("") + "</div>" +
+      '<div class="restart-confirm" role="group" aria-label="Confirm the restart" hidden><p class="restart-q"></p>' +
+      '<button type="button" class="restart-go">Restart</button><button type="button" class="restart-cancel">Cancel</button></div>' +
+      (last ? deliveryHtml(deliveryOf(last), "restart-dlv") : "") + "</section>";
+  }
+  function restartQuestion(cp) {
+    const p = data.page, at = p.items.findIndex(it => it.checkpoint === cp) + 1;
+    const later = p.items.slice(at).filter(it => typeOf(it) === "step").map(it => p.items.indexOf(it) + 1);
+    const steps = !later.length ? "Nothing after it changes" : later.length === 1 ? "Step " + later[0] + " starts open again" :
+      "Steps " + later[0] + " to " + later[later.length - 1] + " start open again";
+    return "Restart from " + cpName(cp) + "? " + steps + ", and " + data.route.to + " resets the environment first.";
   }
 
   // What blocks an item, the way the server counts it: a blockedBy with no unblock reply, or a dependsOn
@@ -151,14 +219,9 @@
     let main = body.querySelector("main");
     if (!main) { main = document.createElement("main"); main.className = "wrap"; top.after(main); }
     main.id = "page";
-    const pageThread = ((p.thread || {})._page || []).map(x => "<p><b>" + esc(x.from) + "</b> <span class=\"muted\">" + esc(when(x.at)) + "</span> " + inline(x.text) + "</p>").join("");
-    let restart = "";
-    if (p.kind === "journey") {
-      const reached = [];
-      for (const r of p.rounds) for (const cp of Object.keys(r.checkpoints || {})) if (!reached.includes(cp)) reached.push(cp);
-      if (reached.length) restart = '<p class="rvrestart">Restart from: ' + reached.map(cp => '<button type="button" data-cp="' + esc(cp) + '">' + esc(cp) + "</button>").join(" ") + "</p>";
-    }
-    main.innerHTML = (pageThread ? '<div class="rvthread page-thread">' + pageThread + "</div>" : "") + restart +
+    const pageThread = threadList(((p.thread || {})._page || []).map(replyEntry), "Replies about this page");
+    const restart = p.kind === "journey" ? restartHtml(p) : "";
+    main.innerHTML = (pageThread ? '<section class="pthread" id="replies"><h2>Replies about this page</h2>' + pageThread + "</section>" : "") + restart +
       p.items.map((it, i) => itemHtml(it, i + 1)).join("");
   }
 
@@ -248,16 +311,10 @@
       }).reverse();
       return { page_removed: false, rounds };
     },
-    // The bar's delivery line for the latest Send or Blocker.
+    // The bar's delivery state for the latest Send or Blocker: {state, text, to}, or null before the first one.
     delivery() {
-      const subs = data.page.submissions || [];
-      const s = subs[subs.length - 1]; if (!s) return "";
-      const to = s.to || data.route.to;
-      let text = s.state === "taken" ? "Picked up by " + to + " " + hhmm(s.takenAt) : "Sent " + hhmm(s.at);
-      const reply = ((data.page.thread || {})._page || []).filter(x => x.at > s.at).pop();
-      if (reply) text += " · " + reply.from + " replied " + hhmm(reply.at);
-      else if (s.state !== "taken" && !data.listening) text += " · " + to + " isn't listening; Copy results instead";
-      return text;
+      const s = [...(data.page.submissions || [])].reverse().find(x => x.kind !== "restart");
+      return s ? deliveryOf(s) : null;
     },
     redraw: () => refresh(true)
   };
@@ -317,14 +374,37 @@
       cp.textContent = "Copied"; setTimeout(() => { cp.textContent = "Copy"; }, 1500);
       return;
     }
-    const rs = e.target.closest && e.target.closest(".rvrestart button[data-cp]");
+    const more = e.target.closest && e.target.closest(".thread .te-more button");
+    if (more) {
+      const list = more.closest(".thread");
+      list.querySelectorAll(":scope > li.te[hidden]").forEach(li => { li.hidden = false; });
+      more.parentElement.remove();
+      return;
+    }
+    const box = e.target.closest && e.target.closest(".rvrestart");
+    if (!box) return;
+    const conf = box.querySelector(".restart-confirm");
+    const rs = e.target.closest("button[data-cp]");
     if (rs) {
-      if (!confirm("Restart from " + rs.dataset.cp + "? Steps after it start open again, and the restart is sent to " + data.route.to + ".")) return;
+      box.querySelectorAll("button[data-cp]").forEach(b => b.setAttribute("aria-pressed", String(b === rs)));
+      conf.dataset.cp = rs.dataset.cp;
+      conf.querySelector(".restart-q").textContent = restartQuestion(rs.dataset.cp);
+      conf.hidden = false;
+      conf.querySelector(".restart-go").focus();
+      return;
+    }
+    if (e.target.closest(".restart-cancel")) {
+      conf.hidden = true;
+      box.querySelectorAll("button[data-cp]").forEach(b => b.setAttribute("aria-pressed", "false"));
+      return;
+    }
+    if (e.target.closest(".restart-go")) {
+      const go = e.target.closest(".restart-go"); go.disabled = true; go.textContent = "Restarting\u2026";
       try {
         if (window.siteReview && window.siteReview.flushNow) await window.siteReview.flushNow();
-        await window.sitePage.restart(rs.dataset.cp, window.siteReview ? window.siteReview.results() : "");
+        await window.sitePage.restart(conf.dataset.cp, window.siteReview ? window.siteReview.results() : "");
         await refresh(true);
-      } catch (err) { alert("Couldn't restart: " + err.message); }
+      } catch (err) { go.disabled = false; go.textContent = "Restart"; alert("Couldn't restart: " + err.message); }
     }
   });
   for (const ev of ["input", "change", "keydown", "pointerdown", "click"]) document.addEventListener(ev, () => { lastAct = Date.now(); }, true);
@@ -335,7 +415,7 @@
       setTimeout(boot, POLL); return;
     }
     render();
-    if (!reviewLoaded) { reviewLoaded = true; loadScript("/_site/review.js?v=27"); }
+    if (!reviewLoaded) { reviewLoaded = true; loadScript("/_site/review.js?v=28"); }
     setInterval(() => { if (!document.hidden) refresh(false).catch(() => {}); }, POLL);
   })();
 })();

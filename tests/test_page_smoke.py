@@ -5,6 +5,7 @@ installed. The scenarios live in tests/js/page_smoke.html."""
 
 import html
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -42,7 +43,10 @@ SCENARIOS = [
     "history lists closed rounds; Save round now opens the next round",
     "send: partial confirm, an inbox file, and the delivery state",
     "thread: earlier answers and replies show under the item",
-    "restart: Restart from a checkpoint opens a new round and carries the steps",
+    "thread: filed, reopen, unblock and won't fix read at a glance; a long thread folds its oldest entries",
+    "delivery: sent to a listening agent, picked up, then the agent's reply, in the bar",
+    "restart: Restart from a checkpoint asks first, opens a new round and carries the steps",
+    "restart: the restart shows its own delivery state",
     "live: a change on the server redraws without a reload, after typing stops, keeping the note and scroll",
     "reference page: blocks render and there is no answer bar",
     "mixed page: a section, a two-answer section, a question, a choice, a step and an info item each answer their own way",
@@ -126,6 +130,26 @@ def write_pages(root):
     w(demo / "pf-journey.json", JOURNEY, now=T0)
     pagefile.save_answers(demo / "pf-journey.json", {"j1": {"answer": "yes", "note": ""}, "j2": {"answer": "no", "note": "Broken"}},
                           by="Alex", now=T0)
+    w(demo / "pf-thread2.json", review("Thread 2"), now=T0)
+    t2 = demo / "pf-thread2.json"
+    pagefile.save_answers(t2, {"r1": {"answer": "no", "note": "Broken on a phone"}}, by="Alex", now=T0)
+    pagefile.new_round(t2, now="2026-10-26T08:00:00-04:00")
+    pagefile.reply(t2, "r1", "ops", "Filed it.", action="filed", ref="example-org/app#70", now="2026-10-26T08:01:00-04:00")
+    pagefile.reply(t2, "r1", "app", "Fixed in #70.", action="fixed", now="2026-10-26T08:02:00-04:00")
+    pagefile.reply(t2, "r1", "app", "Ready to look at again.", action="reopen", reason="fixed in #70", now="2026-10-26T08:03:00-04:00")
+    pagefile.reply(t2, "r1", "app", "The build is up.", action="unblock", now="2026-10-26T08:04:00-04:00")
+    pagefile.reply(t2, "r1", "app", "The tablet layout stays as it is.", action="wontfix", now="2026-10-26T08:05:00-04:00")
+    for name in ("pf-dlv-sent", "pf-dlv-taken", "pf-dlv-replied"):
+        w(demo / f"{name}.json", review(name), now=T0)
+        pagefile.set_route(demo / f"{name}.json", "app", "send")
+    (root / "_inbox" / "app").mkdir(parents=True, exist_ok=True)
+    (root / "_inbox" / "app" / ".listening").write_text(str(os.getpid()))
+    for name in ("pf-dlv-taken", "pf-dlv-replied"):
+        pagefile.add_submission(demo / f"{name}.json", {"kind": "send", "to": "app", "file": "x-{n}.json"}, now=T0)
+        pagefile.mark_taken(demo / f"{name}.json", 1, at="2026-10-26T07:43:00-04:00")
+    pagefile.reply(demo / "pf-dlv-replied.json", "_page", "app", "All fixed, round 2 is ready.", now="2026-10-26T07:50:00-04:00")
+    w(demo / "pf-journey2.json", JOURNEY, now=T0)
+    pagefile.save_answers(demo / "pf-journey2.json", {"j1": {"answer": "yes", "note": ""}}, by="Alex", now=T0)
     w(demo / "pf-reference.json", REFERENCE, now=T0)
     w(demo / "pf-mixed.json", MIXED, now=T0)
 

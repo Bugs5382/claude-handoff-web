@@ -345,6 +345,9 @@ def blocks(nodes, warn):
             out.append(_image(n))
         elif tag == "a" and n.first("img") is not None and not squash(text_of(n)):
             out += [_image(i) for i in n.find_all(lambda x: x.tag == "img")]
+        elif tag == "table" and n.find_all(lambda x: x.tag in ("th", "td") and ("colspan" in x.attrs or "rowspan" in x.attrs)):
+            warn("kept a <table> with merged cells as an html block")
+            out.append({"html": serialize(n)})
         elif tag == "table":
             rows = [[squash(inline(c)) for c in tr.children if isinstance(c, Node) and c.tag in ("th", "td")]
                     for tr in n.find_all(lambda x: x.tag == "tr")]
@@ -405,7 +408,7 @@ def convert_html(src, name, manifest_entry, warn_out):
 
     if battrs.get("data-review-h2") == "off":
         for el in main.find_all(lambda n: bool(n.attrs.get("data-review-question"))):
-            iid = el.attrs["data-review-question"]
+            iid = el.attrs["data-review-question"].lower()
             h2 = el.first("h2")
             item = {"id": iid, "title": el.attrs.get("data-title") or (squash(text_of(h2)) if h2 else iid)}
             _question(item, el)
@@ -434,7 +437,11 @@ def convert_html(src, name, manifest_entry, warn_out):
             it["body"] = blocks(it.pop("_nodes"), warner(it["id"]))
         if intro_blocks:
             items.insert(0, {"id": "intro", "type": "info", "title": "About this page", "body": intro_blocks})
-    for it in items:
+    seen = {}
+    for it, raw in zip(items, _raw_ids(main, battrs, items), strict=True):
+        if it["id"] in seen:
+            raise CliError(f"{name}: ids {seen[it['id']]} and {raw} only differ by case")
+        seen[it["id"]] = raw
         if not it["body"]:
             del it["body"]
 
@@ -447,7 +454,8 @@ def convert_html(src, name, manifest_entry, warn_out):
             options["default"] = battrs["data-review-default"]
     skip = battrs.get("data-review-skip") == "on"
     build = battrs.get("data-build") or None
-    kind = "backlog" if options else ("checklist" if skip and build else "review")
+    uses_review = any("review.js" in n.attrs.get("src", "") for n in doc.find_all(lambda n: n.tag == "script"))
+    kind = "backlog" if options else ("checklist" if skip and build else "review" if uses_review else "reference")
     if skip and kind == "review":
         for it in items:
             if it.get("type") not in ("question", "info"):
@@ -456,13 +464,14 @@ def convert_html(src, name, manifest_entry, warn_out):
     ids = {it["id"] for it in items}
     for part in battrs.get("data-review-blocked", "").split("|"):
         target, _, why = part.partition("=")
-        target, why = target.strip(), why.strip()
+        target, why = target.strip().lower(), why.strip()
         it = next((x for x in items if x["id"] == target), None)
         if not it or not why:
             continue
-        m = re.match(r"[a-z0-9][a-z0-9_-]*", why)
-        if m and m.group(0) in ids and m.group(0) != target:
-            it["dependsOn"] = [m.group(0)]
+        m = re.match(r"[A-Za-z0-9][A-Za-z0-9_-]*", why)
+        dep = m.group(0).lower() if m else None
+        if dep in ids and dep != target:
+            it["dependsOn"] = [dep]
         else:
             it["blockedBy"] = why
 
@@ -489,17 +498,25 @@ def convert_html(src, name, manifest_entry, warn_out):
         if battrs.get(attr):
             warn_out(f"{name}: {attr} isn't carried over")
     extras = {
-        "approved": [x.strip() for x in battrs.get("data-review-approved", "").split(",") if x.strip() in ids],
-        "reopened": {k.strip(): v.strip() for k, _, v in (p.partition("=") for p in battrs.get("data-review-reopen", "").split("|"))
-                     if k.strip() in ids and v.strip()},
+        "approved": [x.strip().lower() for x in battrs.get("data-review-approved", "").split(",") if x.strip().lower() in ids],
+        "reopened": {k.strip().lower(): v.strip() for k, _, v in (p.partition("=") for p in battrs.get("data-review-reopen", "").split("|"))
+                     if k.strip().lower() in ids and v.strip()},
     }
     return definition, extras
+
+
+def _raw_ids(main, battrs, items):
+    """Each item's id as the page wrote it, for naming ids that clash once lower-cased."""
+    if battrs.get("data-review-h2") != "off":
+        return [it["id"] for it in items]
+    return [el.attrs["data-review-question"] for el in main.find_all(lambda n: bool(n.attrs.get("data-review-question")))]
 
 
 def _answer(saved, item_ids):
     """Saved review.js answers ({id: {v, n} or {a}}) as page file answers {id: (answer, note)}."""
     out = {}
     for iid, v in (saved or {}).items():
+        iid = iid.lower()
         if iid not in item_ids or not isinstance(v, dict):
             continue
         if "a" in v:
@@ -583,8 +600,14 @@ def cmd_convert(a):
         except (OSError, ValueError):
             saved = {}
     current = _answer(saved, items)
+    last = rounds[-1]["answers"] if rounds else {}
     for iid in extras["approved"]:
-        current.setdefault(iid, ("yes", ""))
+        before = last.get(iid)
+        if before and before["answer"] == "yes" and current.get(iid, ("yes", before["note"])) in (("yes", before["note"]), ("yes", "")):
+            # Already Yes in the last closed round: leaving it out of the open round keeps it hidden, as before.
+            current.pop(iid, None)
+        else:
+            current.setdefault(iid, ("yes", ""))
     rounds.append({"round": len(rounds) + 1, "build": definition.get("build"), "reset": definition.get("reset"),
                    "opened": rounds[-1]["closed"] if rounds else at, "closed": None, "openedBy": "imported",
                    "answers": _entries(current, items, by, at), "checkpoints": {},
@@ -592,6 +615,11 @@ def cmd_convert(a):
     os.makedirs(os.path.dirname(path), exist_ok=True)
     pagefile.write_definition(path, definition, now=at)
     pagefile.import_rounds(path, rounds)
+    op = cfg.get("operator") if isinstance(cfg.get("operator"), str) else "ops"
+    for iid, why in extras["reopened"].items():
+        if iid in current:
+            # Answered again since it reopened: the reason stays readable under the item.
+            pagefile.reply(path, iid, op, f"Reopened: {why}", action="info", now=rounds[-1]["opened"])
     print(f"converted {rel} to {slug_rel} ({len(rounds)} round{'s' if len(rounds) != 1 else ''})")
     return 0
 

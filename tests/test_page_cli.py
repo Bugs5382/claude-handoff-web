@@ -226,3 +226,86 @@ def test_convert_keeps_what_it_cannot_map_as_a_flagged_html_block(demo):
     assert r.returncode == 0
     assert json.loads(r.stdout)["items"][0]["body"] == [{"html": "<details><summary>More</summary><p>x</p></details>"}]
     assert "odd: s1: kept a <details> as an html block" in r.stderr
+
+
+def _review_page(body_attrs, main):
+    return ('<!doctype html><html><head><title>Live</title><script src="/_site/review.js"></script></head>'
+            f'<body class="site"{body_attrs}><main>{main}</main></body></html>')
+
+
+def test_convert_lower_cases_item_ids_and_the_answers_follow(demo):
+    page = demo / "demo" / "proof.html"
+    page.write_text(_review_page(' data-review-h2="off" data-review-approved="F01"',
+                                 '<section data-review-question="F01"><h2>One</h2></section>'
+                                 '<section data-review-question="D45"><h2>Two</h2></section>'))
+    (demo / "_saved").mkdir(exist_ok=True)
+    (demo / "_saved" / "review-demo-proof.html.json").write_text(json.dumps({"F01": {"v": "yes", "n": ""},
+                                                                               "D45": {"v": "chg", "n": "Say why"}}))
+    r = run(demo, "convert", str(page))
+    assert r.returncode == 0, r.stderr
+    doc = pagefile.load(demo / "demo" / "proof.json")
+    assert [it["id"] for it in doc["items"]] == ["f01", "d45"]
+    assert {k: v["answer"] for k, v in doc["rounds"][-1]["answers"].items()} == {"f01": "yes", "d45": "changes"}
+
+
+def test_convert_stops_on_ids_that_only_differ_by_case(demo):
+    page = demo / "demo" / "twins.html"
+    page.write_text(_review_page(' data-review-h2="off"', '<section data-review-question="A1"><h2>One</h2></section>'
+                                                          '<section data-review-question="a1"><h2>Two</h2></section>'))
+    r = run(demo, "convert", str(page))
+    assert r.returncode == 1 and "A1 and a1 only differ by case" in r.stderr
+    assert not (demo / "demo" / "twins.json").exists()
+
+
+def test_convert_keeps_a_table_with_merged_cells_as_a_flagged_html_block(demo):
+    page = demo / "demo" / "matrix.html"
+    table = ("<table><tr><th>Role</th><th>A</th><th>B</th></tr>"
+             '<tr><td>Admin</td><td colspan="2">Everything</td></tr></table>')
+    page.write_text(_review_page("", f"<h2>Matrix</h2>{table}"))
+    r = run(demo, "convert", str(page), "--print")
+    assert r.returncode == 0, r.stderr
+    assert json.loads(r.stdout)["items"][0]["body"] == [{"html": table}]
+    assert "matrix: s1: kept a <table> with merged cells as an html block" in r.stderr
+
+
+def test_convert_makes_a_page_without_review_js_a_reference_page(demo):
+    page = demo / "demo" / "notes.html"
+    page.write_text('<!doctype html><html><head><title>Notes</title></head><body class="site"><main>'
+                    "<h2>What's built</h2><p>The web screens.</p></main></body></html>")
+    r = run(demo, "convert", str(page), "--print")
+    assert r.returncode == 0, r.stderr
+    got = json.loads(r.stdout)
+    assert got["kind"] == "reference" and pagefile.allowed_answers(got, got["items"][0]) == ()
+
+
+def test_convert_keeps_approved_items_from_the_last_round_hidden(demo):
+    page = demo / "demo" / "again.html"
+    page.write_text(_review_page(' data-review-approved="s1,s2"', "<h2>One</h2><p>a</p><h2>Two</h2><p>b</p><h2>Three</h2>"))
+    key = "review-demo-again.html"
+    (demo / "_saved" / "history" / key).mkdir(parents=True)
+    (demo / "_saved" / "history" / key / "20261020T100000Z__1.json").write_text(json.dumps({
+        "round": 1, "opened": "2026-10-19T09:00:00+00:00", "closed": "2026-10-20T10:00:00+00:00",
+        "answers": {"s1": {"v": "yes", "n": ""}, "s2": {"v": "chg", "n": "Reword"}, "s3": {"v": "no", "n": "Gone"}}}))
+    (demo / "_saved" / f"{key}.json").write_text(json.dumps({"s1": {"v": "yes", "n": ""}, "s2": {"v": "yes", "n": ""}}))
+    r = run(demo, "convert", str(page))
+    assert r.returncode == 0, r.stderr
+    doc = pagefile.load(demo / "demo" / "again.json")
+    assert [x["round"] for x in doc["rounds"]] == [1, 2]
+    states = pagefile.item_states(doc)
+    assert states["s1"] == {"answer": "yes", "hidden": True, "reopened": None, "round": 1}
+    assert states["s2"]["answer"] == "yes" and not states["s2"]["hidden"]
+    assert states["s3"]["answer"] == ""
+
+
+def test_convert_keeps_a_reopen_reason_that_was_answered_since_as_a_reply(demo):
+    page = demo / "demo" / "fixed.html"
+    page.write_text(_review_page(' data-review-reopen="s1=Now in the top banner|s2=Tabs moved"', "<h2>One</h2><h2>Two</h2>"))
+    (demo / "_saved").mkdir(exist_ok=True)
+    (demo / "_saved" / "review-demo-fixed.html.json").write_text(json.dumps({"s1": {"v": "yes", "n": ""}}))
+    r = run(demo, "convert", str(page))
+    assert r.returncode == 0, r.stderr
+    doc = pagefile.load(demo / "demo" / "fixed.json")
+    states = pagefile.item_states(doc)
+    assert states["s1"]["answer"] == "yes" and states["s1"]["reopened"] is None
+    assert [(x["from"], x["action"], x["text"]) for x in doc["thread"]["s1"]] == [("ops", "info", "Reopened: Now in the top banner")]
+    assert states["s2"]["reopened"] == "Tabs moved" and "s2" not in doc["thread"]

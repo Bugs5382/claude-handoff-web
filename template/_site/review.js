@@ -118,6 +118,8 @@ window.rvCount = function (items, state, o) {
       });
       blk.insertAdjacentElement("afterend", b);
     });
+    // d.open() dropped the listeners of any earlier pop-out, so hook the fresh document again.
+    if (window.siteLinks) { d.siteLinks = false; window.siteLinks.hook(d); }
     w.focus();
   }
   function wire(tpl) {
@@ -1026,7 +1028,7 @@ if (!window.siteTheme) { const t = document.createElement("script"); t.src = "/_
 
   function loadLive() {
     if (document.querySelector('script[src*="/_site/live.js"]')) return;
-    const sc = document.createElement("script"); sc.src = "/_site/live.js?v=22"; sc.setAttribute("data-mode", PF ? "file" : "page"); body.appendChild(sc);
+    const sc = document.createElement("script"); sc.src = "/_site/live.js?v=23"; sc.setAttribute("data-mode", PF ? "file" : "page"); body.appendChild(sc);
   }
 })();
 

@@ -40,6 +40,7 @@ SCENARIOS = [
     "mark unanswered Yes fills only open items and saves them",
     "diff item: server-drawn word diff with the Diff | Final switch",
     "pictures open in the picture pop-out; How to test opens its pop-out with Copy buttons",
+    "links: a page link opens a new window, in the page and in the How to test pop-out; # anchors and pictures don't",
     "history lists closed rounds; Save round now opens the next round",
     "send: partial confirm, an inbox file, and the delivery state",
     "thread: earlier answers and replies show under the item",

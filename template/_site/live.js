@@ -143,6 +143,40 @@ if (!window.siteTheme) { const t = document.createElement("script"); t.src = "/_
     }
   }, true);
 
+  // Links: a link to another page opens in a new window, so the page under review stays put. The
+  // target is set as the click happens, which covers cards and threads that are redrawn later.
+  // Same-page # anchors, picture links (the viewer below), downloads, non-web links and links that
+  // set their own target keep their behaviour.
+  // new-window:begin
+  window.siteLinks = (function () {
+    const PICTURE = /\.(png|jpe?g|gif|webp|svg)$/i;
+    function opensNewWindow(a, here) {
+      if (!a || a.hasAttribute("download") || a.hasAttribute("target")) return false;
+      const raw = (a.getAttribute("href") || "").trim();
+      if (!raw || raw[0] === "#") return false;
+      let u;
+      try { u = new URL(a.href, here.href); } catch (err) { return false; }
+      if (u.protocol !== "http:" && u.protocol !== "https:") return false;
+      if (u.hash && u.origin === here.origin && u.pathname === here.pathname && u.search === here.search) return false;
+      if (a.querySelector("img") && PICTURE.test(u.pathname)) return false;
+      return true;
+    }
+    function hook(doc) {
+      if (!doc || doc.siteLinks) return;
+      doc.siteLinks = true;
+      doc.addEventListener("click", e => {
+        const a = e.target && e.target.closest && e.target.closest("a[href]");
+        if (!opensNewWindow(a, doc.location || location)) return;
+        a.setAttribute("target", "_blank");
+        const rel = (a.getAttribute("rel") || "").split(/\s+/).filter(Boolean);
+        if (!rel.includes("noopener")) a.setAttribute("rel", rel.concat("noopener").join(" "));
+      }, true);
+    }
+    return { opensNewWindow, hook };
+  })();
+  // new-window:end
+  window.siteLinks.hook(document);
+
   // Pictures: a plain click on a link that wraps an <img> and points at an image file shows it in
   // one reused popup window ("picture"); the next picture swaps into that same window. Middle and
   // modified clicks, and a blocked popup, fall through to the plain link. The unified review page
@@ -183,6 +217,7 @@ if (!window.siteTheme) { const t = document.createElement("script"); t.src = "/_
     try {
       const d = f.contentDocument;
       if (d && !d.sitePictures) { d.sitePictures = true; d.addEventListener("click", showPicture); }
+      window.siteLinks.hook(d);
     } catch (err) { /* cross-origin frame: its links behave as usual */ }
   }
   document.addEventListener("click", showPicture);

@@ -2,23 +2,26 @@
 
 > 🤝 A small self-updating review and sign-off site for handing work to a human: chips, live updates, Yes/No/Changes reviews, checklists with blockers.
 
-Agents (Claude sessions or any others) write plain HTML pages into their own folder; the owner opens one
-site, sees everything waiting on them at the top, and answers each item Yes, No or Changes. Answers are
-saved on the server, and "Copy results" gives the agent a paste-back it can act on. 🔌 **Python standard
-library only:** no build step, no framework, no database.
+Agents (Claude sessions or any others) write JSON page files into their own folder; the owner opens one
+site, sees everything waiting on them at the top, and answers each item Yes, No or Changes. Answers and
+reply threads are saved on the server, round by round, and Send delivers them straight to the agent's
+inbox (Blocker sends a single item at once), with Copy results as a paste-back for agents that aren't
+listening. 🔌 **Python standard library only:** no build step, no framework, no database.
 
 ## ✨ Highlights
 
-- 🧭 **One place to look:** folder indexes and a root "Needs you now" list, built from each folder's `_status.json`.
+- 🧭 **One place to look:** folder indexes and a root "Needs you now" list, built from the page files on every request.
 - ✅ **Reviews that stick:** Yes / No / Changes per section, approved items hidden, reopened ones marked with the reason, and More, Mark unanswered Yes (or No) to fill in the rest at once.
 - 🎛️ **Your own choices:** a page can swap Yes / No / Changes for its own answers and a default, such as a backlog of Start or Hold.
 - 🧪 **Sign-off checklists:** ordered tests, How to test pop-outs with Copy buttons, dependencies, blockers, Skipped.
+- 🪟 **Links open in a new window:** a link to another page never replaces the one you're reviewing; `#` anchors stay on the page.
 - 🖼️ **Pictures in one pop-out:** click a picture and it opens in one reused window; the next one swaps in, no pile of tabs.
 - 🧷 **A bar that tells you where you are:** Previous, Next, an Open IDs picker with a filter, and More; it turns green when every item is answered and points you back to the folder.
 - 🌗 **Light and dark:** IBM Plex type, self-hosted with no font CDN, and an Auto / Light / Dark toggle on every page.
 - 🔢 **Cards in order:** numbered pages list 1, 2, ... 10, never reshuffled by the last edit.
 - 🔄 **Live:** pages refresh themselves, never while the owner is typing.
-- 💾 **Saved on the server:** answers go through a tiny save API, so they survive browsers and machines.
+- 💾 **Saved on the server:** answers and reply threads live in the page file, round by round, so they survive browsers and machines.
+- 📨 **Send and Blocker:** Send delivers the answers to the agent's inbox, shows whether the agent took them and replied, and Blocker sends one item at once.
 - 🧹 **Stale:** the owner removes a page that no longer matters with one button.
 
 ## 📦 Install

@@ -173,6 +173,32 @@ const seg = (doc, id, v) => card(doc, id).querySelector('.seg button[data-v="' +
     ok(!doc.documentElement.hasAttribute("data-theme"));
   });
 
+  await t("bar: one line from tablet to desktop widths, status text ellipsed; phone tap targets kept", async () => {
+    const { win, doc, bar } = await load("/demo/pf-bar");
+    click(seg(doc, "r1", "yes")); await saved();
+    const chip = bar.querySelector(".bkr"); chip.hidden = false; chip.textContent = "1 blocker";
+    const inner = bar.querySelector(".rvbar-in");
+    const shown = () => Array.from(inner.children).filter(el => !el.classList.contains("rvpop") && el.getClientRects().length);
+    for (const px of [1440, 1280, 1024, 800, 600]) {
+      f.style.width = px + "px"; await tick(80);
+      const box = inner.getBoundingClientRect();
+      const mids = shown().map(el => { const r = el.getBoundingClientRect(); return { c: el.className, mid: r.top + r.height / 2, right: r.right }; });
+      ok(mids.length >= 7, px + ": the full bar " + mids.map(m => m.c).join(","));
+      const spread = Math.max(...mids.map(m => m.mid)) - Math.min(...mids.map(m => m.mid));
+      ok(spread < 4, px + ": one row, spread " + spread + " " + JSON.stringify(mids));
+      ok(mids.every(m => m.right <= box.right + 1), px + ": nothing past the edge " + JSON.stringify(mids));
+      ok(bar.getBoundingClientRect().height <= 60, px + ": bar height " + bar.getBoundingClientRect().height);
+      eq(win.getComputedStyle(inner).flexWrap, "nowrap", px + ": no wrap");
+      const t = bar.querySelector(".dlv-t");
+      eq(win.getComputedStyle(t).textOverflow, "ellipsis", px + ": the delivery line ellipses");
+    }
+    f.style.width = "390px"; await tick(80);
+    const small = Array.from(bar.querySelectorAll(".rvbar-in > button, .rvbar .more-btn")).filter(el => el.getClientRects().length);
+    ok(small.length >= 4, "phone buttons");
+    small.forEach(el => ok(el.getBoundingClientRect().height >= 44, "phone tap target " + el.className + " " + el.getBoundingClientRect().height));
+    f.style.width = "1000px"; await tick(30);
+  });
+
   await t("finished page: green bar and back link; Copy results goes back to the folder", async () => {
     const { doc, bar } = await load("/demo/pf-fin-1");
     ok(doc.querySelector("header.top .crumb"), "the crumb back to the folder");

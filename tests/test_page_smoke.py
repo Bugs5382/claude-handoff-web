@@ -35,6 +35,7 @@ SCENARIOS = [
     "question: Use suggestion fills the answer and saves it",
     "backlog: default choice, picking every item turns the bar green, saved",
     "theme toggle works on a rendered page",
+    "bar: one line from tablet to desktop widths, status text ellipsed; phone tap targets kept",
     "finished page: green bar and back link; Copy results goes back to the folder",
     "copy results keeps the Copy results format",
     "mark unanswered Yes fills only open items and saves them",
@@ -151,6 +152,12 @@ def write_pages(root):
     pagefile.reply(demo / "pf-dlv-replied.json", "_page", "app", "All fixed, round 2 is ready.", now="2026-10-26T07:50:00-04:00")
     w(demo / "pf-journey2.json", JOURNEY, now=T0)
     pagefile.save_answers(demo / "pf-journey2.json", {"j1": {"answer": "yes", "note": ""}}, by="Alex", now=T0)
+    w(demo / "pf-bar.json", review("pf-bar"), now=T0)
+    pagefile.set_route(demo / "pf-bar.json", "app", "send")
+    pagefile.add_submission(demo / "pf-bar.json", {"kind": "send", "to": "app", "file": "x-{n}.json"}, now=T0)
+    pagefile.mark_taken(demo / "pf-bar.json", 1, at="2026-10-26T07:43:00-04:00")
+    pagefile.reply(demo / "pf-bar.json", "_page", "app", "All fixed, round 2 is ready, and the notes on the module names are in the "
+                   "thread below.", now="2026-10-26T07:50:00-04:00")
     w(demo / "pf-reference.json", REFERENCE, now=T0)
     w(demo / "pf-mixed.json", MIXED, now=T0)
 

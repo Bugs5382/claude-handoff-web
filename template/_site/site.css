@@ -345,34 +345,37 @@ body.site th { background: var(--soft-2); font-weight: 600; }
 .rvdone { margin: 0 0 16px; padding: 12px 16px; background: var(--yes-bg); border: 1px solid var(--yes-edge); border-radius: 12px; font: 600 15px/1.45 var(--font); color: var(--yes); }
 
 /* Bottom bar (review.js). Dark while items are open, green when every one is answered,
-   a red ring for a marked blocker, an amber pill when a save fails. Two rows on a phone. */
-.rvbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; background: var(--bar); color: var(--on-bar); box-shadow: var(--bar-shadow); font: 15px/1.3 var(--font); transition: background-color .2s; }
+   a red ring for a marked blocker, an amber pill when a save fails. One line from laptop width up: the buttons
+   keep their size and the status and delivery text give way with an ellipsis. Two rows on a phone.
+   The --bar-* sizes are the knobs for the one-line bar. */
+:root { --bar-font: 14px; --bar-btn-font: 13px; --bar-btn-h: 36px; --bar-btn-pad: 10px; --bar-gap: 8px; --bar-pad-y: 8px; }
+.rvbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; background: var(--bar); color: var(--on-bar); box-shadow: var(--bar-shadow); font: var(--bar-font)/1.3 var(--font); transition: background-color .2s; }
 .rvbar.all-done { background: var(--bar-done); box-shadow: var(--bar-done-shadow); }
 .rvbar.has-blocker { box-shadow: inset 0 0 0 2px var(--ring-blocker), var(--bar-shadow); }
 .rvbar.approved:not(.has-blocker) { box-shadow: inset 0 0 0 2px var(--dot-done), var(--bar-done-shadow); }
-.rvbar-in { position: relative; max-width: 920px; margin: 0 auto; padding: 10px 24px; box-sizing: border-box; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
-.rvbar button { font: 600 14px var(--font); min-height: var(--tap); padding: 0 14px; border-radius: var(--radius-sm); cursor: pointer; white-space: nowrap; }
+.rvbar-in { position: relative; max-width: 920px; margin: 0 auto; padding: var(--bar-pad-y) 24px; box-sizing: border-box; display: flex; flex-wrap: nowrap; align-items: center; gap: var(--bar-gap); }
+.rvbar button { flex: 0 0 auto; font: 600 var(--bar-btn-font) var(--font); min-height: var(--bar-btn-h); padding: 0 var(--bar-btn-pad); border-radius: var(--radius-sm); cursor: pointer; white-space: nowrap; }
 .rvbar .prev, .rvbar .next { background: transparent; color: var(--on-bar); border: 1px solid var(--bar-line); }
 .rvbar .ids { display: inline-flex; align-items: center; gap: 6px; background: var(--bar-fill); color: var(--on-bar); border: 1px solid var(--bar-line); }
 .rvbar .ids .mono, .rvbar .mono { font-family: var(--mono); }
 .rvbar .ids:disabled { opacity: .7; cursor: default; }
 .rvbar .prev:hover, .rvbar .next:hover, .rvbar .ids:hover:not(:disabled) { background: var(--bar-hover); }
-.rvbar .stat { flex: 1 1 220px; min-width: 0; display: flex; align-items: center; gap: 8px; margin-left: 4px; }
+.rvbar .stat { flex: 1 1 0; min-width: 0; display: flex; align-items: center; gap: 8px; margin-left: 4px; }
 .rvbar .dot { flex: 0 0 auto; width: 12px; height: 12px; border-radius: 999px; background: var(--dot-open); }
 .rvbar.all-done .dot { background: var(--dot-done); }
 .rvbar.approved .dot { background: var(--on-bar); }
 .rvbar .tick { display: none; flex: 0 0 auto; color: var(--on-bar); }
 .rvbar.approved .tick { display: block; }
 .rvbar.approved .dot { display: none; }
-.rvbar .cnt { font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.rvbar .cnt { font-size: var(--bar-font); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .rvbar.approved .cnt { font-weight: 700; letter-spacing: .02em; }
-.rvbar .bkr { flex: 0 0 auto; display: inline-flex; align-items: center; min-height: 32px; padding: 0 10px; border-radius: 8px; background: var(--no); font-size: 13px; font-weight: 700; white-space: nowrap; }
+.rvbar .bkr { flex: 0 0 auto; display: inline-flex; align-items: center; min-height: 28px; padding: 0 8px; border-radius: 8px; background: var(--no); font-size: 12px; font-weight: 700; white-space: nowrap; }
 .rvbar .bkr[hidden] { display: none; }
-.rvbar .svst { font: 12px var(--mono); opacity: .85; white-space: nowrap; }
+.rvbar .svst { flex: 0 0 auto; font: 12px var(--mono); opacity: .85; white-space: nowrap; }
 .rvbar .svst:empty { display: none; }
 .rvbar .svst.bad { font: 600 13px var(--font); opacity: 1; padding: 6px 10px; border-radius: 8px; background: var(--chg-bg); color: var(--chg); }
-.rvbar .more { position: static; }
-.rvbar .more-btn { font-size: 15px; font-weight: 700; padding: 0 16px; border: 0; background: var(--accent-soft); color: var(--accent-dark); }
+.rvbar .more { position: static; flex: 0 0 auto; }
+.rvbar .more-btn { font-size: var(--bar-font); font-weight: 700; padding: 0 12px; border: 0; background: var(--accent-soft); color: var(--accent-dark); }
 .rvbar.all-done .more-btn { background: var(--bar-btn-done-bg); color: var(--bar-btn-done-ink); }
 .rvbar .sm { display: none; }
 .rvpop { position: absolute; bottom: calc(100% + 8px); z-index: 21; background: var(--card); color: var(--ink); border: 1px solid var(--line-2); border-radius: 12px; box-shadow: var(--pop-shadow); }
@@ -414,6 +417,13 @@ body:has(.rvbar) { padding-bottom: 6rem; }
   .rvbar .menu { right: 12px; left: 12px; min-width: 0; }
   .rvids { left: 12px; right: 12px; width: auto; }
   body:has(.rvbar) { padding-bottom: 9rem; }
+}
+/* Between a phone and a laptop the bar stays on one line with the short labels and no saved time (a failed save still shows). */
+@media (min-width: 481px) and (max-width: 760px) {
+  .rvbar-in { padding: var(--bar-pad-y) 12px; }
+  .rvbar .svst:not(.bad) { display: none; }
+  .rvbar .lg { display: none; }
+  .rvbar .sm { display: inline; }
 }
 
 /* Checklists with their own answer script (body.site .bar, .item) */
@@ -542,7 +552,7 @@ body.site header.top .wrap > h1 + p { color: var(--ink-2); }
 body.site header.top p.note { font-size: 14px; }
 
 /* Finished page: "Back to <folder> pages" in the green bar, and the toast that carries the same link. */
-.rvbar .back { display: inline-flex; align-items: center; min-height: var(--tap); padding: 0 14px; border-radius: var(--radius-sm); background: var(--bar-btn-done-bg); color: var(--bar-btn-done-ink); font-size: 14px; font-weight: 700; text-decoration: none; white-space: nowrap; }
+.rvbar .back { flex: 0 0 auto; display: inline-flex; align-items: center; min-height: var(--bar-btn-h); padding: 0 var(--bar-btn-pad); border-radius: var(--radius-sm); background: var(--bar-btn-done-bg); color: var(--bar-btn-done-ink); font-size: 14px; font-weight: 700; text-decoration: none; white-space: nowrap; }
 .rvbar .back:hover { text-decoration: underline; }
 .rvbar .back[hidden] { display: none; }
 .site-toast.act { pointer-events: auto; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; max-width: calc(100vw - 32px); box-sizing: border-box; border-radius: 12px; }
@@ -616,7 +626,7 @@ body.site .pthread > h2 { font-size: 16px; margin: 0 0 4px; }
 .rvbar .send-btn { background: transparent; color: var(--on-bar); border: 1px solid var(--bar-line); }
 .rvbar .send-btn:hover { background: var(--bar-hover); }
 .rvbar .send-btn.ready { background: var(--bar-btn-done-bg); color: var(--bar-btn-done-ink); border-color: transparent; }
-.rvbar .dlv { flex: 0 1 auto; min-width: 0; display: inline-flex; align-items: center; gap: 8px; font-size: 13.5px; }
+.rvbar .dlv { flex: 1 1 0; min-width: 0; display: inline-flex; align-items: center; gap: 8px; font-size: var(--bar-btn-font); }
 .rvbar .dlv:empty { display: none; }
 .rvbar .dlv-t { min-width: 0; max-width: 46ch; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--on-bar); }
 .rvbar a.dlv-t { text-decoration: underline; text-underline-offset: 2px; }
@@ -624,7 +634,7 @@ body.site .pthread > h2 { font-size: 16px; margin: 0 0 4px; }
 .rvbar .dlv[data-state="sent"] .dlv-dot { box-shadow: inset 0 0 0 2px var(--bar-line); }
 .rvbar .dlv[data-state="taken"] .dlv-dot, .rvbar .dlv[data-state="replied"] .dlv-dot { background: var(--dot-done); }
 .rvbar .dlv[data-state="deaf"] .dlv-dot { background: var(--dot-open); }
-.rvbar .dlv-copy { min-height: 32px; padding: 0 10px; font-size: 13px; background: var(--bar-fill); color: var(--on-bar); border: 1px solid var(--bar-line); }
+.rvbar .dlv-copy { min-height: 28px; padding: 0 10px; font-size: 13px; background: var(--bar-fill); color: var(--on-bar); border: 1px solid var(--bar-line); }
 .rvbar .dlv-copy:hover { background: var(--bar-hover); }
 @media (max-width: 480px) {
   .rvbar .send-btn { grid-column: 1 / 3; }

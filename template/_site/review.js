@@ -82,7 +82,7 @@ window.rvCount = function (items, state, o) {
 (function () {
   // Pages that render their own items (and their own pop-out) opt out.
   if (document.body.getAttribute("data-review-controls") === "off") return;
-  const V = "20";
+  const V = "25";
   function itemOf(el) {
     const box = el.closest("[data-review-question], .item");
     if (box) {
@@ -309,7 +309,7 @@ if (!window.siteTheme) { const t = document.createElement("script"); t.src = "/_
   }
 
   if (!document.querySelector('link[href*="/_site/site.css"]')) {
-    const l = document.createElement("link"); l.rel = "stylesheet"; l.href = "/_site/site.css?v=24"; document.head.appendChild(l);
+    const l = document.createElement("link"); l.rel = "stylesheet"; l.href = "/_site/site.css?v=25"; document.head.appendChild(l);
   }
 
   // data-review-skip="on" (test checklists): adds Skipped; a skipped item is locked.
@@ -1028,7 +1028,7 @@ if (!window.siteTheme) { const t = document.createElement("script"); t.src = "/_
 
   function loadLive() {
     if (document.querySelector('script[src*="/_site/live.js"]')) return;
-    const sc = document.createElement("script"); sc.src = "/_site/live.js?v=23"; sc.setAttribute("data-mode", PF ? "file" : "page"); body.appendChild(sc);
+    const sc = document.createElement("script"); sc.src = "/_site/live.js?v=24"; sc.setAttribute("data-mode", PF ? "file" : "page"); body.appendChild(sc);
   }
 })();
 

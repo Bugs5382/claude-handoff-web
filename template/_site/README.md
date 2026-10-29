@@ -28,10 +28,10 @@ completes, set it to `done` and it moves to "Completed". To retire a page, the o
 ## Hook a page in
 
 ```html
-<link rel="stylesheet" href="/_site/site.css?v=24">
+<link rel="stylesheet" href="/_site/site.css?v=25">
 <script src="/_site/theme.js?v=20"></script>   <!-- in <head>: light / dark before first paint -->
 ...
-<script src="/_site/review.js?v=29"></script>   <!-- review pages: just before </body> -->
+<script src="/_site/review.js?v=30"></script>   <!-- review pages: just before </body> -->
 ```
 
 - `review.js` turns every `<h2>` section (and every `[data-review-question="id" data-title="..."]`) into an
@@ -136,8 +136,11 @@ format), History, Save round now and Clear my answers. The two Mark items fill i
 items with no answer yet (never hidden, blocked or Skipped (locked) ones, open questions or a page's own
 choices), after a confirm that gives the count, and never change an answer or note already given. States: dark while items are open; green "All N answered · ready to copy" when every one is
 answered; green "APPROVED · all N Yes" when all are Yes; a red ring and "N BLOCKER" while a blocker is
-marked; an amber "Not saved · retrying" pill when a save fails. At 480 px and below it is two rows: the
-status, then Prev / Next / IDs / More as equal buttons. A finished page (the bar is green) shows "← Back to <Folder> pages" in the bar and a
+marked; an amber "Not saved · retrying" pill when a save fails. Above 480 px the bar is one line: it never
+wraps, the buttons keep their size, and the status and delivery text shorten with an ellipsis instead. Its
+sizes are the `--bar-*` knobs at the top of the bar's rules in site.css. Up to 760 px it uses the short
+labels and drops the Saved time (a failed save still shows). At 480 px and below it is two rows: the
+status, then Prev / Next / IDs / More as equal buttons, each at least 48 px tall. A finished page (the bar is green) shows "← Back to <Folder> pages" in the bar and a
 toast with that link; after Copy results there it returns to the folder index in 1.5 s unless they move,
 scrolls or types (never while typing, and only once the answers are saved). The counting is `window.rvCount` in review.js.
 

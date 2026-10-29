@@ -31,7 +31,7 @@ completes, set it to `done` and it moves to "Completed". To retire a page, the o
 <link rel="stylesheet" href="/_site/site.css?v=24">
 <script src="/_site/theme.js?v=20"></script>   <!-- in <head>: light / dark before first paint -->
 ...
-<script src="/_site/review.js?v=28"></script>   <!-- review pages: just before </body> -->
+<script src="/_site/review.js?v=29"></script>   <!-- review pages: just before </body> -->
 ```
 
 - `review.js` turns every `<h2>` section (and every `[data-review-question="id" data-title="..."]`) into an
@@ -96,7 +96,7 @@ completes, set it to `done` and it moves to "Completed". To retire a page, the o
 - Pages without review.js (checklists, indexes) load `/_site/live.js` (`data-mode="page"` on non-index pages).
 - Page files (`<folder>/<slug>.json`, see `PAGE-FILE.md`) need none of this: `render.js` draws them into this
   same markup and loads `review.js`, which then saves through the page file; `live.js` runs in `data-mode="file"`
-  there (the picture pop-out only), because `render.js` does the live redraw.
+  there (the picture pop-out and new-window links only), because `render.js` does the live redraw.
 - Element styles apply only under `<body class="site">`; design mocks can load site.css without losing their look.
 
 ## Rounds and history
@@ -173,6 +173,14 @@ the window to the front. Only links that wrap an `<img>` and point at a `.png`, 
 browser without JavaScript keep the plain link (a new tab). Keep pictures in a subfolder such as `img/`.
 A subfolder with no `.html` file in it is never a page, so the index leaves it out; it needs no
 `_status.json` entry.
+
+## Links (new window)
+
+`live.js` makes every link to another page open in a new window (`target="_blank"`, `rel="noopener"`), set
+as the click happens, so cards and threads drawn later are covered too. It runs on index pages, review pages,
+page files, inside same-origin frames and inside the How to test pop-out. Same-page `#` anchors, picture links
+(the pop-out above), `download` links, `mailto:` and other non-web links, and any link that sets its own
+`target` keep their behaviour. Writing `target="_blank"` into a page by hand is never needed.
 
 ## Wording
 

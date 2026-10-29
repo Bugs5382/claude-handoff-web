@@ -98,7 +98,7 @@ vm.runInContext(src, ctx);
 function link(href, alt, withImg = true) {
   const img = withImg ? { tagName: "IMG", alt, getAttribute: n => (n === "alt" ? alt : null) } : null;
   const a = { tagName: "A", href, hasAttribute: () => false, getAttribute: n => (n === "href" ? href : null),
-              querySelector: s => (s === "img" ? img : null) };
+              setAttribute() {}, querySelector: s => (s === "img" ? img : null) };
   a.closest = s => (/^a\b/.test(s) ? a : null);
   if (img) img.closest = a.closest;
   return img || a;

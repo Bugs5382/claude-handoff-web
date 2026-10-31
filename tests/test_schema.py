@@ -243,5 +243,5 @@ def test_submissions_shape():
     doc["submissions"] = [{"n": 1, "kind": "send", "at": "t", "to": "ops", "round": 1, "rev": 3, "items": ["a"], "file": "5-x.json",
                            "state": "lost", "extra": 1}]
     found = errors(doc)
-    assert "submissions[#1].state: expected one of sent, taken" in found
+    assert "submissions[#1].state: expected one of sent, taken, failed" in found
     assert "submissions[#1].extra: unknown key" in found

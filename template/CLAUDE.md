@@ -43,7 +43,8 @@ template's `docs/page-types.md`.
 
 - Each item answers its own way: Yes / No / Changes (Changes needs a note), Skipped on checks and steps, the
   page's own choices on a backlog, free text on an open question. One page can mix them.
-- An item answered Yes in an earlier round is hidden and stays in Copy results. It comes back only when its
+- A Send locks the page until your next `page.py set` or `reply`, so always answer on the page.
+- An item answered Yes in an earlier round, or sent as Yes, is hidden and stays in Copy results. It comes back only when its
   content changes ("changed since round N") or you reopen it with `page.py reply ... --reopen "reason"`.
 - `dependsOn` greys an item until the items it names are Yes; `blockedBy` holds it until you reply with
   `--action unblock`.

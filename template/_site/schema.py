@@ -24,7 +24,7 @@ MODES = ("send", "copy", "both")
 ACTIONS = ("filed", "fixed", "reopen", "unblock", "wontfix", "info")
 TONES = ("info", "warn", "ok", "danger")
 SUBMISSION_KINDS = ("send", "blocker", "restart")
-SUBMISSION_STATES = ("sent", "taken")
+SUBMISSION_STATES = ("sent", "taken", "failed")
 BLOCKS = ("p", "list", "olist", "code", "image", "table", "diff", "copy", "note", "html")
 BLOCK_EXTRAS = {"code": ("lang",), "image": ("alt", "caption"), "note": ("tone",)}
 
@@ -391,7 +391,7 @@ def _rounds(v, rounds):
     if not isinstance(rounds, list) or not rounds:
         v.err("rounds", "expected a list of rounds")
         return
-    keys = ("round", "build", "reset", "opened", "closed", "openedBy", "answers", "checkpoints", "reopened",
+    keys = ("round", "build", "reset", "opened", "closed", "openedBy", "answers", "checkpoints", "reopened", "awaiting",
             "results", "restart")
     for i, r in enumerate(rounds, 1):
         p = f"rounds[#{i}]"

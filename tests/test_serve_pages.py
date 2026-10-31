@@ -143,8 +143,8 @@ def test_send_writes_the_inbox_file_atomically(pages):
 
 def test_a_blocker_sorts_first(pages):
     root, base = pages
-    post(base, "/_page/demo/design/send", {"kind": "send", "results": "R"})
     put_json(base, "/_page/demo/design/answers", {"answers": {"s2": {"answer": "no", "note": "broken"}}})
+    post(base, "/_page/demo/design/send", {"kind": "send", "results": "R"})
     status, body, _ = post(base, "/_page/demo/design/send", {"kind": "blocker", "items": ["s2"], "results": "BLOCKER"})
     assert status == 200
     names = inbox(root)
@@ -301,3 +301,31 @@ def test_get_page_renders_diff_items_and_blocks_on_the_server(pages):
     diffs = json.loads(request(base + "/_page/demo/diffs")[1])["diffs"]
     assert diffs["d1"].startswith('<div class="rvdiff">') and "<del>10</del>" in diffs["d1"] and "<ins>20</ins>" in diffs["d1"]
     assert diffs["s2/body/2"].startswith('<div class="rvdiff code">')
+
+
+def test_a_send_holds_the_page_only_once_the_inbox_has_the_file(pages):
+    root, base = pages
+    assert post(base, "/_page/demo/design/send", {"kind": "send", "results": "R"})[0] == 200
+    doc = json.loads(request(base + "/_page/demo/design")[1])
+    assert doc["page"]["rounds"][-1]["awaiting"] == 1 and len(inbox(root)) == 1
+    status, body, _ = put_json(base, "/_page/demo/design/answers", {"answers": {"s1": {"answer": "yes"}}})
+    assert status == 400 and "sent" in body["errors"][0]
+    status, _, _ = post(base, "/_page/demo/design/unlock", {})
+    assert status == 200
+    assert "awaiting" not in json.loads(request(base + "/_page/demo/design")[1])["page"]["rounds"][-1]
+    assert put_json(base, "/_page/demo/design/answers", {"answers": {"s1": {"answer": "yes"}}})[0] == 200
+
+
+def test_a_send_that_cannot_reach_the_inbox_does_not_hold_the_page(pages):
+    root, base = pages
+    (root / "_inbox").mkdir(exist_ok=True)
+    (root / "_inbox" / "ops").write_text("a file where the folder should be")
+    status = post(base, "/_page/demo/design/send", {"kind": "send", "results": "R"})[0]
+    assert status >= 400
+    assert "awaiting" not in json.loads(request(base + "/_page/demo/design")[1])["page"]["rounds"][-1]
+
+
+def test_a_blocker_does_not_hold_the_page(pages):
+    _, base = pages
+    assert post(base, "/_page/demo/design/send", {"kind": "blocker", "items": ["s1"], "results": "R"})[0] == 200
+    assert "awaiting" not in json.loads(request(base + "/_page/demo/design")[1])["page"]["rounds"][-1]

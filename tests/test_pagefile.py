@@ -330,3 +330,85 @@ def test_a_note_without_an_answer_is_kept(path):
     pagefile.save_answers(path, {"s1": {"answer": "", "note": "Thinking about it"}}, by="Alex", now=T1)
     a = pagefile.load(path)["rounds"][0]["answers"]["s1"]
     assert (a["answer"], a["note"]) == ("", "Thinking about it")
+
+
+def sent(path, ids, at=T1):
+    sub = pagefile.add_submission(path, {"kind": "send", "to": "ops", "items": ids, "file": "f-{n}.json"}, now=at)
+    pagefile.hold(path, sub["n"])
+    return sub
+
+
+def test_a_sent_yes_stays_hidden_after_the_agent_updates_the_page_in_the_same_round(path):
+    make(path)
+    pagefile.save_answers(path, {"s1": {"answer": "yes"}, "s2": {"answer": "changes", "note": "Move it"}}, by="me", now=T0)
+    sent(path, ["s1", "s2"])
+    assert pagefile.item_states(pagefile.load(path))["s1"]["hidden"] is False, "stays on screen, locked, until the update"
+    pagefile.reply(path, "s2", "ops", "Moved.", now=T2)
+    doc = pagefile.load(path)
+    states = pagefile.item_states(doc)
+    assert len(doc["rounds"]) == 1
+    assert states["s1"] == {"answer": "yes", "hidden": True, "reopened": None, "round": 1}
+    assert states["s2"]["hidden"] is False and states["s2"]["answer"] == "changes"
+    assert pagefile.summary(doc)["yes"] == 1
+
+
+def test_a_yes_given_after_the_send_stays_visible_until_the_next_send(path):
+    make(path)
+    pagefile.save_answers(path, {"s1": {"answer": "yes"}}, by="me", now=T0)
+    sent(path, ["s1"])
+    pagefile.reply(path, "_page", "ops", "Updated.", now=T1)
+    pagefile.save_answers(path, {"s2": {"answer": "yes"}}, by="me", now=T2)
+    assert pagefile.item_states(pagefile.load(path))["s2"]["hidden"] is False
+
+
+def test_a_blocker_hides_nothing(path):
+    make(path)
+    pagefile.save_answers(path, {"s1": {"answer": "yes"}}, by="me", now=T0)
+    pagefile.add_submission(path, {"kind": "blocker", "to": "ops", "items": ["s1"], "file": "b.json"}, now=T1)
+    assert pagefile.item_states(pagefile.load(path))["s1"]["hidden"] is False
+
+
+def test_yes_clears_a_reopen_on_an_item_already_yes_in_the_open_round(path):
+    make(path)
+    pagefile.save_answers(path, {"s1": {"answer": "yes"}}, by="me", now=T0)
+    pagefile.reply(path, "s1", "ops", "Look again", action="reopen", reason="Numbers moved", now=T1)
+    assert pagefile.item_states(pagefile.load(path))["s1"]["reopened"] == "Numbers moved"
+    pagefile.save_answers(path, {"s1": {"answer": "yes"}}, by="me", now=T2)
+    doc = pagefile.load(path)
+    assert pagefile.item_states(doc)["s1"]["reopened"] is None and doc["rounds"][-1]["reopened"] == {}
+
+
+def test_yes_clears_a_content_change_on_an_item_already_yes_in_the_open_round(path):
+    make(path)
+    pagefile.save_answers(path, {"s1": {"answer": "yes"}}, by="me", now=T0)
+    changed = review()
+    changed["items"][0]["body"] = [{"p": "New."}]
+    pagefile.write_definition(path, changed)
+    assert pagefile.item_states(pagefile.load(path))["s1"]["reopened"] == "changed since round 1"
+    pagefile.save_answers(path, {"s1": {"answer": "yes"}}, by="me", now=T2)
+    assert pagefile.item_states(pagefile.load(path))["s1"]["reopened"] is None
+
+
+def test_a_held_page_refuses_answers_until_the_agent_updates_it_or_the_owner_unlocks(path):
+    make(path)
+    sub = sent(path, [])
+    assert pagefile.load(path)["rounds"][-1]["awaiting"] == sub["n"]
+    with pytest.raises(pagefile.PageError):
+        pagefile.save_answers(path, {"s1": {"answer": "yes"}}, by="me", now=T1)
+    pagefile.mark_taken(path, sub["n"], at=T1)
+    assert "awaiting" in pagefile.load(path)["rounds"][-1], "being picked up isn't an update"
+    pagefile.set_status(path, "needs-you")
+    assert "awaiting" in pagefile.load(path)["rounds"][-1], "an index card isn't an update"
+    pagefile.write_definition(path, review(summary="Updated"))
+    assert "awaiting" not in pagefile.load(path)["rounds"][-1]
+    sent(path, [], at=T2)
+    pagefile.release(path)
+    assert "awaiting" not in pagefile.load(path)["rounds"][-1]
+    pagefile.save_answers(path, {"s1": {"answer": "yes"}}, by="me", now=T2)
+
+
+def test_a_new_round_is_never_held(path):
+    make(path)
+    sent(path, [])
+    pagefile.new_round(path, now=T2)
+    assert "awaiting" not in pagefile.load(path)["rounds"][-1]

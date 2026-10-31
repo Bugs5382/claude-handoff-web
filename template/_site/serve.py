@@ -16,6 +16,7 @@ Page files (<folder>/<slug>.json in handoff.page/v1, written only through pagefi
   PUT  /_page/<folder>/<slug>/answers    {"base": rev, "answers": {id: {answer, note}}}: merge into the open round
   POST /_page/<folder>/<slug>/round      {"results": "..."}: Save round now
   POST /_page/<folder>/<slug>/restart    {"checkpoint": "...", "results": "..."}: restart a journey, send a restart
+  POST /_page/<folder>/<slug>/unlock     {}: take the lock off a sent page without waiting for the agent
   POST /_page/<folder>/<slug>/send       {"kind": "send"|"blocker", "items": [ids], "results": "..."}: write the
                                          submission to _inbox/<agent>/ for the page's route
   GET  /_index/ and /_index/<folder>     index cards built from the page files, merged with _status.json pages
@@ -66,7 +67,7 @@ from pageindex import PAGE_SEG_RE, discover_page_files, page_card, page_file  # 
 
 MAX_BODY = 256 * 1024
 AGENT_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,40}$")
-PAGE_ACTIONS = {"PUT": ("answers",), "POST": ("round", "restart", "send")}
+PAGE_ACTIONS = {"PUT": ("answers",), "POST": ("round", "restart", "send", "unlock")}
 SAVE_RE = re.compile(r"^/_save/([a-z0-9._-]{1,120})\.json$")
 FOLDER_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,60}$")
 PAGE_KEY_RE = r"[a-z0-9][a-z0-9._-]{0,119}"
@@ -887,6 +888,9 @@ class Handler(SimpleHTTPRequestHandler):
             return out
         return {"round": n, **out}
 
+    def _page_unlock(self, rel, path, req, cfg):
+        return {"rev": pagefile.release(path)}
+
     def _page_send(self, rel, path, req, cfg):
         kind = req.get("kind")
         if kind not in ("send", "blocker"):
@@ -923,8 +927,15 @@ class Handler(SimpleHTTPRequestHandler):
                               "note": (answers.get(i) or {}).get("note", ""), "blocker": kind == "blocker"} for i in items],
                    "results": results}
         idir = os.path.join(self.root, "_inbox", route["to"])
-        os.makedirs(idir, exist_ok=True)
-        atomic_write(os.path.join(idir, sub["file"]), (json.dumps(payload, indent=2, ensure_ascii=False) + "\n").encode())
+        try:
+            os.makedirs(idir, exist_ok=True)
+            atomic_write(os.path.join(idir, sub["file"]), (json.dumps(payload, indent=2, ensure_ascii=False) + "\n").encode())
+        except OSError as e:
+            self.log_error("inbox write failed for %s: %s", rel, e)
+            pagefile.mark_undelivered(path, sub["n"])
+            return HTTPStatus.INTERNAL_SERVER_ERROR, {"error": f"It didn't reach {route['to']}'s inbox"}
+        if kind == "send":
+            pagefile.hold(path, sub["n"])
         return {"n": sub["n"], "file": sub["file"], "to": route["to"], "listening": is_listening(self.root, route["to"])}
 
     def _stale_page(self, folder, page):

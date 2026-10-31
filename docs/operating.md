@@ -46,7 +46,8 @@ This repository holds only the generic template and the fake `example/`. Never c
 | `PUT` | `/_page/<folder>/<slug>/answers` | `{base, answers: {id: {answer, note}}}`: merge one tab's answers; returns `{rev}` |
 | `POST` | `/_page/<folder>/<slug>/round` | `{results?}`: Save round now; returns `{round}` |
 | `POST` | `/_page/<folder>/<slug>/restart` | `{checkpoint, results?}`: restart a journey and send a `restart` submission |
-| `POST` | `/_page/<folder>/<slug>/send` | `{kind: send or blocker, items?, results?}`: send to the page's route; `409` when the route only copies |
+| `POST` | `/_page/<folder>/<slug>/send` | `{kind: send or blocker, items?, results?}`: send to the page's route; `409` when the route only copies; a send locks the page once the inbox has the file |
+| `POST` | `/_page/<folder>/<slug>/unlock` | `{}`: takes the lock off a sent page without waiting for the agent |
 | `GET` | `/_index/`, `/_index/<folder>` | index cards from the page files, merged with the HTML pages in `_status.json` |
 | `GET` | `/`, `/<folder>/`, `/<folder>/history/` | built on request (with `gen-index.py`'s own HTML) when the folder, or for `/` any folder, has page files; otherwise the static `index.html` |
 

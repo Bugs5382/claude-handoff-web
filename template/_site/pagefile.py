@@ -28,6 +28,10 @@ class PageError(Exception):
         super().__init__("; ".join(self.errors))
 
 
+def _at(iso):
+    return datetime.fromisoformat(iso)
+
+
 def now_iso():
     return datetime.now().astimezone().isoformat(timespec="seconds")
 
@@ -127,6 +131,7 @@ def write_definition(path, definition, *, now=None):
             for k in DEFINITION_KEYS:
                 doc.pop(k, None)
             doc.update(definition)
+            doc["rounds"][-1].pop("awaiting", None)
             if doc.get("build") != old_build:
                 _open_next(doc, at, "build changed")
             elif doc.get("reset") != old_reset:
@@ -160,6 +165,8 @@ def save_answers(path, answers, *, by, base=None, now=None):
         doc = load(p)
         items = _items_by_id(doc)
         rnd = doc["rounds"][-1]
+        if "awaiting" in rnd:
+            raise PageError("this page was sent; unlock it, or wait for the update, to change an answer")
         errors = []
         changed = False
         for iid, new in answers.items():
@@ -181,7 +188,9 @@ def save_answers(path, answers, *, by, base=None, now=None):
             old = rnd["answers"].get(iid)
             if old is None and not answer and not note.strip():
                 continue
-            if old is not None and old["answer"] == answer and old.get("note", "") == note:
+            # The same Yes again is still news on a reopened or changed item: it clears the reopen.
+            current = iid not in rnd.get("reopened", {}) and (old or {}).get("hash") in (None, item_hash(item))
+            if current and old is not None and old["answer"] == answer and old.get("note", "") == note:
                 continue
             entry = {"answer": answer, "note": note, "by": by, "at": at, "hash": item_hash(item)}
             if old is not None:
@@ -237,6 +246,7 @@ def reply(path, item_id, frm, text, *, action=None, reason=None, ref=None, now=N
         if item_id != "_page" and item_id not in _items_by_id(doc):
             raise PageError(f"{item_id}: no item {item_id} on this page")
         rnd = doc["rounds"][-1]
+        rnd.pop("awaiting", None)
         replies = doc["thread"].setdefault(item_id, [])
         entry = {"n": len(replies) + 1, "from": frm, "at": at, "round": rnd["round"], "text": text}
         for k, val in (("action", action), ("reason", reason), ("ref", ref)):
@@ -287,6 +297,30 @@ def add_submission(path, record, *, now=None):
         return sub
 
 
+def hold(path, n):
+    """Submission n reached the inbox: lock the page until the agent's next update or an unlock. Returns the rev."""
+    with _locked(path) as p:
+        doc = load(p)
+        doc["rounds"][-1]["awaiting"] = n
+        return _commit(p, doc)
+
+
+def release(path):
+    """Unlock a held page without waiting for the agent. Returns the rev."""
+    with _locked(path) as p:
+        doc = load(p)
+        doc["rounds"][-1].pop("awaiting", None)
+        return _commit(p, doc)
+
+
+def mark_undelivered(path, n):
+    """Submission n never reached the inbox. Returns the rev."""
+    with _locked(path) as p:
+        doc = load(p)
+        doc["submissions"][n - 1]["state"] = "failed"
+        return _commit(p, doc)
+
+
 def mark_taken(path, n, *, at=None):
     """An agent took submission n from its inbox. Returns the rev."""
     with _locked(path) as p:
@@ -299,11 +333,18 @@ def mark_taken(path, n, *, at=None):
         return _commit(p, doc)
 
 
+def _sent(doc, cur, iid, answer):
+    """Did a Send in the open round carry this answer?"""
+    return any(s["kind"] == "send" and s["round"] == cur["round"] and s.get("state") != "failed" and iid in s["items"]
+               and _at(answer["at"]) <= _at(s["at"]) for s in doc["submissions"])
+
+
 def item_states(doc):
     """Where each answerable item stands in the open round.
 
-    {id: {"answer", "hidden", "reopened", "round"}}: a Yes from an earlier round is hidden; a reopen, or a
-    definition change since the item's last Yes, makes it open again with the reason.
+    {id: {"answer", "hidden", "reopened", "round"}}: a Yes from an earlier round, or one a Send carried once the
+    agent has updated the page, is hidden; a reopen, or a definition change since the item's last Yes, makes it
+    open again with the reason.
     """
     items = [it for it in doc["items"] if allowed_answers(doc, it) != ()]
     rounds = doc["rounds"]
@@ -318,6 +359,7 @@ def item_states(doc):
                 state["reopened"] = f"changed since round {cur['round']}"
             elif state["reopened"] is None:
                 state.update(answer=mine["answer"], round=cur["round"])
+                state["hidden"] = mine["answer"] == "yes" and "awaiting" not in cur and _sent(doc, cur, iid, mine)
         elif state["reopened"] is None and not cur.get("restart"):
             for r in reversed(rounds[:-1]):
                 a = r["answers"].get(iid)

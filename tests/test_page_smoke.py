@@ -47,6 +47,10 @@ SCENARIOS = [
     "thread: earlier answers and replies show under the item",
     "thread: filed, reopen, unblock and won't fix read at a glance; a long thread folds its oldest entries",
     "delivery: sent to a listening agent, picked up, then the agent's reply, in the bar",
+    "sent: a banner says it reached the inbox, every item locks, and an update unlocks it live",
+    "sent: nobody listening says so on the page, and Unlock opens it again",
+    "sent: a Yes it carried is hidden after the update and stays in Copy results",
+    "reopened Yes: shows unanswered, and one Yes clears it",
     "restart: Restart from a checkpoint asks first, opens a new round and carries the steps",
     "restart: the restart shows its own delivery state",
     "live: a change on the server redraws without a reload, after typing stops, keeping the note and scroll",
@@ -141,9 +145,18 @@ def write_pages(root):
     pagefile.reply(t2, "r1", "app", "Ready to look at again.", action="reopen", reason="fixed in #70", now="2026-10-26T08:03:00-04:00")
     pagefile.reply(t2, "r1", "app", "The build is up.", action="unblock", now="2026-10-26T08:04:00-04:00")
     pagefile.reply(t2, "r1", "app", "The tablet layout stays as it is.", action="wontfix", now="2026-10-26T08:05:00-04:00")
-    for name in ("pf-dlv-sent", "pf-dlv-taken", "pf-dlv-replied"):
+    for name in ("pf-dlv-sent", "pf-dlv-taken", "pf-dlv-replied", "pf-held", "pf-held-deaf", "pf-held-after", "pf-reopened"):
         w(demo / f"{name}.json", review(name), now=T0)
         pagefile.set_route(demo / f"{name}.json", "app", "send")
+    pagefile.set_route(demo / "pf-held-deaf.json", "nobody", "send")
+    after = demo / "pf-held-after.json"
+    pagefile.save_answers(after, {"r1": {"answer": "yes", "note": ""}, "r2": {"answer": "changes", "note": "Move it"}}, by="Sam", now=T0)
+    pagefile.add_submission(after, {"kind": "send", "to": "app", "items": ["r1", "r2"], "file": "y-{n}.json"}, now=T0)
+    pagefile.hold(after, 1)
+    pagefile.reply(after, "r2", "app", "Moved.", action="fixed", now="2026-10-26T08:00:00-04:00")
+    reo = demo / "pf-reopened.json"
+    pagefile.save_answers(reo, {"r1": {"answer": "yes", "note": ""}}, by="Sam", now=T0)
+    pagefile.reply(reo, "r1", "app", "Look again.", action="reopen", reason="numbers moved", now="2026-10-26T08:00:00-04:00")
     (root / "_inbox" / "app").mkdir(parents=True, exist_ok=True)
     (root / "_inbox" / "app" / ".listening").write_text(str(os.getpid()))
     for name in ("pf-dlv-taken", "pf-dlv-replied"):

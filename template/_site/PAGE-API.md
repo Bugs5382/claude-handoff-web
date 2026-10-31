@@ -25,6 +25,7 @@ their inbox from disk. HTML pages that aren't converted yet keep using `/_save/`
 | `GET` | `/_page/<page>` | none | `200` with the page as JSON (below) and an `ETag`; `304` when `If-None-Match` matches |
 | `PUT` | `/_page/<page>/answers` | `{"base": rev, "answers": {id: {"answer": "...", "note": "..."}}}` | `200` with `{"rev": n}` |
 | `POST` | `/_page/<page>/round` | `{"results": "..."}` | `200` with `{"round": n}`: Save round now; `n` is the round just opened |
+| `POST` | `/_page/<page>/unlock` | `{}` | `200` with `{"rev": n}`: takes the lock off a sent page without waiting for the agent |
 | `POST` | `/_page/<page>/restart` | `{"checkpoint": "...", "results": "..."}` | `200` with `{"round": n, ...}` and a `restart` submission |
 | `POST` | `/_page/<page>/send` | `{"kind": "send" or "blocker", "items": [ids], "results": "..."}` | `200` with `{"n", "file", "to", "listening"}` |
 | `GET` | `/_index/` and `/_index/<folder>` | none | the index cards as JSON, with an `ETag` |
@@ -77,7 +78,10 @@ curl -s -X POST -H 'Content-Type: application/json' \
 ls _inbox/ops/
 ```
 
-A Send records the submission on the page, then writes one file to the route's inbox, atomically. `items`
+A Send records the submission on the page, then writes one file to the route's inbox, atomically. Only once the
+file is there does the page lock: the open round's `awaiting` names the submission, and `PUT /answers` answers `400`
+until the agent's next `page.py set` or `reply`, or an unlock. A file that can't be written answers `500` and marks
+the submission `failed`, with nothing locked. A Blocker never locks. `items`
 defaults to every item answered in the open round; a blocker sends exactly one. The answers and notes come
 from the page file, not from the request. A route whose `mode` is `copy` answers `409`: that page copies its
 results instead.

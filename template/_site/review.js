@@ -309,7 +309,7 @@ if (!window.siteTheme) { const t = document.createElement("script"); t.src = "/_
   }
 
   if (!document.querySelector('link[href*="/_site/site.css"]')) {
-    const l = document.createElement("link"); l.rel = "stylesheet"; l.href = "/_site/site.css?v=25"; document.head.appendChild(l);
+    const l = document.createElement("link"); l.rel = "stylesheet"; l.href = "/_site/site.css?v=26"; document.head.appendChild(l);
   }
 
   // data-review-skip="on" (test checklists): adds Skipped; a skipped item is locked.
@@ -685,6 +685,8 @@ if (!window.siteTheme) { const t = document.createElement("script"); t.src = "/_
       e.preventDefault(); const it = pickShown[pickActive]; if (it) { showIds(false); go(it); }
     }
   });
+  // A sent page: render.js shows why and how to unlock, and the server refuses answers until then.
+  const heldPage = body.getAttribute("data-review-locked") === "on";
   if (store.msg) setStatus(store.msg, store.bad);
   else if (store.loadPending) setStatus("Not saved · retrying", true);
   else if (store.lastMod) setStatus("Saved " + hhmm(store.lastMod));
@@ -1000,6 +1002,11 @@ if (!window.siteTheme) { const t = document.createElement("script"); t.src = "/_
     } catch (e) { alert("Couldn't save the round: " + e.message); }
   });
 
+  if (heldPage) {
+    for (const it of items) { lock(it); it.box.querySelectorAll("button, textarea, input").forEach(x => x.disabled = true); }
+    bar.querySelectorAll(".clear, .round-close").forEach(x => x.disabled = true);
+    if (sendBtn) { sendBtn.disabled = true; sendBtn.textContent = "Sent"; }
+  }
   if (sendBtn) sendBtn.addEventListener("click", async () => {
     const c = rvCount(kinds(), state, { hidden, blocked });
     const left = c.total - c.answered;

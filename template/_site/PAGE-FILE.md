@@ -222,6 +222,10 @@ raises `PageError`, whose `errors` list says which item and why.
 - A round opens when the page is created, when `build` or `reset` changes, on Save round now and on Restart.
   Only the last round is open.
 - A Yes from an earlier round hides the item in the new round.
+- A Send locks the page, and a banner says where it stands: in the agent's inbox, nobody listening, or picked up.
+  The agent's next `page.py set` or `reply` unlocks it live, in the same round, and every Yes that Send carried is
+  then hidden and stays in Copy results. "Unlock to change an answer" takes the lock off sooner.
 - An item comes back open when a reply reopens it, or when its definition changes after its last Yes
-  ("changed since round N"). A reopen nobody has answered carries into the next round.
+  ("changed since round N"). A reopen nobody has answered carries into the next round. A reopened Yes shows
+  unanswered, and one Yes clears it.
 - A Yes on a step with a `checkpoint` records the time the checkpoint was reached.

@@ -120,11 +120,23 @@
       const t = reply.text.length > 90 ? reply.text.slice(0, 89) + "\u2026" : reply.text;
       return Object.assign(out, { state: "replied", text: reply.from + " replied " + clock(reply.at) + ": " + t, full: reply.text });
     }
+    if (s.state === "failed") return Object.assign(out, { state: "failed", text: label + " failed " + clock(s.at) + " · it didn't reach " + to + "." });
     if (s.state === "taken") {
       return Object.assign(out, { state: "taken", text: (s.kind === "restart" ? label + " " + clock(s.at) + " · picked up by " : "Picked up by ") + to + " " + clock(s.takenAt) });
     }
     const deaf = to === data.route.to && !data.listening;
     return Object.assign(out, { state: deaf ? "deaf" : "sent", text: label + " " + clock(s.at) + (deaf ? " · " + to + " isn't listening." : "") });
+  }
+  // The page stays locked from a Send until the agent's next update; this says where the Send stands.
+  const heldBy = () => { const n = data.page.rounds[data.page.rounds.length - 1].awaiting; return n ? data.page.submissions[n - 1] : null; };
+  function heldHtml(s) {
+    const dl = deliveryOf(s), to = dl.to;
+    const said = dl.state === "taken" ? to + " picked this up at " + clock(s.takenAt) + "." :
+      dl.state === "deaf" ? "Saved to " + to + "'s inbox at " + clock(s.at) + ", but " + to + " isn't listening right now, so it may not be seen yet." :
+      "Sent to " + to + " at " + clock(s.at) + ". It's in " + to + "'s inbox, waiting to be picked up.";
+    return '<section class="sentlock" data-state="' + dl.state + '" role="status"><span class="dlv-dot" aria-hidden="true"></span>' +
+      '<p><strong>' + esc(said) + "</strong> Every item is locked until " + esc(to) + " updates this page.</p>" +
+      '<button type="button" class="unlock">Unlock to change an answer</button></section>';
   }
   const restartOf = s => (data.page.rounds.find(r => r.round === s.round) || {}).restart || "";
   const cpName = cp => { const t = String(cp).replace(/[-_]+/g, " ").trim(); return t.charAt(0).toUpperCase() + t.slice(1); };
@@ -209,6 +221,8 @@
     const bl = blockers();
     set("data-review-blocked", Object.entries(bl).map(([k, v]) => k + "=" + v).join("|"));
     set("data-review-approved", Object.entries(data.states).filter(([, s]) => s.hidden).map(([k]) => k).join(","));
+    const held = heldBy();
+    set("data-review-locked", held ? "on" : "");
     set("data-review-reopen", Object.entries(data.states).filter(([, s]) => s.reopened).map(([k, s]) => k + "=" + s.reopened).join("|"));
     let top = body.querySelector("header.top");
     if (!top) { top = document.createElement("header"); top.className = "top"; body.prepend(top); }
@@ -221,7 +235,7 @@
     main.id = "page";
     const pageThread = threadList(((p.thread || {})._page || []).map(replyEntry), "Replies about this page");
     const restart = p.kind === "journey" ? restartHtml(p) : "";
-    main.innerHTML = (pageThread ? '<section class="pthread" id="replies"><h2>Replies about this page</h2>' + pageThread + "</section>" : "") + restart +
+    main.innerHTML = (held ? heldHtml(held) : "") + (pageThread ? '<section class="pthread" id="replies"><h2>Replies about this page</h2>' + pageThread + "</section>" : "") + restart +
       p.items.map((it, i) => itemHtml(it, i + 1)).join("");
   }
 
@@ -234,6 +248,8 @@
       const t = typeOf(it);
       if (t === "question") state[id] = { a: a.answer || "" };
       else if (t === "choice") state[id] = { v: a.answer || "", n: a.note || "" };
+      // A reopened Yes is asked again, so it can't show as already answered.
+      else if (a.answer === "yes" && (data.states[id] || {}).reopened) state[id] = { v: "", n: a.note || "" };
       else { state[id] = { v: ANS_IN[a.answer] || "", n: a.note || "" }; if (a.answer === "skipped") state[id].locked = true; }
     }
     for (const s of p.submissions || []) {
@@ -300,6 +316,7 @@
       if (Object.keys(ch).length) fetch(API + "/answers", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ answers: ch }), keepalive: true });
     },
     send: (kind, items, results) => post("/send", { kind, items: items || undefined, results }),
+    unlock: () => post("/unlock", {}),
     closeRound: results => post("/round", { results }),
     restart: (checkpoint, results) => post("/restart", { checkpoint, results }),
     // Closed rounds for review.js's History block, newest first, with their Copy results text inline.
@@ -381,6 +398,12 @@
       more.parentElement.remove();
       return;
     }
+    const un = e.target.closest && e.target.closest(".sentlock .unlock");
+    if (un) {
+      un.disabled = true;
+      try { await window.sitePage.unlock(); await refresh(true); } catch (err) { un.disabled = false; alert("Couldn't unlock: " + err.message); }
+      return;
+    }
     const box = e.target.closest && e.target.closest(".rvrestart");
     if (!box) return;
     const conf = box.querySelector(".restart-confirm");
@@ -415,7 +438,7 @@
       setTimeout(boot, POLL); return;
     }
     render();
-    if (!reviewLoaded) { reviewLoaded = true; loadScript("/_site/review.js?v=30"); }
+    if (!reviewLoaded) { reviewLoaded = true; loadScript("/_site/review.js?v=31"); }
     setInterval(() => { if (!document.hidden) refresh(false).catch(() => {}); }, POLL);
   })();
 })();

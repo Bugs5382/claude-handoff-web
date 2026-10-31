@@ -184,7 +184,7 @@ if (!window.siteTheme) { const t = document.createElement("script"); t.src = "/_
   const PIC = /\.(png|jpe?g|gif|webp|svg)$/i;
   const PIC_PAGE = '<!doctype html><html lang="en"' + (document.documentElement.getAttribute("data-theme") ? ' data-theme="' + document.documentElement.getAttribute("data-theme") + '"' : "") +
     '><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">' +
-    '<title>Picture</title><link rel="stylesheet" href="' + location.origin + '/_site/site.css?v=25"></head><body class="pic-win"><div class="stage"><img id="pic" alt=""></div>' +
+    '<title>Picture</title><link rel="stylesheet" href="' + location.origin + '/_site/site.css?v=26"></head><body class="pic-win"><div class="stage"><img id="pic" alt=""></div>' +
     '<div class="bar"><span id="cap"></span><a id="full" target="_blank" rel="noopener">Full size</a></div></body></html>';
   function pictureLink(e) {
     if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return null;

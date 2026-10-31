@@ -367,6 +367,59 @@ const seg = (doc, id, v) => card(doc, id).querySelector('.seg button[data-v="' +
     ok(r.doc.getElementById("replies"), "the page thread is the target");
   });
 
+  await t("sent: a banner says it reached the inbox, every item locks, and an update unlocks it live", async () => {
+    const { win, doc, bar } = await load("/demo/pf-held");
+    win.__alive = true;
+    ok(!doc.querySelector(".sentlock"), "no banner before a Send");
+    click(seg(doc, "r1", "yes")); win.confirm = () => true;
+    click(bar.querySelector(".send-btn"));
+    await until(() => w().document.querySelector(".sentlock"), "the banner");
+    const d2 = w().document, box = d2.querySelector(".sentlock");
+    eq(box.dataset.state, "sent");
+    match(box.textContent, /Sent to app at \d\d:\d\d\. It's in app's inbox, waiting to be picked up\./);
+    match(box.textContent, /Every item is locked until app updates this page\./);
+    ok(seg(d2, "r2", "yes").disabled, "an open item is locked"); ok(seg(d2, "r1", "yes").disabled, "a Yes is locked");
+    ok(card(d2, "r2").querySelector(".blocker-btn").disabled, "Blocker is locked");
+    const send = d2.querySelector(".rvbar .send-btn"); ok(send.disabled, "Send is locked"); eq(send.textContent, "Sent");
+    const put = await fetch("/_page/demo/pf-held/answers", { method: "PUT", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ answers: { r2: { answer: "yes", note: "" } } }) });
+    eq(put.status, 400, "the server refuses too");
+    await fetch("/_page/demo/pf-held/unlock", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
+    await until(() => !w().document.querySelector(".sentlock"), "the live unlock", 15000);
+    eq(w().__alive, true, "no reload"); ok(!seg(w().document, "r2", "yes").disabled, "open again");
+  });
+
+  await t("sent: nobody listening says so on the page, and Unlock opens it again", async () => {
+    const { win, doc, bar } = await load("/demo/pf-held-deaf");
+    click(seg(doc, "r1", "yes")); win.confirm = () => true;
+    click(bar.querySelector(".send-btn"));
+    await until(() => w().document.querySelector(".sentlock"), "the banner");
+    const box = w().document.querySelector(".sentlock");
+    eq(box.dataset.state, "deaf"); match(box.textContent, /Saved to nobody's inbox at \d\d:\d\d, but nobody isn't listening right now/);
+    click(box.querySelector(".unlock"));
+    await until(() => !w().document.querySelector(".sentlock"), "the unlock");
+    ok(!seg(w().document, "r2", "yes").disabled, "open again");
+  });
+
+  await t("sent: a Yes it carried is hidden after the update and stays in Copy results", async () => {
+    const { win, doc, bar } = await load("/demo/pf-held-after");
+    ok(!doc.querySelector(".sentlock"), "the reply unlocked it");
+    ok(card(doc, "r1").hidden || card(doc, "r1").offsetParent === null, "the Yes is hidden");
+    ok(card(doc, "r2").offsetParent !== null, "the Changes item stays");
+    click(bar.querySelector(".more-btn")); click(bar.querySelector(".copy")); await tick(50);
+    match(win.__clip, /r1/);
+  });
+
+  await t("reopened Yes: shows unanswered, and one Yes clears it", async () => {
+    const { doc } = await load("/demo/pf-reopened");
+    eq(seg(doc, "r1", "yes").getAttribute("aria-pressed"), "false", "not already pressed");
+    match(card(doc, "r1").textContent, /Reopened: numbers moved/);
+    click(seg(doc, "r1", "yes"));
+    await saved();
+    const p = await pageFile("demo/pf-reopened");
+    eq(JSON.stringify(p.rounds[0].reopened), "{}"); eq(p.rounds[0].answers.r1.answer, "yes");
+  });
+
   await t("restart: Restart from a checkpoint asks first, opens a new round and carries the steps", async () => {
     const { win, doc } = await load("/demo/pf-journey");
     const box = doc.querySelector(".rvrestart"); ok(box, "the restart bar");

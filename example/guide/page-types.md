@@ -56,7 +56,7 @@ page can mix them (see [Mixing item types](#mixing-item-types)).
 ### review
 
 Each item is a card with Yes / No / Changes; Changes needs a note. Items answered Yes in an earlier round are
-hidden in the next one and stay in Copy results.
+locked in the next one (hidden on an HTML page) and stay in Copy results.
 
 ```json
 {

@@ -45,7 +45,7 @@ curl -s http://127.0.0.1:8000/_page/demo/try | python3 -m json.tool | head -20
 The body is `{"page", "states", "summary", "route", "listening", "diffs"}`:
 
 - `page`: the page file as stored, including `rev`, `rounds`, `thread` and `submissions`.
-- `states`: per answerable item, `{"answer", "hidden", "reopened", "round"}`. `hidden` is a Yes from an earlier
+- `states`: per answerable item, `{"answer", "hidden", "reopened", "round"}`. `hidden` (drawn as a locked row) is a Yes from an earlier
   round; `reopened` is the reason it came back, or `null`.
 - `summary`: the bar's counts, `open`, `blocked`, `counted`, `yes`, `reopened`, `approved`, and a backlog's
   `tally`.

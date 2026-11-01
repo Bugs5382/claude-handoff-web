@@ -118,13 +118,15 @@ const seg = (doc, id, v) => card(doc, id).querySelector('.seg button[data-v="' +
     eq(win.siteReview.unsaved(), true);
   });
 
-  await t("checklist: skip locks, earlier Yes hidden, blocked by a dependency, reopened with its reason, question", async () => {
+  await t("checklist: skip locks, earlier Yes locked, blocked by a dependency, reopened with its reason, question", async () => {
     const { win, doc, bar } = await load("/demo/pf-check");
-    ok(doc.querySelector(".rvdone"), "approved and hidden note");
-    eq(win.getComputedStyle(card(doc, "c1")).display, "none", "c1 hidden");
+    ok(doc.querySelector(".rvdone"), "approved and locked note");
+    ok(card(doc, "c1").classList.contains("settled"), "c1 is a locked row");
+    eq(seg(doc, "c1", "yes").getAttribute("aria-pressed"), "true"); ok(seg(doc, "c1", "yes").disabled);
+    eq(card(doc, "c1").querySelector(".rvhead .st").textContent, "Yes (locked)");
     eq(card(doc, "c4").querySelector(".rvhead .st").textContent, "Blocked by c2");
     eq(card(doc, "c5").querySelector(".rvhead .st").textContent, "Reopened: fixed in #70");
-    match(bar.querySelector(".cnt").textContent, /^0 of 3 answered · 1 blocked · 1 approved and hidden · 1 question unanswered/);
+    match(bar.querySelector(".cnt").textContent, /^0 of 3 answered · 1 blocked · 1 approved and locked · 1 question unanswered/);
     click(seg(doc, "c3", "skip"));
     eq(card(doc, "c3").querySelector(".rvhead .st").textContent, "Skipped (locked)");
     ok(seg(doc, "c3", "yes").disabled);
@@ -401,11 +403,16 @@ const seg = (doc, id, v) => card(doc, id).querySelector('.seg button[data-v="' +
     ok(!seg(w().document, "r2", "yes").disabled, "open again");
   });
 
-  await t("sent: a Yes it carried is hidden after the update and stays in Copy results", async () => {
+  await t("sent: a Yes it carried stays locked after the update, a handled Changes clears, and both stay on record", async () => {
     const { win, doc, bar } = await load("/demo/pf-held-after");
     ok(!doc.querySelector(".sentlock"), "the reply unlocked it");
-    ok(card(doc, "r1").hidden || card(doc, "r1").offsetParent === null, "the Yes is hidden");
-    ok(card(doc, "r2").offsetParent !== null, "the Changes item stays");
+    const row = card(doc, "r1"), tg = row.querySelector(".settled-tg");
+    ok(row.classList.contains("settled"), "the Yes is a locked row"); eq(seg(doc, "r1", "yes").getAttribute("aria-pressed"), "true"); ok(seg(doc, "r1", "yes").disabled);
+    eq(row.querySelector(".rv").offsetParent, null, "collapsed"); click(tg); ok(row.querySelector(".rv").offsetParent !== null, "opens");
+    const ch = card(doc, "r2");
+    eq(seg(doc, "r2", "chg").getAttribute("aria-pressed"), "false"); eq(ch.querySelector(".rv textarea").value, "");
+    eq(ch.querySelector(".rvhead .st").textContent, "Updated: answer again");
+    match(ch.querySelector(".thread").textContent, /Changes/);
     click(bar.querySelector(".more-btn")); click(bar.querySelector(".copy")); await tick(50);
     match(win.__clip, /r1/);
   });

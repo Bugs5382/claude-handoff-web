@@ -106,6 +106,12 @@
       entries.push({ kind: "answer", at: a.at, who: "You", round: r.round, action: a.answer, tag: ANS_LABEL[a.answer] || a.answer,
         tagClass: ANS_CLASS[a.answer] || "a-other", text: esc(a.note) });
     }
+    // A sent No or Changes the agent dealt with, and what it did about it.
+    for (const r of data.page.rounds) for (const h of (r.handled || {})[id] || []) {
+      entries.push({ kind: "answer", at: h.at, who: "You", round: r.round, action: h.answer, tag: ANS_LABEL[h.answer] || h.answer,
+        tagClass: ANS_CLASS[h.answer] || "a-other", text: esc(h.note) });
+      if (h.via === "definition") entries.push({ kind: "reply", at: h.handled, who: data.route.to, action: "info", tag: "", tagClass: "t-info", text: "Changed this item.", rawText: "", reason: "", ref: "" });
+    }
     for (const x of (data.page.thread || {})[id] || []) entries.push(replyEntry(x));
     return threadList(entries, "History of " + id);
   }
@@ -221,6 +227,8 @@
     const bl = blockers();
     set("data-review-blocked", Object.entries(bl).map(([k, v]) => k + "=" + v).join("|"));
     set("data-review-approved", Object.entries(data.states).filter(([, s]) => s.hidden).map(([k]) => k).join(","));
+    set("data-review-settled", "on");
+    set("data-review-handled", Object.keys(p.rounds[p.rounds.length - 1].handled || {}).join(","));
     const held = heldBy();
     set("data-review-locked", held ? "on" : "");
     set("data-review-reopen", Object.entries(data.states).filter(([, s]) => s.reopened).map(([k, s]) => k + "=" + s.reopened).join("|"));
@@ -438,7 +446,7 @@
       setTimeout(boot, POLL); return;
     }
     render();
-    if (!reviewLoaded) { reviewLoaded = true; loadScript("/_site/review.js?v=31"); }
+    if (!reviewLoaded) { reviewLoaded = true; loadScript("/_site/review.js?v=32"); }
     setInterval(() => { if (!document.hidden) refresh(false).catch(() => {}); }, POLL);
   })();
 })();

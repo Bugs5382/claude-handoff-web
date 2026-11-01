@@ -8,6 +8,8 @@
 // Body attributes:
 //   data-review-page      storage page id (default: the path)
 //   data-review-approved  "s1,s3": answered Yes in a pasted result; hidden, count as Yes
+//   data-review-settled   "on" (page files): approved items stay as a collapsed, locked row instead of hidden
+//   data-review-handled   "s2,s5": a sent No or Changes the agent dealt with; the item is open again, marked so
 //   data-review-reopen    "s4=reason|s11=reason": brings an answered item back, with a reason
 //   data-review-stale     "a.html|b/": pages marked Stale recently; listed as "STALE: <page>" in Copy results
 //   data-review-reset     "v2:s1,s2" clears those answers (and reopened ones) once per version;
@@ -82,7 +84,7 @@ window.rvCount = function (items, state, o) {
 (function () {
   // Pages that render their own items (and their own pop-out) opt out.
   if (document.body.getAttribute("data-review-controls") === "off") return;
-  const V = "25";
+  const V = "27";
   function itemOf(el) {
     const box = el.closest("[data-review-question], .item");
     if (box) {
@@ -282,6 +284,8 @@ if (!window.siteTheme) { const t = document.createElement("script"); t.src = "/_
   for (const part of (body.getAttribute("data-review-reopen") || "").split("|")) {
     const i = part.indexOf("="); if (i > 0) reopen[part.slice(0, i).trim()] = part.slice(i + 1).trim();
   }
+  const SETTLED = body.getAttribute("data-review-settled") === "on";
+  const handled = new Set((body.getAttribute("data-review-handled") || "").split(",").filter(Boolean));
   const blocked = {};
   for (const part of (body.getAttribute("data-review-blocked") || "").split("|")) {
     const i = part.indexOf("="); if (i > 0) blocked[part.slice(0, i).trim()] = part.slice(i + 1).trim();
@@ -309,7 +313,7 @@ if (!window.siteTheme) { const t = document.createElement("script"); t.src = "/_
   }
 
   if (!document.querySelector('link[href*="/_site/site.css"]')) {
-    const l = document.createElement("link"); l.rel = "stylesheet"; l.href = "/_site/site.css?v=26"; document.head.appendChild(l);
+    const l = document.createElement("link"); l.rel = "stylesheet"; l.href = "/_site/site.css?v=27"; document.head.appendChild(l);
   }
 
   // data-review-skip="on" (test checklists): adds Skipped; a skipped item is locked.
@@ -531,11 +535,21 @@ if (!window.siteTheme) { const t = document.createElement("script"); t.src = "/_
     place(it, box);
     if (s.locked || blocked[it.id]) lock(it);
     if (blocked[it.id]) { box.classList.add("blocked"); if (it.card) it.card.classList.add("is-blocked"); }
-    if (hidden.has(it.id)) { for (const el of [box].concat(it.nodes)) el.style.setProperty("display", "none", "important"); }
+    if (hidden.has(it.id) && SETTLED) settle(it);
+    else if (hidden.has(it.id)) { for (const el of [box].concat(it.nodes)) el.style.setProperty("display", "none", "important"); }
+  }
+  // An approved item on a page file: its Yes stays pressed and can't change. The row opens to show the item.
+  function settle(it) {
+    it.box.querySelectorAll("button, textarea").forEach(x => { x.disabled = true; });
+    it.box.classList.add("locked"); it.card.classList.add("settled");
+    const b = document.createElement("button"); b.type = "button"; b.className = "settled-tg"; b.textContent = "Show"; b.setAttribute("aria-expanded", "false");
+    b.addEventListener("click", () => { const on = it.card.classList.toggle("shown"); b.textContent = on ? "Hide" : "Show"; b.setAttribute("aria-expanded", String(on)); });
+    it.card.querySelector(":scope > .rvhead .rid").after(b);
+    it.card.querySelector(":scope > .rvhead").after(it.card.querySelector(":scope > h2"));
   }
   if (hidden.size) {
     const note = document.createElement("div"); note.className = "rvdone";
-    note.textContent = hidden.size + " approved and hidden. They stay in Copy results.";
+    note.textContent = hidden.size + (SETTLED ? " approved and locked." : " approved and hidden.") + " They stay in Copy results.";
     const first = document.querySelector("h2, [data-review-question]");
     if (first) first.insertAdjacentElement("beforebegin", note); else body.appendChild(note);
   }
@@ -739,8 +753,10 @@ if (!window.siteTheme) { const t = document.createElement("script"); t.src = "/_
       if (!s.locked) setPressed(it, v);
       if (blocked[it.id]) setPill(pill, "Blocked by " + blocked[it.id], "blk");
       else if (s.locked) setPill(pill, "Skipped (locked)", "skp");
+      else if (SETTLED && hidden.has(it.id)) setPill(pill, "Yes (locked)", "a-yes");
       else if (v) setPill(pill, ANS[v] || v, "a-" + v);
       else if (reopen[it.id]) setPill(pill, "Reopened: " + reopen[it.id], "reo");
+      else if (handled.has(it.id)) setPill(pill, "Updated: answer again", "reo");
       else setPill(pill, "Open", "");
       if (reopen[it.id] && v && !blocked[it.id]) setPill(pill2, "Reopened: " + reopen[it.id], "reo"); else { pill2.className = "st2"; pill2.textContent = ""; }
       if (s.blocker) { pill2.className = "st bkr"; pill2.textContent = "Blocker"; }
@@ -752,12 +768,13 @@ if (!window.siteTheme) { const t = document.createElement("script"); t.src = "/_
     const c = rvCount(kinds(), state, { hidden, blocked });
     const chosen = items.filter(isC);
     const tl = chosen.length ? tally(chosen) : "";
+    const hiddenWord = SETTLED ? " approved and locked" : " approved and hidden";
     const qTail = c.qOpen ? " · " + c.qOpen + " question" + (c.qOpen === 1 ? "" : "s") + " unanswered" : "";
     const tails = (c.blocked ? " · " + c.blocked + " blocked" : "") + (c.skipped ? " · " + c.skipped + " skipped" : "") +
-      (c.hidden ? " · " + c.hidden + " approved and hidden" : "") + (tl && !c.choiceOnly ? " · " + tl : "") + qTail;
+      (c.hidden ? " · " + c.hidden + hiddenWord : "") + (tl && !c.choiceOnly ? " · " + tl : "") + qTail;
     let text;
     if (c.choiceOnly) text = (c.allDone ? "All " + c.total + " picked" : c.answered + " of " + c.total + " picked") + (tl ? " · " + tl : "") + qTail;
-    else if (c.approved) text = "APPROVED · all " + (c.yncTotal || c.hidden) + " Yes" + (c.yncTotal && c.hidden ? " · " + c.hidden + " approved and hidden" : "") + (tl ? " · " + tl : "") + qTail;
+    else if (c.approved) text = "APPROVED · all " + (c.yncTotal || c.hidden) + " Yes" + (c.yncTotal && c.hidden ? " · " + c.hidden + hiddenWord : "") + (tl ? " · " + tl : "") + qTail;
     else if (c.allDone) text = "All " + c.total + " answered · ready to copy" + tails;
     else text = c.answered + " of " + c.total + " answered" + tails;
     bar.querySelector(".cnt").textContent = text;

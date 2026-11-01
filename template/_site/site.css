@@ -298,6 +298,10 @@ body.site th { background: var(--soft-2); font-weight: 600; }
 .rvcard[data-answer="yes"], .rv.yes { border-color: var(--yes-edge); }
 .rvcard[data-answer="chg"], .rv.chg { border-color: var(--chg-edge); }
 .rvcard[data-answer="no"], .rv.no { border-color: var(--no-edge); }
+.rvcard.settled { padding: 10px 22px; background: var(--soft); }
+.rvcard.settled > h2 { font-size: 1em; margin: 6px 0 0; }
+.rvcard.settled:not(.shown) > :not(.rvhead, h2) { display: none; }
+.settled-tg { margin-left: 8px; font: inherit; font-size: .85em; }
 .rvcard[data-answer="skip"] { background: var(--card); }
 .rvcard.is-blocked { background: var(--soft); border-style: dashed; border-color: var(--line-dash); }
 .rvcard.is-blocked > h2 { color: var(--muted); }

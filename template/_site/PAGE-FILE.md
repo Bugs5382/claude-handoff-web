@@ -221,10 +221,14 @@ raises `PageError`, whose `errors` list says which item and why.
 
 - A round opens when the page is created, when `build` or `reset` changes, on Save round now and on Restart.
   Only the last round is open.
-- A Yes from an earlier round hides the item in the new round.
+- A Yes from an earlier round stays on the page as a collapsed row with Yes pressed and locked. Show opens the row.
 - A Send locks the page, and a banner says where it stands: in the agent's inbox, nobody listening, or picked up.
   The agent's next `page.py set` or `reply` unlocks it live, in the same round, and every Yes that Send carried is
-  then hidden and stays in Copy results. "Unlock to change an answer" takes the lock off sooner.
+  then a locked row and stays in Copy results. "Unlock to change an answer" takes the lock off sooner and takes that
+  Send back, so its answers can change.
+- A sent No or Changes clears once the agent replies under the item or changes it. It moves to the round's `handled`
+  list, so an old note can't go out again, shows in the item's thread with what the agent did, and the item is open
+  again marked "Updated: answer again". A reply about the whole page clears nothing.
 - An item comes back open when a reply reopens it, or when its definition changes after its last Yes
   ("changed since round N"). A reopen nobody has answered carries into the next round. A reopened Yes shows
   unanswered, and one Yes clears it.

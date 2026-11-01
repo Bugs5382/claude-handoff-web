@@ -392,7 +392,7 @@ def _rounds(v, rounds):
         v.err("rounds", "expected a list of rounds")
         return
     keys = ("round", "build", "reset", "opened", "closed", "openedBy", "answers", "checkpoints", "reopened", "awaiting",
-            "results", "restart")
+            "results", "restart", "handled")
     for i, r in enumerate(rounds, 1):
         p = f"rounds[#{i}]"
         if not isinstance(r, dict):
@@ -423,6 +423,25 @@ def _rounds(v, rounds):
         for k in ("checkpoints", "reopened"):
             if k in r:
                 _strmap(v, r[k], _join(p, k))
+        _handled(v, r.get("handled"), _join(p, "handled"))
+
+
+def _handled(v, handled, p):
+    if handled is None:
+        return
+    if not isinstance(handled, dict) or not all(isinstance(x, list) for x in handled.values()):
+        v.err(p, "expected lists of handled answers by item id")
+        return
+    for iid, entries in handled.items():
+        for i, h in enumerate(entries, 1):
+            hp = f"{p}.{iid}[#{i}]"
+            if not isinstance(h, dict):
+                v.err(hp, "expected an object")
+                continue
+            v.keys(h, hp, ("answer", "note", "by", "at", "handled", "via"), ("answer", "at", "handled", "via"))
+            for k in ("answer", "note", "by", "at", "handled"):
+                v.string(h, k, hp)
+            v.choice(h, "via", hp, ("reply", "definition"))
 
 
 def _thread(v, thread):
@@ -461,7 +480,7 @@ def _submissions(v, subs):
         if not isinstance(s, dict):
             v.err(p, "expected an object")
             continue
-        v.keys(s, p, ("n", "kind", "at", "to", "round", "rev", "items", "file", "state", "takenAt"), ("n", "kind", "at"))
+        v.keys(s, p, ("n", "kind", "at", "to", "round", "rev", "items", "file", "state", "takenAt", "released"), ("n", "kind", "at"))
         if s.get("n") != i:
             v.err(_join(p, "n"), f"expected {i}")
         v.choice(s, "kind", p, SUBMISSION_KINDS)
@@ -472,6 +491,8 @@ def _submissions(v, subs):
         v.integer(s, "rev", p, minimum=0)
         v.strings(s, "items", p)
         v.choice(s, "state", p, SUBMISSION_STATES)
+        if "released" in s and not isinstance(s["released"], bool):
+            v.err(_join(p, "released"), "expected true or false")
 
 
 def main(argv):

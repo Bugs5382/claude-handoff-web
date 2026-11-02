@@ -28,7 +28,7 @@ def doc(folder, name):
 
 def test_every_page_kind_has_a_sample():
     kinds = {samples.read(n)["definition"]["kind"] for n in samples.names()}
-    assert {"review", "checklist", "journey", "backlog", "reference"} <= kinds
+    assert set(schema.KINDS) <= kinds
 
 
 @pytest.mark.parametrize("name", samples.names())
@@ -66,6 +66,13 @@ def test_the_command_line_loads_them(tmp_path):
                        capture_output=True, text=True, check=True)
     assert "demo/sample-review" in r.stdout
     assert (tmp_path / "demo" / "sample-review.json").exists()
+
+
+def test_round_phases_shows_both_kinds_of_block(folder):
+    d = doc(folder, "round-phases")
+    phases = pagefile.phase_states(d)
+    assert phases["B"]["blocked"] == "A" and phases["C"]["blocked"] == "A"
+    assert next(it for it in d["items"] if it["id"] == "B3")["dependsOn"] == ["A2"]
 
 
 def test_samples_use_only_documentation_addresses():

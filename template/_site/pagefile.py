@@ -12,14 +12,17 @@ import fcntl
 import hashlib
 import json
 import os
+import re
 import tempfile
 from datetime import datetime
 
 from schema import DEFAULT_TYPE, SCHEMA, TYPE_ANSWERS, validate
 
 MAX_BYTES = 2 * 1024 * 1024
-SERVER_KEYS = ("rev", "rounds", "thread", "submissions", "route")
-DEFINITION_KEYS = ("schema", "kind", "title", "summary", "build", "reset", "status", "options", "items")
+SERVER_KEYS = ("rev", "rounds", "thread", "submissions", "route", "emails", "revisions")
+DEFINITION_KEYS = ("schema", "kind", "title", "summary", "build", "reset", "status", "options", "items", "phases", "drafts", "deck",
+                   "template")
+DONE = ("yes", "risk")
 
 
 class PageError(Exception):
@@ -61,6 +64,8 @@ def allowed_answers(doc, item):
     base = tuple(item.get("answers") or TYPE_ANSWERS[typ])
     if item.get("skip") and "skipped" not in base:
         base += ("skipped",)
+    if doc["kind"] == "round" and not item.get("answers"):
+        base += ("risk",)
     return base
 
 
@@ -154,14 +159,17 @@ def write_definition(path, definition, *, now=None):
         if os.path.exists(p):
             doc = load(p)
             old_build, old_reset = doc.get("build"), doc.get("reset")
-            old_hashes = {it["id"]: item_hash(it) for it in doc["items"]}
+            old_items = {it["id"]: it for it in doc["items"]}
             for k in DEFINITION_KEYS:
                 doc.pop(k, None)
             doc.update(definition)
             _clear_hold(doc["rounds"][-1])
             for it in doc["items"]:
-                if old_hashes.get(it["id"], item_hash(it)) != item_hash(it):
+                old = old_items.get(it["id"])
+                if old is not None and item_hash(old) != item_hash(it):
                     _settle(doc, it["id"], at, "definition")
+                    doc.setdefault("revisions", {}).setdefault(it["id"], []).append(
+                        {"at": at, "round": doc["rounds"][-1]["round"], "before": old, "after": it})
             if doc.get("build") != old_build:
                 _open_next(doc, at, "build changed")
             elif doc.get("reset") != old_reset:
@@ -216,6 +224,9 @@ def save_answers(path, answers, *, by, base=None, now=None):
                 continue
             if answer == "changes" and not note.strip():
                 errors.append(f"{iid}: Changes needs a note")
+                continue
+            if answer == "risk" and not note.strip():
+                errors.append(f"{iid}: Accept risk needs a note on how the risk is presented")
                 continue
             old = rnd["answers"].get(iid)
             if old is None and not answer and not note.strip():
@@ -293,6 +304,27 @@ def reply(path, item_id, frm, text, *, action=None, reason=None, ref=None, now=N
         return entry["n"]
 
 
+def add_email(path, item_id, frm, subject, body, *, to=None, request=None, now=None):
+    """A draft came back: the next version on its item, with what produced it. Nothing locks or unlocks. Returns its number."""
+    at = now or now_iso()
+    with _locked(path) as p:
+        doc = load(p)
+        if item_id not in _items_by_id(doc):
+            raise PageError(f"{item_id}: no item {item_id} on this page")
+        versions = doc.setdefault("emails", {}).setdefault(item_id, [])
+        entry = {"n": len(versions) + 1, "at": at, "from": frm, "body": body}
+        asked = doc["submissions"][request - 1] if request is not None else {}
+        for k, val in (("subject", subject), ("to", to or asked.get("recipient")), ("request", request)):
+            if val is not None:
+                entry[k] = val
+        for k in ("ask", "tone", "change", "basedOn"):
+            if k in asked:
+                entry[k] = asked[k]
+        versions.append(entry)
+        _commit(p, doc)
+        return entry["n"]
+
+
 def import_rounds(path, rounds):
     """Replace a new page's empty round 1 with converted history plus the open round. Returns the rev."""
     with _locked(path) as p:
@@ -326,6 +358,9 @@ def add_submission(path, record, *, now=None):
         sub = {"n": n, "kind": record["kind"], "at": now or now_iso(), "to": record["to"],
                "round": doc["rounds"][-1]["round"], "rev": doc["rev"], "items": list(record.get("items", [])),
                "file": record["file"].replace("{n}", str(n)), "state": "sent"}
+        for k in ("recipient", "ask", "tone", "change", "basedOn", "framing"):
+            if record.get(k):
+                sub[k] = record[k]
         doc["submissions"].append(sub)
         _commit(p, doc)
         return sub
@@ -394,27 +429,74 @@ def item_states(doc):
         state = {"answer": "", "hidden": False, "reopened": cur.get("reopened", {}).get(iid), "round": None}
         mine = cur["answers"].get(iid)
         if mine and mine["answer"]:
-            if mine["answer"] == "yes" and mine.get("hash") not in (None, h):
+            if mine["answer"] in DONE and mine.get("hash") not in (None, h):
                 state["reopened"] = f"changed since round {cur['round']}"
             elif state["reopened"] is None:
                 state.update(answer=mine["answer"], round=cur["round"])
-                state["hidden"] = mine["answer"] == "yes" and "awaiting" not in cur and _sent(doc, cur, iid, mine)
+                state["hidden"] = mine["answer"] in DONE and "awaiting" not in cur and _sent(doc, cur, iid, mine)
         elif state["reopened"] is None and not cur.get("restart") and iid not in cur.get("handled", {}):
             for r in reversed(rounds[:-1]):
                 if iid in r.get("handled", {}):
                     break
                 a = r["answers"].get(iid)
                 if a and a["answer"]:
-                    if a["answer"] == "yes":
+                    if a["answer"] in DONE:
                         if a.get("hash") not in (None, h):
                             state["reopened"] = f"changed since round {r['round']}"
                         else:
-                            state.update(answer="yes", hidden=True, round=r["round"])
+                            state.update(answer=a["answer"], hidden=True, round=r["round"])
                     break
                 if r.get("restart"):
                     break
         out[iid] = state
     return out
+
+
+def email_context(doc, item_id):
+    """What an agent needs to write an email about a step, so the person doesn't retype it."""
+    it = _items_by_id(doc)[item_id]
+    comments = []
+    for r in doc["rounds"]:
+        entries = [r["answers"][item_id]] if item_id in r["answers"] else []
+        entries += r.get("handled", {}).get(item_id, [])
+        comments += [{"round": r["round"], "answer": e.get("answer", ""), "note": e["note"]} for e in entries if e.get("note")]
+    answer = item_states(doc).get(item_id, {}).get("answer", "")
+    return {"id": item_id, "title": it["title"], "body": it.get("body", []), "answer": answer,
+            "changed": doc.get("revisions", {}).get(item_id, []), "comments": comments, "replies": doc["thread"].get(item_id, [])}
+
+
+def deck_items(doc):
+    """What a deck is built from: the items whose final answer is Yes or Accept risk, in page order."""
+    states = item_states(doc)
+    out = []
+    for it in doc["items"]:
+        st = states.get(it["id"])
+        if st and st["answer"] in DONE and not st["reopened"]:
+            answer = next((r["answers"][it["id"]] for r in reversed(doc["rounds"]) if it["id"] in r["answers"]), {})
+            out.append({"id": it["id"], "title": it["title"], "body": it.get("body", []),
+                        "answer": st["answer"], "note": answer.get("note", "")})
+    return out
+
+
+def phase_of(iid):
+    return re.match(r"[A-Z]+", iid).group()
+
+
+def phase_states(doc):
+    """{phase id: {"items", "closed", "blocked"}}: closed once every counted item is Yes, Accept risk or Skipped."""
+    states = item_states(doc)
+    out = {}
+    for ph in doc.get("phases") or []:
+        items = [it["id"] for it in doc["items"] if phase_of(it["id"]) == ph["id"]]
+        counted = [i for i in items if i in states and item_type(doc, _items_by_id(doc)[i]) != "question"]
+        out[ph["id"]] = {"items": items, "closed": all(states[i]["answer"] in DONE + ("skipped",) for i in counted), "blocked": None}
+    for ph in doc.get("phases") or []:
+        out[ph["id"]]["blocked"] = next((d for d in ph.get("dependsOn", []) if not _met(d, states, out)), None)
+    return out
+
+
+def _met(dep, states, phases):
+    return phases[dep]["closed"] if dep in phases else states.get(dep, {}).get("answer") in DONE
 
 
 def _unblocked(doc, iid):
@@ -428,6 +510,7 @@ def summary(doc):
     it says otherwise) or while its blockedBy hasn't had an unblock reply.
     """
     states = item_states(doc)
+    phases = phase_states(doc)
     out = {"open": 0, "blocked": 0, "counted": 0, "yes": 0, "reopened": 0, "approved": False, "tally": None}
     choices = doc.get("options") or {}
     tally = {c["value"]: 0 for c in choices.get("choices", [])}
@@ -452,11 +535,12 @@ def summary(doc):
         out["counted"] += 1
         if st["reopened"]:
             out["reopened"] += 1
-        blocked = (it.get("blockedBy") and not _unblocked(doc, it["id"])) or any(
-            states.get(d, {}).get("answer") != "yes" for d in deps)
+        phase = phases.get(phase_of(it["id"])) if phases else None
+        blocked = (it.get("blockedBy") and not _unblocked(doc, it["id"])) or not all(
+            _met(d, states, phases) for d in deps) or (phase and phase["blocked"])
         if blocked:
             out["blocked"] += 1
-        elif st["answer"] == "yes":
+        elif st["answer"] in DONE:
             out["yes"] += 1
         elif st["answer"] == "skipped":
             pass

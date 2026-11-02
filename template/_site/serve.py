@@ -11,7 +11,7 @@ Serves a directory exactly like `python3 -m http.server`, and adds:
   POST /_round-close       {"name": "<page-key>", "results_text": "..." (optional)}: archive the
                            current round by hand, same as an automatic rollover
 Page files (<folder>/<slug>.json in handoff.page/v1, written only through pagefile.py; see PAGE-FILE.md):
-  GET  /<folder>/<slug>                  the renderer shell, _site/page.html; an old <slug>.html URL redirects here
+  GET  /<folder>/<slug>                  the app shell, _site/app.html; an old <slug>.html URL redirects here
   GET  /_page/<folder>/<slug>            {page, states, summary, route, listening}, with an ETag for If-None-Match
   PUT  /_page/<folder>/<slug>/answers    {"base": rev, "answers": {id: {answer, note}}}: merge into the open round
   POST /_page/<folder>/<slug>/round      {"results": "..."}: Save round now
@@ -520,7 +520,7 @@ class Handler(SimpleHTTPRequestHandler):
         return super().do_HEAD()
 
     def _page_url(self):
-        """Serve the renderer shell for /<folder>/<slug>, or redirect a converted page's old .html URL.
+        """Serve the app shell for /<folder>/<slug>, or redirect a converted page's old .html URL.
         Anything that exists on disk is served as a file first."""
         p = self._path()
         if os.path.exists(self.translate_path(p)):
@@ -534,7 +534,7 @@ class Handler(SimpleHTTPRequestHandler):
             return True
         if p.endswith("/") or not page_file(self.root, rel):
             return False
-        with open(os.path.join(self.root, "_site", "page.html"), "rb") as f:
+        with open(os.path.join(self.root, "_site", "app.html"), "rb") as f:
             data = f.read()
         self._shell = True
         self.send_response(HTTPStatus.OK)
@@ -611,6 +611,7 @@ class Handler(SimpleHTTPRequestHandler):
         doc = pagefile.load(path)
         route = page_route(cfg, rel.split("/")[0], doc)
         self._etag_json({"page": doc, "states": pagefile.item_states(doc), "summary": pagefile.summary(doc),
+                         "phases": pagefile.phase_states(doc),
                          "route": route, "listening": is_listening(self.root, route["to"]), "diffs": page_diffs(doc)})
 
     def _note_taken(self, path, doc):
@@ -893,30 +894,58 @@ class Handler(SimpleHTTPRequestHandler):
 
     def _page_send(self, rel, path, req, cfg):
         kind = req.get("kind")
-        if kind not in ("send", "blocker"):
-            raise ValueError("kind must be send or blocker")
+        if kind not in ("send", "blocker", "email", "deck"):
+            raise ValueError("kind must be send, blocker, email or deck")
         doc = pagefile.load(path)
         ids = {it["id"] for it in doc["items"]}
         items = req.get("items")
-        if items is None:
+        extra = {}
+        if kind == "email":
+            if not doc.get("drafts"):
+                raise ValueError("this page doesn't take email drafts")
+            if not isinstance(items, list) or len(items) != 1:
+                raise ValueError("a draft is for exactly one item")
+            if not str(req.get("recipient") or "").strip():
+                raise ValueError("say who it's to")
+            if not str(req.get("ask") or req.get("change") or "").strip():
+                raise ValueError("say what you need from them")
+            extra = {k: req[k] for k in ("recipient", "ask", "tone", "change", "basedOn") if req.get(k)}
+        if items is None and kind != "deck":
             held, states = pagefile.held_items(doc), pagefile.item_states(doc)
             items = [i for i in doc["rounds"][-1]["answers"] if i in ids and i not in held and not states.get(i, {}).get("hidden")]
+            phase = req.get("phase")
+            if phase is not None:
+                info = pagefile.phase_states(doc).get(phase)
+                if info is None or info["blocked"]:
+                    raise ValueError("that phase can't be sent yet")
+                items = [i for i in items if i in info["items"]]
             if held and not items:
                 raise ValueError("everything answered is already sent")
-        if not isinstance(items, list) or any(i not in ids for i in items):
+        if kind != "deck" and (not isinstance(items, list) or any(i not in ids for i in items)):
             raise ValueError("items must be ids of items on this page")
         if kind == "blocker" and len(items) != 1:
             raise ValueError("a blocker sends exactly one item")
+        detail = None
+        if kind == "deck":
+            if not doc.get("deck"):
+                raise ValueError("this page doesn't build decks")
+            if not str(req.get("framing") or "").strip():
+                raise ValueError("say what you're trying to build")
+            detail = pagefile.deck_items(doc)
+            if not detail:
+                raise ValueError("a deck needs at least one Yes or Accept risk item")
+            items, extra = [d["id"] for d in detail], {"framing": req["framing"]}
         results = req.get("results") if isinstance(req.get("results"), str) else ""
-        return self._submit(rel, path, cfg, kind, items, results, now_local(cfg))
+        context = pagefile.email_context(doc, items[0]) if kind == "email" else None
+        return self._submit(rel, path, cfg, kind, items, results, now_local(cfg), extra, detail, context)
 
-    def _submit(self, rel, path, cfg, kind, items, results, when):
+    def _submit(self, rel, path, cfg, kind, items, results, when, extra=None, detail=None, context=None):
         """Record the submission on the page, then write it to the route's inbox atomically."""
         doc = pagefile.load(path)
         route = page_route(cfg, rel.split("/")[0], doc)
         if route["mode"] == "copy":
             return HTTPStatus.CONFLICT, {"error": "This page copies its results; it doesn't send them"}
-        sub = pagefile.add_submission(path, {"kind": kind, "to": route["to"], "items": items,
+        sub = pagefile.add_submission(path, {"kind": kind, "to": route["to"], "items": items, **(extra or {}),
                                              "file": submission_name(kind, rel, when)}, now=when.isoformat(timespec="seconds"))
         doc = pagefile.load(path)
         answers = doc["rounds"][-1]["answers"]
@@ -928,7 +957,11 @@ class Handler(SimpleHTTPRequestHandler):
                    "round": sub["round"], "rev": sub["rev"], "at": sub["at"],
                    "items": [{"id": i, "n": pos[i], "answer": (answers.get(i) or {}).get("answer", ""),
                               "note": (answers.get(i) or {}).get("note", ""), "blocker": kind == "blocker"} for i in items],
-                   "results": results}
+                   "results": results, **(extra or {})}
+        if detail is not None:
+            payload["items"] = detail
+        if context is not None:
+            payload["context"] = context
         idir = os.path.join(self.root, "_inbox", route["to"])
         try:
             os.makedirs(idir, exist_ok=True)

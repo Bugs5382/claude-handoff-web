@@ -1,6 +1,6 @@
 # Page API: page files over HTTP, and the inbox
 
-How the browser reads and answers a page file, and how a Send or a Blocker reaches an agent. `render.js` and
+How the browser reads and answers a page file, and how a Send or a Blocker reaches an agent. The app and
 `review.js` already use all of this; agents write page files with `page.py` (see `PAGE-FILE.md`) and read
 their inbox from disk. HTML pages that aren't converted yet keep using `/_save/` (`SAVE-API.md`).
 
@@ -21,7 +21,7 @@ their inbox from disk. HTML pages that aren't converted yet keep using `/_save/`
 
 | Method | Path | Body | Result |
 |---|---|---|---|
-| `GET` | `/<page>` | none | the page, drawn by `render.js` in `_site/page.html`; a converted page's old `.html` URL answers `301` to it |
+| `GET` | `/<page>` | none | the page, drawn by the app in `_site/app.html`; a converted page's old `.html` URL answers `301` to it |
 | `GET` | `/_page/<page>` | none | `200` with the page as JSON (below) and an `ETag`; `304` when `If-None-Match` matches |
 | `PUT` | `/_page/<page>/answers` | `{"base": rev, "answers": {id: {"answer": "...", "note": "..."}}}` | `200` with `{"rev": n}` |
 | `POST` | `/_page/<page>/round` | `{"results": "..."}` | `200` with `{"round": n}`: Save round now; `n` is the round just opened |
@@ -54,7 +54,7 @@ The body is `{"page", "states", "summary", "route", "listening", "diffs"}`:
 - `listening`: whether the route's agent is waiting on its inbox right now.
 - `diffs`: word-diff markup for diff items (`"<id>"`) and diff blocks (`"<id>/body/<n>"`), drawn by `diff.py`.
 
-`render.js` polls this every 10 seconds with `If-None-Match` and redraws only on a new version.
+The app polls this every 10 seconds with `If-None-Match` and redraws only on a new version.
 
 ### Answering
 
@@ -81,7 +81,7 @@ ls _inbox/ops/
 A Send records the submission on the page, then writes one file to the route's inbox, atomically. Only once the
 file is there do its items lock: the open round's `held` lists the Sends waiting (`awaiting` is the latest), and
 `PUT /answers` answers `400` for those items, and only those, until the agent's next `page.py set` or `reply`, or an unlock. A file that can't be written answers `500` and marks
-the submission `failed`, with nothing locked. A Blocker never locks. `items`
+the submission `failed`, with nothing locked. A Blocker never locks. On a round with phases, `"phase": "A"` sends just that phase, and a blocked phase answers `400`. `items`
 defaults to every item answered in the open round that isn't held or settled; a blocker sends exactly one. The answers and notes come
 from the page file, not from the request. A route whose `mode` is `copy` answers `409`: that page copies its
 results instead.

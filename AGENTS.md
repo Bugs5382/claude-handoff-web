@@ -28,14 +28,18 @@ attributes in `template/_site/README.md`, the save API in `template/_site/SAVE-A
 
 <!-- The directories that matter and what lives in each. Keep it short; point at the entry points. -->
 
-- `template/` - what `install.sh` copies: `_site/` (assets, `serve.py`, `build-review.py`, `schema.py`, `pagefile.py`, `pageindex.py`, `page.py`, `samples.py` and `samples/`, `render.js` and `page.html`, docs),
+- `template/` - what `install.sh` copies: `_site/` (assets, `serve.py`, `build-review.py`, `schema.py`, `pagefile.py`, `pageindex.py`, `page.py`, `samples.py` and `samples/`, `app.html` and the built `app/`, docs),
   `gen-index.py`, and the instance `CLAUDE.md`/`AGENTS.md`
+- `web/` - the React app (Vite, TypeScript): named elements in `web/src/elements/`. `npm run build` there writes
+  `template/_site/app/app.js`, which is committed, so installing needs only Python
+- `template/_site/GUIDE.md` - the operator guide; `template/CLAUDE.md` and `template/AGENTS.md` carry the rules a session reads in an instance. Keep both current when a page kind, item type, element or control changes
+- `template/custom/` - the empty folder that survives every update; `template/_site/CUSTOM.md` is its contract
 - `example/` - fake `site.json` and demo folders (a review page, a backlog, a checklist, the guide copies)
 - `docs/` - quick start, page types, operating notes
 - `memory/` - the drop-in memory file for Claude sessions
 - `install.sh` - installer (refuses git work trees)
 - `tests/` - end-to-end tests against a real `serve.py` in a temp folder; the browser suites drive `review.js`
-  and `render.js` in `chrome-headless-shell` when it's installed (no Dock icon on a Mac:
+  and the app in `chrome-headless-shell` when it's installed (no Dock icon on a Mac:
   `npx @puppeteer/browsers install chrome-headless-shell@stable --path ~/.cache/puppeteer`), else headless
   Chrome or Chromium, and skip when there's none; `CHROME` names one
 
@@ -44,7 +48,7 @@ attributes in `template/_site/README.md`, the save API in `template/_site/SAVE-A
 <!-- The exact commands. Pull these from package.json scripts (npm), the Taskfile (Go/Task), or
 pyproject (Python) so they stay accurate. -->
 
-- Build: none (plain files)
+- Build: `cd web && npm ci --ignore-scripts && npm run build`; commit `template/_site/app/`, and CI fails if it doesn't match
 - Test: `uv run pytest` (starts `serve.py` on a free port in a temp folder)
 - Lint: `uv run ruff check .` and `uv run mypy`
 - Try it: `./install.sh /tmp/site --example && python3 /tmp/site/_site/serve.py --directory /tmp/site`

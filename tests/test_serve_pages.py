@@ -50,7 +50,7 @@ def inbox(root, agent="ops"):
 def test_a_page_url_serves_the_renderer_shell(pages):
     root, base = pages
     status, body, headers = request(base + "/demo/design")
-    assert status == 200 and body == (root / "_site" / "page.html").read_bytes()
+    assert status == 200 and body == (root / "_site" / "app.html").read_bytes()
     assert headers.get("Cache-Control") == "no-store"
     assert request(base + "/demo/journeys/first-order")[0] == 200
     assert request(base + "/demo/missing")[0] == 404
@@ -330,3 +330,47 @@ def test_a_blocker_does_not_hold_the_page(pages):
     _, base = pages
     assert post(base, "/_page/demo/design/send", {"kind": "blocker", "items": ["s1"], "results": "R"})[0] == 200
     assert "awaiting" not in json.loads(request(base + "/_page/demo/design")[1])["page"]["rounds"][-1]
+
+
+def test_a_phase_sends_only_its_own_items_and_a_blocked_one_refuses(pages):
+    root, base = pages
+    pagefile.write_definition(root / "demo" / "plan.json", {
+        "schema": "handoff.page/v1", "kind": "round", "title": "Plan",
+        "phases": [{"id": "A", "title": "One"}, {"id": "B", "title": "Two", "dependsOn": ["A"]}],
+        "items": [{"id": "A1", "title": "a"}, {"id": "A2", "title": "b"}, {"id": "B1", "title": "c"}]})
+    put_json(base, "/_page/demo/plan/answers", {"answers": {"A1": {"answer": "yes"}}})
+    assert post(base, "/_page/demo/plan/send", {"kind": "send", "phase": "B", "results": "R"})[0] == 400
+    assert post(base, "/_page/demo/plan/send", {"kind": "send", "phase": "A", "results": "R"})[0] == 200
+    doc = json.loads(request(base + "/_page/demo/plan")[1])
+    assert doc["page"]["submissions"][0]["items"] == ["A1"] and doc["phases"]["B"]["blocked"] == "A"
+
+
+def test_a_draft_ask_lands_in_the_inbox_and_needs_instructions(pages):
+    root, base = pages
+    pagefile.write_definition(root / "demo" / "mail.json", {**DESIGN, "drafts": True})
+    assert post(base, "/_page/demo/mail/send", {"kind": "email", "items": ["s1"], "recipient": "Ops", "ask": " "})[0] == 400
+    assert post(base, "/_page/demo/mail/send", {"kind": "email", "items": ["s1"], "ask": "Confirm it"})[0] == 400
+    ask = {"kind": "email", "items": ["s1"], "recipient": "The network team", "ask": "Confirm it", "tone": "Plain"}
+    assert post(base, "/_page/demo/mail/send", ask)[0] == 200
+    name = next(n for n in inbox(root) if "mail" in n)
+    sub = json.loads((root / "_inbox" / "ops" / name).read_text())
+    assert sub["kind"] == "email" and sub["recipient"] == "The network team" and sub["ask"] == "Confirm it" and sub["tone"] == "Plain"
+    assert sub["context"]["title"] == "Purpose" and "changed" in sub["context"] and "comments" in sub["context"]
+    assert "awaiting" not in pagefile.load(root / "demo" / "mail.json")["rounds"][-1]
+    assert post(base, "/_page/demo/design/send", {"kind": "email", "items": ["s1"], "recipient": "x", "ask": "x"})[0] == 400
+
+
+def test_a_deck_goes_to_the_inbox_with_only_final_items_and_needs_a_framing(pages):
+    root, base = pages
+    pagefile.write_definition(root / "demo" / "plan.json", {
+        "schema": "handoff.page/v1", "kind": "round", "title": "Plan", "deck": True,
+        "items": [{"id": "s1", "title": "a"}, {"id": "s2", "title": "b"}]})
+    assert post(base, "/_page/demo/plan/send", {"kind": "deck", "framing": "x"})[0] == 400, "nothing final yet"
+    put_json(base, "/_page/demo/plan/answers", {"answers": {"s1": {"answer": "risk", "note": "Said so"}, "s2": {"answer": "no"}}})
+    assert post(base, "/_page/demo/plan/send", {"kind": "deck", "framing": " "})[0] == 400
+    assert post(base, "/_page/demo/plan/send", {"kind": "deck", "framing": "Timeline and risks"})[0] == 200
+    name = next(n for n in inbox(root) if "plan" in n)
+    sub = json.loads((root / "_inbox" / "ops" / name).read_text())
+    assert sub["kind"] == "deck" and sub["framing"] == "Timeline and risks"
+    assert [i["id"] for i in sub["items"]] == ["s1"] and sub["items"][0]["note"] == "Said so"
+    assert "awaiting" not in pagefile.load(root / "demo" / "plan.json")["rounds"][-1]

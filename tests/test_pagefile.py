@@ -11,6 +11,7 @@ SITE = Path(__file__).resolve().parent.parent / "template" / "_site"
 sys.path.insert(0, str(SITE))
 
 import pagefile  # noqa: E402
+import schema  # noqa: E402
 
 T0 = "2026-10-26T07:42:10-04:00"
 T1 = "2026-10-26T08:05:44-04:00"
@@ -522,3 +523,124 @@ def test_a_page_held_before_this_change_still_locks_what_its_send_carried(path):
     assert pagefile.held_items(pagefile.load(path)) == {"s1"}
     pagefile.reply(path, "_page", "ops", "Done.", now=T2)
     assert "held" not in pagefile.load(path)["rounds"][-1]
+
+
+def phased():
+    return {"schema": schema.SCHEMA, "kind": "round", "title": "Move", "phases": [
+        {"id": "A", "title": "Prepare", "goal": "Ready to move"},
+        {"id": "B", "title": "Cut over", "dependsOn": ["A"]},
+        {"id": "C", "title": "Tidy up"}],
+        "items": [{"id": "A1", "title": "One"}, {"id": "A2", "title": "Two"}, {"id": "B1", "title": "Three"},
+                  {"id": "C1", "title": "Four", "dependsOn": ["A2"]}]}
+
+
+def test_a_round_item_takes_accept_risk_with_a_required_note(path):
+    make(path, phased())
+    with pytest.raises(pagefile.PageError, match="Accept risk needs a note"):
+        pagefile.save_answers(path, {"A1": {"answer": "risk", "note": " "}}, by="me", now=T0)
+    pagefile.save_answers(path, {"A1": {"answer": "risk", "note": "We say so up front"}}, by="me", now=T0)
+    assert pagefile.item_states(pagefile.load(path))["A1"]["answer"] == "risk"
+
+
+def test_only_a_round_takes_accept_risk(path):
+    make(path)
+    with pytest.raises(pagefile.PageError):
+        pagefile.save_answers(path, {"s1": {"answer": "risk", "note": "x"}}, by="me", now=T0)
+
+
+def test_a_phase_is_blocked_until_the_one_it_depends_on_closes(path):
+    make(path, phased())
+    assert pagefile.phase_states(pagefile.load(path))["B"]["blocked"] == "A"
+    pagefile.save_answers(path, {"A1": {"answer": "yes"}, "A2": {"answer": "risk", "note": "Said so"}}, by="me", now=T0)
+    doc = pagefile.load(path)
+    phases = pagefile.phase_states(doc)
+    assert phases["A"]["closed"] is True and phases["B"]["blocked"] is None
+
+
+def test_a_step_can_block_an_item_in_a_later_phase(path):
+    make(path, phased())
+    doc = pagefile.load(path)
+    assert pagefile.summary(doc)["blocked"] == 2
+    pagefile.save_answers(path, {"A2": {"answer": "yes"}}, by="me", now=T0)
+    assert pagefile.summary(pagefile.load(path))["blocked"] == 1, "C1 is free, B1 still waits on phase A"
+
+
+def test_done_means_every_item_is_yes_or_accept_risk(path):
+    make(path, phased())
+    pagefile.save_answers(path, {"A1": {"answer": "yes"}, "A2": {"answer": "risk", "note": "Said so"},
+                                 "B1": {"answer": "yes"}, "C1": {"answer": "yes"}}, by="me", now=T0)
+    assert pagefile.summary(pagefile.load(path))["approved"] is True
+
+
+def test_a_sent_accept_risk_settles_like_a_yes(path):
+    make(path, phased())
+    pagefile.save_answers(path, {"A1": {"answer": "risk", "note": "Said so"}}, by="me", now=T0)
+    sent(path, ["A1"])
+    pagefile.reply(path, "_page", "ops", "Noted.", now=T2)
+    assert pagefile.item_states(pagefile.load(path))["A1"] == {"answer": "risk", "hidden": True, "reopened": None, "round": 1}
+
+
+def test_a_draft_comes_back_as_a_new_version_with_what_produced_it(path):
+    make(path, review(drafts=True))
+    first = pagefile.add_submission(path, {"kind": "email", "to": "ops", "items": ["s1"], "file": "e-{n}.json",
+                                           "recipient": "The network team", "ask": "Confirm the list", "tone": "Plain"}, now=T0)
+    assert pagefile.add_email(path, "s1", "ops", "Why", "First draft", request=first["n"], now=T1) == 1
+    second = pagefile.add_submission(path, {"kind": "email", "to": "ops", "items": ["s1"], "file": "e-{n}.json",
+                                            "recipient": "The network team", "change": "Shorter", "basedOn": 1}, now=T1)
+    assert pagefile.add_email(path, "s1", "ops", "Why", "Second", request=second["n"], now=T2) == 2
+    versions = pagefile.load(path)["emails"]["s1"]
+    assert [v["n"] for v in versions] == [1, 2] and versions[0]["body"] == "First draft"
+    assert versions[0]["to"] == "The network team" and versions[0]["ask"] == "Confirm the list" and versions[0]["tone"] == "Plain"
+    assert versions[1]["change"] == "Shorter" and versions[1]["basedOn"] == 1
+
+
+def test_an_email_gets_the_step_what_changed_between_rounds_and_the_comments(path):
+    make(path, review(drafts=True))
+    pagefile.save_answers(path, {"s1": {"answer": "changes", "note": "Two switches are missing"}}, by="me", now=T0)
+    sent(path, ["s1"])
+    pagefile.reply(path, "s1", "ops", "Re-verified.", action="fixed", now=T1)
+    changed = review(drafts=True)
+    changed["items"][0]["body"] = [{"p": "Now with the two switches."}]
+    pagefile.write_definition(path, changed, now=T2)
+    ctx = pagefile.email_context(pagefile.load(path), "s1")
+    assert ctx["title"] == "Purpose" and ctx["body"] == [{"p": "Now with the two switches."}]
+    assert ctx["changed"][0]["before"]["body"] == [{"p": "Why."}]
+    assert ctx["changed"][0]["after"]["body"] == [{"p": "Now with the two switches."}]
+    assert [c["note"] for c in ctx["comments"]] == ["Two switches are missing"]
+    assert ctx["replies"][0]["text"] == "Re-verified."
+
+
+def test_asking_for_a_draft_locks_nothing(path):
+    make(path, review(drafts=True))
+    pagefile.add_submission(path, {"kind": "email", "to": "ops", "items": ["s1"], "file": "e-{n}.json", "ask": "x"}, now=T0)
+    assert pagefile.held_items(pagefile.load(path)) == set()
+    pagefile.save_answers(path, {"s1": {"answer": "yes"}}, by="me", now=T1)
+
+
+def test_a_definition_cannot_write_drafts(path):
+    with pytest.raises(pagefile.PageError):
+        make(path, review(emails={}))
+
+
+def test_a_returned_draft_does_not_unlock_a_sent_item(path):
+    make(path, review(drafts=True))
+    pagefile.save_answers(path, {"s1": {"answer": "yes"}}, by="me", now=T0)
+    sent(path, ["s1"])
+    pagefile.add_email(path, "s2", "ops", "Hi", "Body", now=T2)
+    assert pagefile.held_items(pagefile.load(path)) == {"s1"}
+
+
+def test_a_deck_takes_only_final_yes_and_accept_risk_items(path):
+    make(path, phased())
+    pagefile.save_answers(path, {"A1": {"answer": "yes"}, "A2": {"answer": "risk", "note": "Said so"},
+                                 "B1": {"answer": "no", "note": "Not this"}}, by="me", now=T0)
+    doc = pagefile.load(path)
+    assert [(i["id"], i["answer"], i["note"]) for i in pagefile.deck_items(doc)] == [("A1", "yes", ""), ("A2", "risk", "Said so")]
+
+
+def test_a_deck_keeps_a_yes_from_an_earlier_round_and_drops_a_reopened_one(path):
+    make(path, phased())
+    pagefile.save_answers(path, {"A1": {"answer": "risk", "note": "Said so"}, "A2": {"answer": "yes"}}, by="me", now=T0)
+    pagefile.new_round(path, now=T1)
+    pagefile.reply(path, "A2", "ops", "Look again", action="reopen", reason="Moved", now=T2)
+    assert [(i["id"], i["note"]) for i in pagefile.deck_items(pagefile.load(path))] == [("A1", "Said so")]

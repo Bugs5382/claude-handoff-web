@@ -14,7 +14,7 @@ listening. 🔌 **Python standard library only:** no build step, no framework, n
 - ✅ **Reviews that stick:** Yes / No / Changes per section, approved items locked or hidden, reopened ones marked with the reason, and More, Mark unanswered Yes (or No) to fill in the rest at once.
 - 🎛️ **Your own choices:** a page can swap Yes / No / Changes for its own answers and a default, such as a backlog of Start or Hold.
 - 🧪 **Sign-off checklists:** ordered tests, How to test pop-outs with Copy buttons, dependencies, blockers, Skipped.
-- 🪟 **Links open in a new window:** a link to another page never replaces the one you're reviewing; `#` anchors stay on the page.
+- 🪟 **Links in an item open a new window:** they never replace the page you're reviewing, while browsing the site stays in the same tab.
 - 🖼️ **Pictures in one pop-out:** click a picture and it opens in one reused window; the next one swaps in, no pile of tabs.
 - 🧷 **A bar that tells you where you are:** Previous, Next, an Open IDs picker with a filter, and More; it turns green when every item is answered and points you back to the folder.
 - 🌗 **Light and dark:** IBM Plex type, self-hosted with no font CDN, and an Auto / Light / Dark toggle on every page.
@@ -53,6 +53,8 @@ Then open `http://127.0.0.1:8000/` (host and port come from `site.json`).
 - 🧱 **[Page types](docs/page-types.md):** every kind of page an agent makes, with a JSON example of each.
 - 🛠️ **[Operating the site](docs/operating.md):** config, endpoints, Stale, `_old/` pruning, the no-git rule.
 - 🗂️ **[Page files](template/_site/PAGE-FILE.md):** the JSON page format, the writer, `page.py` and the renderer.
+- 📘 **[Operator guide](template/_site/GUIDE.md):** what a person presses, what comes back and what Claude does, walked through with a network migration.
+- 🧩 **[Custom pages](template/_site/CUSTOM.md):** `custom/` survives every update, and its templates use the same elements with no build.
 - 🔌 **[Page API](template/_site/PAGE-API.md):** page files over HTTP, Send and Blocker, and the agent's inbox.
 - 💾 **[Save API](template/_site/SAVE-API.md):** how HTML pages that aren't converted yet store answers.
 - 🤖 **[Agent rules](template/AGENTS.md)** and a **[memory file](memory/handoff-web.md)** for Claude sessions.

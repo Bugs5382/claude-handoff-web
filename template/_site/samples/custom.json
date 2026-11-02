@@ -1,0 +1,24 @@
+{
+  "definition": {
+    "schema": "handoff.page/v1",
+    "kind": "round",
+    "title": "Sample: a custom page",
+    "summary": "Drawn by a template in custom/. Without it, this page draws as a plain round.",
+    "template": "progress-round",
+    "status": {
+      "state": "needs-you",
+      "priority": 7
+    },
+    "items": [
+      {
+        "id": "s1",
+        "title": "Tell the service desk about the cutover"
+      },
+      {
+        "id": "s2",
+        "title": "Book the change window"
+      }
+    ]
+  },
+  "steps": []
+}

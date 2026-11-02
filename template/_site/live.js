@@ -2,7 +2,7 @@
 //   Index mode (default; pages with #live): swap the card lists in place and light up New/Updated.
 //   Page mode (<script data-mode="page">, review pages): soft-reload when the HTML changes, but
 //   only when nobody is typing and nothing was clicked for 5 s; scroll position is kept.
-//   File mode (<script data-mode="file">, pages drawn from a page file): no polling, render.js redraws
+//   File mode (<script data-mode="file">, pages drawn from a page file): no polling, the app redraws
 //   those itself; only the picture pop-out and the theme.
 // Index cards carry data-key, data-sig, data-mtime and data-first (epoch seconds); the "New" and
 // "Updated" chips are worked out here so they age without a rebuild.
@@ -143,15 +143,19 @@ if (!window.siteTheme) { const t = document.createElement("script"); t.src = "/_
     }
   }, true);
 
-  // Links: a link to another page opens in a new window, so the page under review stays put. The
+  // Links: a link inside a step or item opens in a new window, so the page under review stays put.
+  // Browsing the site (index cards, folder links, the header and the bar) stays in this tab. The
   // target is set as the click happens, which covers cards and threads that are redrawn later.
   // Same-page # anchors, picture links (the viewer below), downloads, non-web links and links that
   // set their own target keep their behaviour.
   // new-window:begin
   window.siteLinks = (function () {
     const PICTURE = /\.(png|jpe?g|gif|webp|svg)$/i;
+    const ITEM = "[data-item], [data-review-question], .item, .thread, .pthread, .howto-body";
+    // An HTML review page's <h2> sections have no wrapper, so there the whole main column counts.
+    const inItem = a => !!a.closest(ITEM) || (!!a.closest("main") && !!a.ownerDocument.querySelector(".rvbar"));
     function opensNewWindow(a, here) {
-      if (!a || a.hasAttribute("download") || a.hasAttribute("target")) return false;
+      if (!a || a.hasAttribute("download") || a.hasAttribute("target") || !inItem(a)) return false;
       const raw = (a.getAttribute("href") || "").trim();
       if (!raw || raw[0] === "#") return false;
       let u;
@@ -184,7 +188,7 @@ if (!window.siteTheme) { const t = document.createElement("script"); t.src = "/_
   const PIC = /\.(png|jpe?g|gif|webp|svg)$/i;
   const PIC_PAGE = '<!doctype html><html lang="en"' + (document.documentElement.getAttribute("data-theme") ? ' data-theme="' + document.documentElement.getAttribute("data-theme") + '"' : "") +
     '><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">' +
-    '<title>Picture</title><link rel="stylesheet" href="' + location.origin + '/_site/site.css?v=29"></head><body class="pic-win"><div class="stage"><img id="pic" alt=""></div>' +
+    '<title>Picture</title><link rel="stylesheet" href="' + location.origin + '/_site/site.css?v=41"></head><body class="pic-win"><div class="stage"><img id="pic" alt=""></div>' +
     '<div class="bar"><span id="cap"></span><a id="full" target="_blank" rel="noopener">Full size</a></div></body></html>';
   function pictureLink(e) {
     if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return null;

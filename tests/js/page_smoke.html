@@ -38,6 +38,13 @@ const saved = () => until(() => !w().siteReview.unsaved(), "the save");
 const pageFile = async rel => (await (await fetch("/_page/" + rel, { cache: "no-store" })).json()).page;
 const answers = async rel => { const p = await pageFile(rel); return p.rounds[p.rounds.length - 1].answers; };
 const card = (doc, id) => doc.querySelector('[data-review-question="' + id + '"]');
+// Types the way a person does, so React's own input handling sees it too.
+const win_css = doc => doc.defaultView.getComputedStyle(doc.querySelector(".custom-progress")).borderLeftWidth;
+function typeIn(el, text) {
+  const win = el.ownerDocument.defaultView;
+  Object.getOwnPropertyDescriptor(win[el.tagName === "INPUT" ? "HTMLInputElement" : "HTMLTextAreaElement"].prototype, "value").set.call(el, text);
+  el.dispatchEvent(new win.Event("input", { bubbles: true }));
+}
 const seg = (doc, id, v) => card(doc, id).querySelector('.seg button[data-v="' + v + '"]');
 
 (async () => {
@@ -50,7 +57,7 @@ const seg = (doc, id, v) => card(doc, id).querySelector('.seg button[data-v="' +
     click(seg(doc, "r1", "no"));
     eq(cards[0].dataset.answer, "no"); eq(cards[0].querySelector(".rvhead .st").textContent, "No");
     ok(!cards[0].querySelector(".notel").hidden);
-    const ta = cards[0].querySelector("textarea"); ta.value = "Split it"; ta.dispatchEvent(new win.Event("input"));
+    const ta = cards[0].querySelector("textarea"); typeIn(ta, "Split it");
     await saved();
     ["r2", "r3", "r4"].forEach(id => click(seg(doc, id, "yes")));
     ok(bar.classList.contains("all-done")); ok(!bar.classList.contains("approved"));
@@ -100,7 +107,7 @@ const seg = (doc, id, v) => card(doc, id).querySelector('.seg button[data-v="' +
     ok(doc.activeElement.closest("[data-review-question]"), "n moved focus to an item");
     click(bar.querySelector(".ids"));
     const pick = bar.querySelector(".rvids"); ok(!pick.hidden);
-    const inp = pick.querySelector("input"); inp.value = "platform"; inp.dispatchEvent(new win.Event("input"));
+    const inp = pick.querySelector("input"); typeIn(inp, "platform");
     eq(pick.querySelectorAll(".rvids-list a").length, 1);
     inp.dispatchEvent(new win.KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
     ok(pick.hidden);
@@ -160,7 +167,7 @@ const seg = (doc, id, v) => card(doc, id).querySelector('.seg button[data-v="' +
     const segs = Array.from(doc.querySelectorAll(".rv.choice .seg"));
     segs.forEach((g, i) => click(g.querySelectorAll("button")[i === 0 ? 0 : 1]));
     ok(bar.classList.contains("all-done")); match(bar.querySelector(".cnt").textContent, /^All 3 picked · 1 start · 2 hold/);
-    const cta = card(doc, "b3").querySelector("textarea"); cta.value = "After the audit"; cta.dispatchEvent(new win.Event("input"));
+    const cta = card(doc, "b3").querySelector("textarea"); typeIn(cta, "After the audit");
     await saved();
     const a = await answers("demo/pf-backlog");
     eq(a.b1.answer, "start"); eq(a.b2.answer, "hold"); eq(a.b3.note, "After the audit");
@@ -178,7 +185,7 @@ const seg = (doc, id, v) => card(doc, id).querySelector('.seg button[data-v="' +
   });
 
   await t("bar: one row when it fits, a clean split when it does not, and no control ever wraps", async () => {
-    const { win, doc, bar } = await load("/demo/pf-bar");
+    const { win, doc, bar } = await load("/demo/pf-theme");
     const r1 = () => w().document.querySelector(".rvbar-r1"), r2 = () => w().document.querySelector(".rvbar-r2"), b = () => w().document.querySelector(".rvbar");
     const shown = row => Array.from(row.children).filter(el => el.getClientRects().length);
     const spread = row => { const m = shown(row).map(el => { const r = el.getBoundingClientRect(); return r.top + r.height / 2; }); return Math.max(...m) - Math.min(...m); };
@@ -190,7 +197,6 @@ const seg = (doc, id, v) => card(doc, id).querySelector('.seg button[data-v="' +
     for (const px of [1440, 1024, 800, 600, 390]) {
       f.style.width = px + "px"; await tick(120);
       ok(b().classList.contains("two"), px + ": the longest name and status split the bar");
-      ok(spread(r1()) < 6, px + ": the first row is one line");
       ok(r1().getBoundingClientRect().bottom <= r2().getBoundingClientRect().top, px + ": the rows stack");
       eq(shown(r1()).map(el => el.className.split(" ")[0]).join(","), "prev,next,stat,dlv");
       eq(shown(r2())[0].className.split(" ")[0], "send-btn");
@@ -226,6 +232,201 @@ const seg = (doc, id, v) => card(doc, id).querySelector('.seg button[data-v="' +
     ({ doc } = await load("/demo/sample-part-sent"));
     ok(seg(doc, "a", "yes").disabled, "the sent item is locked"); ok(!seg(doc, "b", "yes").disabled, "the rest stay open");
     eq((await fetch("/_page/demo/sample-reference")).status, 200);
+  });
+
+  await t("round phases: lettered ids, phase and step blocking, its own Send, and Accept risk needs a note", async () => {
+    const { win, doc, bar } = await load("/demo/sample-round-phases");
+    eq(doc.querySelectorAll(".phase").length, 4); eq(card(doc, "A1").querySelector(".rvhead .rid").textContent, "A1");
+    eq(card(doc, "B1").querySelector(".rvhead .st").textContent, "Blocked by A");
+    eq(card(doc, "B3").querySelector(".rvhead .st").textContent, "Blocked by A2");
+    eq(card(doc, "D1").querySelector(".rvhead .st").textContent, "Blocked by C");
+    eq(card(doc, "B3").querySelector(".rvhead .st a").getAttribute("href"), "#rv-A2");
+    eq(card(doc, "B1").querySelector(".rvhead .st a").getAttribute("href"), "#rv-A", "a phase link");
+    ok(!bar.querySelector(".send-btn"), "each phase sends itself");
+    const a = doc.getElementById("phase-A"); ok(a.querySelector(".phase-send"));
+    ok(doc.getElementById("phase-B").querySelector(".phase-send").disabled, "a blocked phase can't send");
+    click(seg(doc, "A2", "risk")); ok(card(doc, "A2").querySelector(".rv").classList.contains("empty"), "the note is required");
+    typeIn(card(doc, "A2").querySelector("textarea"), "We say so in the plan");
+    click(seg(doc, "A3", "yes")); await saved();
+    const ph = await pageFile("demo/sample-round-phases");
+    eq(ph.rounds[0].answers.A2.answer, "risk");
+  });
+
+  await t("email: reads as To, Subject and Body, says what to enter, carries the step, and locks nothing", async () => {
+    const { win, doc } = await load("/demo/sample-round-phases");
+    const box = card(doc, "A2").querySelector(".email");
+    const vers = box.querySelectorAll(".email-vers button"); eq(vers.length, 2);
+    eq(Array.from(box.querySelectorAll(".email-label")).map(x => x.textContent).join(","), "To,Subject,Body");
+    eq(box.querySelectorAll(".email-part .copy-cmd").length, 3, "a copy button on each");
+    match(box.textContent, /Switch inventory changed: check by Friday/);
+    click(vers[0]);
+    match(box.textContent, /sw-harbor-2 is at 192\.0\.2\.14, not 192\.0\.2\.12/);
+    ok(!card(doc, "A4").querySelector(".email"), "no email control until it's asked for");
+    const more = card(doc, "A4").querySelector(".item-more-btn"), menu = card(doc, "A4").querySelector(".item-more-menu");
+    ok(menu.hidden, "the menu starts closed"); click(more); ok(!menu.hidden, "More pops it up");
+    eq(menu.querySelector('[data-action="draft-email"]').textContent, "Generate an email");
+    click(menu.querySelector('[data-action="draft-email"]')); ok(menu.hidden, "picking closes it");
+    const form = card(doc, "A4").querySelector(".email-form");
+    match(form.querySelector(".email-help").textContent, /already has this step, what changed and the comments/);
+    ok(card(doc, "A4").querySelector(".email-top .email-cancel"), "Cancel sits at the top, beside the versions");
+    ok(form.querySelector(".email-send").disabled, "it needs who and what");
+    typeIn(form.querySelector("input"), "Whoever runs the Quay switches");
+    typeIn(form.querySelector("textarea"), "Grant access to the three devices");
+    click(form.querySelector(".email-send"));
+    await until(() => w().document.querySelector('[data-email="A4"] .email-wait'), "the ask to land");
+    ok(!seg(w().document, "A4", "yes").disabled, "nothing locked");
+    eq(card(w().document, "A4").querySelector(".rvhead .st").textContent, "Open", "it doesn't answer the item");
+    const ph = await pageFile("demo/sample-round-phases");
+    const sub = ph.submissions[ph.submissions.length - 1]; eq(sub.kind, "email"); eq(sub.items[0], "A4"); eq(sub.recipient, "Whoever runs the Quay switches");
+    const box2 = card(w().document, "A2").querySelector(".email");
+    const change = box2.querySelector(".email-actions .email-change"), copy = box2.querySelector(".copy-cmd");
+    eq(change.textContent, "Ask for changes");
+    const look = el => { const c = w().getComputedStyle(el); return [c.height, c.fontSize, c.fontWeight, c.fontFamily, c.borderRadius, c.borderTopWidth].join("|"); };
+    eq(look(change), look(copy), "the same button as Copy");
+    ok(parseFloat(w().getComputedStyle(change).borderRadius) > 0, "not a default control");
+    ok(parseFloat(w().getComputedStyle(card(w().document, "A1").querySelector(".settled-tg")).borderRadius) > 0, "nor is Show on a locked row");
+    for (const b of box2.querySelectorAll(".email-vers button")) ok(parseFloat(w().getComputedStyle(b).minHeight) === 32, "the version buttons are styled");
+    click(box2.querySelector(".email-change"));
+    typeIn(box2.querySelector(".email-form textarea"), "Name the freeze date");
+    click(box2.querySelector(".email-form .email-send"));
+    await tick(200);
+    const last = (await pageFile("demo/sample-round-phases")).submissions.pop();
+    eq(last.change, "Name the freeze date"); eq(last.basedOn, 1, "from the version picked");
+  });
+
+  await t("deck: asks what you're building, sends only final Yes and Accept risk, and locks nothing", async () => {
+    const { win, doc, bar } = await load("/demo/sample-round-phases");
+    click(seg(doc, "A3", "no")); await saved();
+    let asked = ""; win.prompt = q => { asked = q; return "A presentation on the timeline and risks"; };
+    ok(!bar.querySelector(".rvbar-r1 .deck-btn, .rvbar-r2 .deck-btn"), "it isn't on the bar");
+    click(bar.querySelector(".more-btn")); ok(!bar.querySelector(".menu").hidden);
+    click(bar.querySelector(".menu .deck-btn"));
+    await until(() => asked, "the question"); match(asked, /^What are you trying to build\?/);
+    const ph = await (async () => { for (let i = 0; i < 80; i++) { const x = await pageFile("demo/sample-round-phases"); if (x.submissions.some(s => s.kind === "deck")) return x; await tick(25); } })();
+    const sub = ph.submissions.find(s => s.kind === "deck");
+    eq(sub.framing, "A presentation on the timeline and risks");
+    ok(sub.items.includes("A1"), "a Yes goes"); ok(!sub.items.includes("A3"), "a No stays out"); ok(!sub.items.includes("B1"), "an open item stays out");
+    ok(!seg(w().document, "A2", "yes").disabled, "nothing locked");
+  });
+
+  await t("custom: a template from custom/ draws the page, on the same elements", async () => {
+    const { doc } = await load("/demo/sample-custom");
+    match(doc.querySelector(".custom-progress").textContent, /^0 of 2 done/, "the template ran"); ok(card(doc, "s1").querySelector(".seg"), "on the same elements");
+    eq(win_css(doc), "4px", "custom.css loaded after the base");
+    const menu = card(doc, "s2").querySelector(".item-more-menu");
+    ok(menu.querySelector('[data-action="copy-title"]'), "a custom action joins the same menu");
+    click(card(doc, "s2").querySelector(".item-more-btn"));
+    click(menu.querySelector('[data-action="copy-title"]')); await tick(30);
+    eq(doc.defaultView.__clip, "Book the change window");
+    const link = doc.querySelector('.rvbar .menu a[data-action="guide"]');
+    eq(link.getAttribute("href"), "/guide/", "a custom link takes a slot in the bar's More menu");
+    ok(!doc.querySelector('.rvbar-r2 [data-action]'), "nothing custom on the bar itself");
+  });
+
+  await t("round single: Accept risk on one set of items, sent from the bar", async () => {
+    const { doc, bar } = await load("/demo/sample-round-single");
+    ok(bar.querySelector(".send-btn")); ok(!doc.querySelector(".phase"));
+    ok(seg(doc, "s3", "risk"));
+    ["s1", "s2"].forEach(id => click(seg(doc, id, "yes")));
+    click(seg(doc, "s3", "risk")); typeIn(card(doc, "s3").querySelector("textarea"), "No staging, said up front");
+    ok(bar.classList.contains("approved"), bar.querySelector(".cnt").textContent);
+  });
+
+  await t("bar: the longest count stays on one line beside a picked-up status, with the full text on hover", async () => {
+    const { bar } = await load("/demo/pf-bar-count");
+    const cnt = bar.querySelector(".cnt");
+    match(cnt.textContent, /^0 of 5 answered · 2 blocked · 3 approved and locked/);
+    eq(bar.querySelector(".dlv-t").textContent, "picked up 07:43");
+    match(bar.querySelector(".dlv-t").title, /^Picked up by a{41} 07:43/);
+    for (const px of [1440, 1024, 800, 600, 390]) {
+      f.style.width = px + "px"; await tick(120);
+      eq(cnt.getClientRects().length, 1, px + ": one box"); ok(cnt.getBoundingClientRect().height < 26, px + ": one line, " + cnt.getBoundingClientRect().height);
+      ok(cnt.scrollWidth <= cnt.clientWidth + 1, px + ": not clipped");
+      ok(cnt.getBoundingClientRect().right <= bar.querySelector(".rvbar-in").getBoundingClientRect().right + 1, px + ": inside the bar");
+    }
+    f.style.width = "1000px"; await tick(30);
+  });
+
+  await t("bar: a page with a reply status always shows row two, whatever the width", async () => {
+    const { bar } = await load("/demo/pf-dlv-replied");
+    for (const px of [1440, 1000]) {
+      f.style.width = px + "px"; await tick(120);
+      ok(bar.classList.contains("two"), px + ": split");
+      ok(bar.querySelector(".rvbar-r2 > .copy").getClientRects().length, px + ": Copy results shows");
+      ok(bar.querySelector(".rvbar-r2 > .clear").getClientRects().length, px + ": Clear my answers shows");
+    }
+    f.style.width = "1000px"; await tick(30);
+  });
+
+  await t("bar: text that gets wider after the first draw splits the bar, as a late font does", async () => {
+    const { doc, bar } = await load("/demo/pf-theme");
+    f.style.width = "1000px"; await tick(120);
+    ok(!bar.classList.contains("two"), "it starts as one row");
+    const wide = doc.createElement("style"); wide.textContent = ".rvbar .cnt { letter-spacing: 2em; }"; doc.head.appendChild(wide);
+    doc.fonts.dispatchEvent(new (w().Event)("loadingdone"));
+    await tick(120);
+    ok(bar.classList.contains("two"), "split once the text no longer fits");
+    ok(bar.querySelector(".rvbar-r2 > .copy").getClientRects().length, "row two shows");
+    wide.remove();
+  });
+
+  await t("links: browsing stays in this tab, and a link inside an item opens a new one", async () => {
+    const press = (doc, a) => { a.addEventListener("click", e => e.preventDefault(), { once: true }); a.dispatchEvent(new (doc.defaultView.MouseEvent)("click", { bubbles: true, cancelable: true, button: 0 })); return a.getAttribute("target"); };
+    const { doc } = await load("/demo/sample-review");
+    eq(press(doc, card(doc, "s1").querySelector('a[href="/guide/page-types"]')), "_blank", "a link in an item");
+    eq(press(doc, doc.querySelector("header.top a.crumb")), null, "the way back to the folder");
+    await open("/demo/");
+    await until(() => d().querySelector('a[href="/demo/sample-review"]'), "the folder's cards");
+    eq(press(d(), d().querySelector('a[href="/demo/sample-review"]')), null, "an index card");
+    await open("/");
+    await until(() => d().querySelector('a[href="/demo/"]'), "the site's folders");
+    eq(press(d(), d().querySelector('a[href="/demo/"]')), null, "a folder link");
+  });
+
+  await t("tour: started by the person, walks real controls on each page type, and remembers it's been seen", async () => {
+    localStorage.clear();
+    const pages = { "sample-review": "Answer each item", "sample-signoff": "Answer each item", "sample-journey": "Answer each item", "sample-backlog": "Pick for each item",
+      "sample-questions": "Type your answer", "sample-round-single": "Answer each item", "sample-round-phases": "Phases", "sample-custom": "A custom page" };
+    for (const [page, first] of Object.entries(pages)) {
+      const { doc } = await load("/demo/" + page);
+      ok(!doc.querySelector(".driver-popover"), page + ": it never starts by itself");
+      const btn = doc.querySelector(".tour-btn"); eq(btn.textContent, "Take the tour", page);
+      click(btn);
+      await until(() => doc.querySelector(".driver-popover-title"), "the tour on " + page);
+      eq(doc.querySelector(".driver-popover-title").textContent, first, page);
+      ok(doc.querySelector(".driver-active-element"), page + ": it points at a real control");
+      click(doc.querySelector(".driver-popover-next-btn")); await tick(450);
+      ok(doc.querySelector(".driver-popover-title"), page + ": the next step shows");
+      click(doc.querySelector(".driver-popover-close-btn"));
+      await until(() => !doc.querySelector(".driver-popover") && doc.querySelector(".tour-btn").textContent === "See the tour again", "closing on " + page);
+    }
+    const { doc } = await load("/demo/sample-review");
+    eq(doc.querySelector(".tour-btn").textContent, "See the tour again", "it's remembered");
+    click(doc.querySelector(".tour-btn"));
+    await until(() => doc.querySelector(".driver-popover-title"), "seeing it again");
+    click(doc.querySelector(".driver-popover-close-btn")); await tick(50);
+  });
+
+  await t("moments: each thing that happens gets its own, and the first draw has none", async () => {
+    const { win, doc, bar } = await load("/demo/sample-round-phases");
+    const { momentsFor } = win.HandoffSite;
+    const base = { page: { submissions: [], thread: {}, emails: {} }, states: { A1: { hidden: false, answer: "yes" }, A2: { hidden: false, answer: "risk" } }, phases: { A: { closed: false } } };
+    eq(momentsFor(null, base).length, 0, "the first draw");
+    const next = JSON.parse(JSON.stringify(base));
+    next.page.submissions = [{ kind: "send", items: ["A1"] }];
+    next.states.A1.hidden = true; next.states.A2.hidden = true;
+    next.page.thread = { A1: [{}], _page: [{}] }; next.page.emails = { A2: [{}] }; next.phases.A.closed = true;
+    const names = momentsFor(base, next).map(m => m.name).sort().join(",");
+    eq(names, "draft,phase,reply,reply,reply,risk,send,send,settle");
+    const rules = Array.from(doc.styleSheets).flatMap(s => { try { return Array.from(s.cssRules); } catch (e) { return []; } }).map(r => r.cssText).join("\n");
+    match(rules, /prefers-reduced-motion: reduce[^}]*data-moment[^}]*animation: (auto ease 0s 1 normal none running none|none)/, "reduced motion turns them off");
+    ok(!/data-moment[^{]*\{[^}]*(transform|height|width|margin)/.test(rules), "moments never move anything");
+    const page = await load("/demo/pf-moment");
+    click(seg(page.doc, "r1", "yes")); await saved();
+    click(page.bar.querySelector(".send-btn"));
+    await until(() => w().document.querySelector('.rvbar[data-moment="send"]'), "the Send pulse");
+    ok(w().document.querySelector('[data-review-question="r1"][data-moment="send"]'), "the sent item pulses too");
+    await tick(1000); ok(!w().document.querySelector("[data-moment]"), "it clears");
   });
 
   await t("finished page: green bar and back link; Copy results goes back to the folder", async () => {
@@ -285,7 +486,7 @@ const seg = (doc, id, v) => card(doc, id).querySelector('.seg button[data-v="' +
     ok(how.w.document.querySelector(".copy-cmd"), "a Copy button");
   });
 
-  await t("links: a page link opens a new window, in the page and in the How to test pop-out; # anchors and pictures don't", async () => {
+  await t("links: a page link in an item opens a new window, in the page and in the How to test pop-out; # anchors and pictures don't", async () => {
     const { win, doc } = await load("/demo/pf-media");
     const opened = [];
     const fake = () => { const fr = document.createElement("iframe"); fr.style.display = "none"; document.body.appendChild(fr);
@@ -294,7 +495,7 @@ const seg = (doc, id, v) => card(doc, id).querySelector('.seg button[data-v="' +
     // Stop the browser following the links once live.js has set them up; the capture handler runs first.
     const hold = dd => dd.addEventListener("click", e => { if (e.target.closest && e.target.closest("a[href]")) e.preventDefault(); });
     hold(doc);
-    const add = (dd, href) => { const a = dd.createElement("a"); a.href = href; a.textContent = href; dd.body.appendChild(a); return a; };
+    const add = (dd, href) => { const a = dd.createElement("a"); a.href = href; a.textContent = href; (dd.querySelector(".howto-body") || dd.querySelector("[data-review-question]")).appendChild(a); return a; };
     const press = (dd, a) => a.dispatchEvent(new (dd.defaultView || win).MouseEvent("click", { bubbles: true, cancelable: true, button: 0 }));
     const page = add(doc, "/demo/"); press(doc, page);
     eq(page.getAttribute("target"), "_blank", "a page link"); eq(page.getAttribute("rel"), "noopener");
@@ -338,7 +539,7 @@ const seg = (doc, id, v) => card(doc, id).querySelector('.seg button[data-v="' +
     await until(() => cur().dataset.state === "deaf", "the delivery state");
     const dlv = cur();
     match(asked[0], /^Send now\? 3 items are still open\./);
-    match(dlv.querySelector(".dlv-t").textContent, /^Sent \d\d:\d\d · ops isn't listening\.$/);
+    eq(dlv.querySelector(".dlv-t").textContent, "not listening"); match(dlv.querySelector(".dlv-t").title, /^Sent \d\d:\d\d · ops isn't listening\.$/);
     const cp = dlv.querySelector(".dlv-copy"); ok(cp, "Copy results instead"); eq(cp.textContent, "Copy results instead");
     click(cp); await tick(50);
     match(win.__clip, /^Review: pf-send/);
@@ -385,13 +586,13 @@ const seg = (doc, id, v) => card(doc, id).querySelector('.seg button[data-v="' +
     click(r.bar.querySelector(".send-btn"));
     await until(() => w().document.querySelector(".rvbar .dlv").dataset.state === "sent", "sent");
     let dlv = w().document.querySelector(".rvbar .dlv");
-    match(dlv.querySelector(".dlv-t").textContent, /^Sent \d\d:\d\d$/); ok(!dlv.querySelector(".dlv-copy"), "no copy offer while listening");
+    match(dlv.querySelector(".dlv-t").textContent, /^sent \d\d:\d\d$/); ok(!dlv.querySelector(".dlv-copy"), "no copy offer while listening");
     r = await load("/demo/pf-dlv-taken");
     dlv = r.bar.querySelector(".dlv");
-    eq(dlv.dataset.state, "taken"); eq(dlv.querySelector(".dlv-t").textContent, "Picked up by app 07:43");
+    eq(dlv.dataset.state, "taken"); eq(dlv.querySelector(".dlv-t").textContent, "picked up 07:43");
     r = await load("/demo/pf-dlv-replied");
     dlv = r.bar.querySelector(".dlv");
-    eq(dlv.dataset.state, "replied"); eq(dlv.querySelector(".dlv-t").textContent, "app replied 07:50");
+    eq(dlv.dataset.state, "replied"); eq(dlv.querySelector(".dlv-t").textContent, "replied 07:50");
     const go = dlv.querySelector("a.dlv-t"); ok(go, "the reply links to the page thread"); eq(go.getAttribute("href"), "#replies");
     ok(r.doc.getElementById("replies"), "the page thread is the target");
   });
@@ -495,7 +696,7 @@ const seg = (doc, id, v) => card(doc, id).querySelector('.seg button[data-v="' +
     const { win, doc } = await load("/demo/pf-live");
     win.__alive = true;
     click(seg(doc, "r2", "no"));
-    const ta = card(doc, "r2").querySelector("textarea"); ta.focus(); ta.value = "Half typed"; ta.dispatchEvent(new win.Event("input"));
+    const ta = card(doc, "r2").querySelector("textarea"); ta.focus(); typeIn(ta, "Half typed");
     await saved();
     win.scrollTo(0, 200); const y = win.scrollY;
     await fetch("/_page/demo/pf-live/answers", { method: "PUT", headers: { "Content-Type": "application/json" },

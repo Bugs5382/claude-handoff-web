@@ -94,9 +94,9 @@ completes, set it to `done` and it moves to "Completed". To retire a page, the o
   review.js adds a Diff | Final switch per block (and Diff for all | Final for all when there are several).
   See `docs/page-types.md` "(k) Diff item".
 - Pages without review.js (checklists, indexes) load `/_site/live.js` (`data-mode="page"` on non-index pages).
-- Page files (`<folder>/<slug>.json`, see `PAGE-FILE.md`) need none of this: `render.js` draws them into this
+- Page files (`<folder>/<slug>.json`, see `PAGE-FILE.md`) need none of this: the React app draws them into this
   same markup and loads `review.js`, which then saves through the page file; `live.js` runs in `data-mode="file"`
-  there (the picture pop-out and new-window links only), because `render.js` does the live redraw.
+  there (the picture pop-out and new-window links only), because the app does the live redraw.
 - Element styles apply only under `<body class="site">`; design mocks can load site.css without losing their look.
 
 ## Rounds and history
@@ -129,7 +129,7 @@ are a segmented group of real buttons (44 px; pressing the chosen one again clea
 for Changes (required) and No (optional), or with "Add a note".
 
 The bar is one row when everything fits: Previous, Next, "Open IDs (n) ▴", the status dot and text, the Saved
-time, Send to <agent>, the delivery state, More. When anything would be cut, it splits into two rows. The first:
+time, Send to <agent>, the delivery state, More. When anything would be cut, or a delivery state is showing, it splits into two rows. The count always stays on one line, and the delivery state is short, such as "picked up 21:46", with the full text on hover. The first:
 Previous, Next, the status, and the delivery state or the Saved time. The second: Send, Copy results, Clear my
 answers, Open IDs, More. On a phone it's always two rows and the second may wrap between controls. No control
 wraps inside itself: long text ends in an ellipsis.
@@ -177,13 +177,21 @@ browser without JavaScript keep the plain link (a new tab). Keep pictures in a s
 A subfolder with no `.html` file in it is never a page, so the index leaves it out; it needs no
 `_status.json` entry.
 
+## Moments
+
+A short glow marks what just happened on a page file: a Send, a reply landing, an item locking into history, Accept risk settling, a phase closing, or an email version arriving. They only change colour, so nothing moves. They skip while someone's typing, and under `prefers-reduced-motion`.
+
+## Guided tour
+
+Each page file has a Take the tour button in its header. It runs [driver.js](https://driverjs.com) over the page's real controls, one tour per page kind, and is bundled in the app with no CDN. It never starts by itself. Once it's been seen, the browser remembers and the button says See the tour again. `CUSTOM.md` shows how a custom page adds its steps.
+
 ## Links (new window)
 
-`live.js` makes every link to another page open in a new window (`target="_blank"`, `rel="noopener"`), set
-as the click happens, so cards and threads drawn later are covered too. It runs on index pages, review pages,
-page files, inside same-origin frames and inside the How to test pop-out. Same-page `#` anchors, picture links
-(the pop-out above), `download` links, `mailto:` and other non-web links, and any link that sets its own
-`target` keep their behaviour. Writing `target="_blank"` into a page by hand is never needed.
+`live.js` makes a link inside a step or item open in a new window (`target="_blank"`, `rel="noopener"`), set
+as the click happens, so cards and threads drawn later are covered too. That covers item cards, threads, the
+How to test pop-out and the main column of an HTML review page. Browsing the site stays in the same tab: index
+cards, folder links, the header and the bar. Same-page `#` anchors, picture links (the pop-out above), `download`
+links, `mailto:` and other non-web links, and any link that sets its own `target` keep their behaviour. Writing `target="_blank"` into a page by hand is never needed.
 
 ## Wording
 

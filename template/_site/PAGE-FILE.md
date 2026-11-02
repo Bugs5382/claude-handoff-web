@@ -15,7 +15,7 @@ draws it. HTML pages keep working as they always have.
 
 ## Viewing a page
 
-A page file is shown at `/<folder>/<slug>`. The server answers with `_site/page.html`, and `_site/render.js`
+A page file is shown at `/<folder>/<slug>`. The server answers with `_site/app.html`, and the React app in `_site/app/` (built from `web/` in the repo)
 draws the page from `GET /_page/<folder>/<slug>` into the same markup an HTML page uses, so `site.css` and
 `review.js` work unchanged:
 
@@ -31,7 +31,7 @@ draws the page from `GET /_page/<folder>/<slug>` into the same markup an HTML pa
   are drawn by the server with `diff.py`, with the Diff | Final switch;
 - `reference` and `status` pages have no answer bar.
 
-`review.js` saves through the renderer (`PUT /_page/.../answers`, only the items this tab changed), and
+The app saves through `PUT /_page/.../answers` (, only the items this tab changed), and
 History lists the page's closed rounds. When the page's route sends, Blocker becomes "Blocker: send now" and
 the bar gains "Send to <agent>" with the latest send's delivery state: "Sent 07:42", "Picked up by app 07:43",
 "app replied 07:50: ..." (a link to the page's replies), or "app isn't listening." with a Copy results instead
@@ -61,12 +61,18 @@ The definition keys sit at the top level, and the server keys are managed by `pa
 | Key | Written by | Meaning |
 |---|---|---|
 | `schema` | definition | always `handoff.page/v1` |
-| `kind` | definition | `review`, `checklist`, `journey`, `backlog`, `questions`, `reference` or `status` |
+| `kind` | definition | `review`, `checklist`, `journey`, `backlog`, `questions`, `reference`, `status` or `round` |
 | `title`, `summary` | definition | the heading and the line under it |
 | `build`, `reset` | definition | the build under test and a reset counter; changing either opens a new round |
 | `status` | definition | the index card: `{"state": "needs-you", "note": "...", "chips": [...], "priority": 20}` |
 | `options` | definition | a backlog's choices: `{"choices": [{"value": "start", "label": "Start"}, ...], "default": "hold"}` |
 | `items` | definition | the content, in order |
+| `phases` | definition | a round's phases: `[{"id": "A", "title": "...", "goal": "...", "dependsOn": ["A"]}]`; item ids become `A1`, `A2`, `B1` |
+| `deck` | definition | `true` adds Build a deck to the bar's More menu |
+| `template` | definition | a template from `custom/custom.js`, see `CUSTOM.md` |
+| `drafts` | definition | `true` adds Draft email to every item |
+| `emails` | server | versions of each item's email, numbered from 1 |
+| `revisions` | server | each item's earlier definitions: `{"at", "round", "before", "after"}` |
 | `route` | operator | `{"to": "ops", "mode": "send"}`; set with `set_route`, never in a definition |
 | `rev` | server | 1 on create, up by 1 on every write |
 | `rounds` | server | every round of answers, numbered from 1 |
@@ -98,6 +104,18 @@ Answers are keyed by id, so reordering items never moves an answer.
 Answerable items also take `answers` (their own set, such as `["yes", "no"]`), `skip: true` (adds Skipped),
 `dependsOn` (ids on the same page) and `blockedBy` (free text), and any item can take `section`, a group
 heading.
+
+### Generating an email
+
+Use this when someone outside the page needs telling: an inventory step was re-verified and the data changed, so the network team needs to know what's different, or some devices couldn't be reached, so a note goes to whoever can grant access.
+
+With `"drafts": true`, every item has Generate an email in its More button, whatever its answer. The person says who it's to, what they need from them, and the tone. That goes to the agent's inbox the same way as a Send, as a submission of kind `email`, with a `context` holding the step: its title and body, what changed between rounds, and the comments and replies, so the person doesn't retype any of it. It doesn't answer the item or lock it.
+
+The agent answers with `page.py email`. The email appears in the step as To, Subject and Body, each with a copy button, as a new version. Earlier versions stay readable. Ask for changes gets another version, sending `change` and `basedOn`.
+
+### Building a deck
+
+With `"deck": true`, the bar's More menu has Build a deck, which runs only when it's pressed. It asks what the person is trying to build, and sends that as `framing` in a submission of kind `deck`. The deck's content is only the items whose final answer is Yes or Accept risk, each with its title, body and note. It locks nothing. The agent builds the deck, saves it beside the page and replies with the link, such as `page.py reply app/plan _page --from app "[The deck](/app/plan-deck.pptx)"`. On a page that only copies, the button copies the same content instead.
 
 ### Body blocks
 
@@ -151,6 +169,7 @@ Agents use `page.py`; it writes through `pagefile.py`, so it takes the same lock
 | `page.py check app/design` | validates a page or a `.json` file; errors give the JSON path, exit 1 on any |
 | `page.py wait app` | blocks until a submission is in `_inbox/app/`, prints the files (blockers first) and exits |
 | `page.py hook app` | prints one line when the inbox has untaken files or nothing is listening |
+| `page.py email app/design s1 --from app --request 4 --subject "Why" "Dear team,..."` | an email comes back as the next version on that item; `--request` is the submission that asked, so the version keeps who it's to and what was asked |
 | `page.py samples demo --route app` | loads the sample pages into a folder as `sample-*`; run it again to reset them |
 | `page.py convert app/design.html` | turns a review.js page into a page file next to it (`--print` shows the definition only) |
 

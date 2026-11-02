@@ -1,4 +1,4 @@
-"""Smoke tests for JSON pages in a real browser: render.js draws each page file into today's DOM, review.js answers
+"""Smoke tests for JSON pages in a real browser: the app draws each page file into today's DOM, review.js answers
 it, and every feature of the HTML pages still works (design section 11), plus Send, the delivery state, the thread,
 Restart and a live redraw. Drives headless Chrome against a real serve.py; skipped when no Chrome or Chromium is
 installed. The scenarios live in tests/js/page_smoke.html."""
@@ -37,13 +37,24 @@ SCENARIOS = [
     "backlog: default choice, picking every item turns the bar green, saved",
     "theme toggle works on a rendered page",
     "samples: every sample page draws, and the states they show are the ones they claim",
+    "round phases: lettered ids, phase and step blocking, its own Send, and Accept risk needs a note",
+    "email: reads as To, Subject and Body, says what to enter, carries the step, and locks nothing",
+    "deck: asks what you're building, sends only final Yes and Accept risk, and locks nothing",
+    "custom: a template from custom/ draws the page, on the same elements",
+    "round single: Accept risk on one set of items, sent from the bar",
+    "bar: a page with a reply status always shows row two, whatever the width",
+    "bar: text that gets wider after the first draw splits the bar, as a late font does",
+    "links: browsing stays in this tab, and a link inside an item opens a new one",
+    "tour: started by the person, walks real controls on each page type, and remembers it's been seen",
+    "bar: the longest count stays on one line beside a picked-up status, with the full text on hover",
+    "moments: each thing that happens gets its own, and the first draw has none",
     "bar: one row when it fits, a clean split when it does not, and no control ever wraps",
     "finished page: green bar and back link; Copy results goes back to the folder",
     "copy results keeps the Copy results format",
     "mark unanswered Yes fills only open items and saves them",
     "diff item: server-drawn word diff with the Diff | Final switch",
     "pictures open in the picture pop-out; How to test opens its pop-out with Copy buttons",
-    "links: a page link opens a new window, in the page and in the How to test pop-out; # anchors and pictures don't",
+    "links: a page link in an item opens a new window, in the page and in the How to test pop-out; # anchors and pictures don't",
     "history lists closed rounds; Save round now opens the next round",
     "send: partial confirm, an inbox file, and the delivery state",
     "thread: earlier answers and replies show under the item",
@@ -147,7 +158,7 @@ def write_pages(root):
     pagefile.reply(t2, "r1", "app", "Ready to look at again.", action="reopen", reason="fixed in #70", now="2026-10-26T08:03:00-04:00")
     pagefile.reply(t2, "r1", "app", "The build is up.", action="unblock", now="2026-10-26T08:04:00-04:00")
     pagefile.reply(t2, "r1", "app", "The tablet layout stays as it is.", action="wontfix", now="2026-10-26T08:05:00-04:00")
-    for name in ("pf-dlv-sent", "pf-dlv-taken", "pf-dlv-replied", "pf-held", "pf-held-deaf", "pf-held-after", "pf-reopened"):
+    for name in ("pf-moment", "pf-dlv-sent", "pf-dlv-taken", "pf-dlv-replied", "pf-held", "pf-held-deaf", "pf-held-after", "pf-reopened"):
         w(demo / f"{name}.json", review(name), now=T0)
         pagefile.set_route(demo / f"{name}.json", "app", "send")
     pagefile.set_route(demo / "pf-held-deaf.json", "nobody", "send")
@@ -162,6 +173,15 @@ def write_pages(root):
     pagefile.add_submission(long, {"kind": "send", "to": "a" * 41, "file": "l-{n}.json"}, now=T0)
     told = "Everything in this round is fixed, and here is a very long account of how. " * 6
     pagefile.reply(long, "_page", "a" * 41, told, now="2026-10-26T08:00:00-04:00")
+    count = demo / "pf-bar-count.json"
+    w(count, {"schema": "handoff.page/v1", "kind": "review", "title": "Count", "items": [
+        {"id": f"k{n}", "title": f"Item {n}", **({"dependsOn": ["k9"]} if n in (1, 2) else {})} for n in range(1, 11)]}, now=T0)
+    pagefile.set_route(count, "a" * 41, "send")
+    pagefile.save_answers(count, {f"k{n}": {"answer": "yes", "note": ""} for n in (6, 7, 8)}, by="Sam", now=T0)
+    pagefile.add_submission(count, {"kind": "send", "to": "a" * 41, "items": ["k6", "k7", "k8"], "file": "c-{n}.json"}, now=T0)
+    pagefile.mark_taken(count, 1, at="2026-10-26T07:43:00-04:00")
+    pagefile.write_definition(count, {"schema": "handoff.page/v1", "kind": "review", "title": "Count", "summary": "Back", "items": [
+        {"id": f"k{n}", "title": f"Item {n}", **({"dependsOn": ["k9"]} if n in (1, 2) else {})} for n in range(1, 11)]}, now=T0)
     reo = demo / "pf-reopened.json"
     pagefile.save_answers(reo, {"r1": {"answer": "yes", "note": ""}}, by="Sam", now=T0)
     pagefile.reply(reo, "r1", "app", "Look again.", action="reopen", reason="numbers moved", now="2026-10-26T08:00:00-04:00")
@@ -194,6 +214,7 @@ def smoke(tmp_path_factory):
     shutil.copytree(ROOT / "template", root)
     for d in ("demo", "guide"):
         shutil.copytree(ROOT / "example" / d, root / d)
+    shutil.copytree(ROOT / "example" / "custom", root / "custom", dirs_exist_ok=True)
     shutil.copy(ROOT / "example" / "site.json", root / "site.json")
     shutil.copy(HARNESS, root / "harness.html")
     write_pages(root)

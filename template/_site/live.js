@@ -143,15 +143,19 @@ if (!window.siteTheme) { const t = document.createElement("script"); t.src = "/_
     }
   }, true);
 
-  // Links: a link to another page opens in a new window, so the page under review stays put. The
+  // Links: a link inside a step or item opens in a new window, so the page under review stays put.
+  // Browsing the site (index cards, folder links, the header and the bar) stays in this tab. The
   // target is set as the click happens, which covers cards and threads that are redrawn later.
   // Same-page # anchors, picture links (the viewer below), downloads, non-web links and links that
   // set their own target keep their behaviour.
   // new-window:begin
   window.siteLinks = (function () {
     const PICTURE = /\.(png|jpe?g|gif|webp|svg)$/i;
+    const ITEM = "[data-item], [data-review-question], .item, .thread, .pthread, .howto-body";
+    // An HTML review page's <h2> sections have no wrapper, so there the whole main column counts.
+    const inItem = a => !!a.closest(ITEM) || (!!a.closest("main") && !!a.ownerDocument.querySelector(".rvbar"));
     function opensNewWindow(a, here) {
-      if (!a || a.hasAttribute("download") || a.hasAttribute("target")) return false;
+      if (!a || a.hasAttribute("download") || a.hasAttribute("target") || !inItem(a)) return false;
       const raw = (a.getAttribute("href") || "").trim();
       if (!raw || raw[0] === "#") return false;
       let u;

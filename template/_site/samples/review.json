@@ -21,6 +21,9 @@
               "No downtime for customers",
               "Same database"
             ]
+          },
+          {
+            "p": "The plan is in the [guide](/guide/page-types)."
           }
         ]
       },

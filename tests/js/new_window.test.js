@@ -10,13 +10,15 @@ assert.strictEqual(typeof links.opensNewWindow, "function");
 assert.strictEqual(typeof links.hook, "function");
 
 const here = new URL("http://127.0.0.1:5390/ops/review/?x=1");
-function link(href, attrs = {}, img = false) {
-  const a = { attrs: Object.assign({ href }, attrs), href: new URL(href, here).href, img };
+// Inside an item unless a test says otherwise: where the link sits decides as much as where it goes.
+function link(href, attrs = {}, img = false, place = "item") {
+  const a = { attrs: Object.assign({ href }, attrs), href: new URL(href, here).href, img, place };
   a.getAttribute = k => (k in a.attrs ? a.attrs[k] : null);
   a.hasAttribute = k => k in a.attrs;
   a.setAttribute = (k, v) => { a.attrs[k] = String(v); };
   a.querySelector = sel => (sel === "img" && a.img ? {} : null);
-  a.closest = sel => (sel === "a[href]" ? a : null);
+  a.closest = sel => (sel === "a[href]" || (a.place === "item" && sel.includes("[data-item]")) || (["item", "reviewMain"].includes(a.place) && sel === "main") ? a : null);
+  a.ownerDocument = { querySelector: sel => (sel === ".rvbar" && a.place === "reviewMain" ? {} : null) };
   return a;
 }
 let fails = 0;
@@ -27,6 +29,10 @@ t("another page on the site opens a new window", () => assert.strictEqual(opens(
 t("a relative page link opens a new window", () => assert.strictEqual(opens(link("../backlog/")), true));
 t("an outside site opens a new window", () => assert.strictEqual(opens(link("https://github.com/Bugs5382")), true));
 t("the same page with a different query opens a new window", () => assert.strictEqual(opens(link("/ops/review/?x=2")), true));
+t("an index card stays in this tab", () => assert.strictEqual(opens(link("/demo/page", {}, false, "index")), false));
+t("a folder or nav link stays in this tab", () => assert.strictEqual(opens(link("/demo/", {}, false, "header")), false));
+t("an outside link on an index stays in this tab", () => assert.strictEqual(opens(link("https://github.com/Bugs5382", {}, false, "index")), false));
+t("a link in an HTML review section opens a new window", () => assert.strictEqual(opens(link("/ops/", {}, false, "reviewMain")), true));
 t("a # anchor stays on the page", () => assert.strictEqual(opens(link("#s2")), false));
 t("this page's own URL with a # anchor stays on the page", () => assert.strictEqual(opens(link("/ops/review/?x=1#s2")), false));
 t("a download link keeps its behaviour", () => assert.strictEqual(opens(link("/ops/report.pdf", { download: "" })), false));

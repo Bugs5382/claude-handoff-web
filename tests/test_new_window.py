@@ -18,5 +18,5 @@ def test_new_window_rules():
         pytest.skip("node is not installed")
     out = subprocess.run([node, str(LINK_TEST), str(LIVE_JS)], capture_output=True, text=True, timeout=30)
     lines = out.stdout.splitlines()
-    assert sum(ln.startswith("ok ") for ln in lines) >= 17, out.stdout + out.stderr
+    assert sum(ln.startswith("ok ") for ln in lines) >= 21, out.stdout + out.stderr
     assert out.returncode == 0, out.stdout + out.stderr

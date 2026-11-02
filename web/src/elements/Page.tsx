@@ -6,6 +6,7 @@ import { Footer } from "@/elements/Footer";
 import { Held } from "@/elements/Held";
 import { History } from "@/elements/History";
 import { Item } from "@/elements/Item";
+import { ActionEntry } from "@/elements/ItemMore";
 import { JumpBar, OpenIds } from "@/elements/JumpBar";
 import { Restart } from "@/elements/Restart";
 import { Round } from "@/elements/Round";
@@ -16,7 +17,7 @@ import { wireDiffs } from "@/lib/diffs";
 import { actToast, returnSoon } from "@/lib/finish";
 import { folder, folderPages, folderUrl } from "@/lib/howto";
 import { DONE, blockers, count, deliveryOf, heldBy, heldIds, openRound, typeOf, type CountItem } from "@/lib/model";
-import { itemActions, templates } from "@/lib/custom";
+import { itemActions, pageActions, templates } from "@/lib/custom";
 import { inline } from "@/lib/text";
 import { tours } from "@/lib/tour";
 import { usePage } from "@/lib/usePage";
@@ -223,7 +224,7 @@ export function Page() {
   const body = (item: typeof renderItem) => custom
     ? custom({ data, local, item, sendPhase: id => void sendPhase(id), goTo })
     : <Round data={data} local={local} sends={sends} held={held} goTo={goTo} sendPhase={id => void sendPhase(id)} item={item} />;
-  const footer = reference ? null : (<Footer alwaysTwo={!!p.deck} flags={flags} saved={pg.saved || ""} savedBad={pg.bad} delivery={delivery}
+  const footer = reference ? null : (<Footer flags={flags} saved={pg.saved || ""} savedBad={pg.bad} delivery={delivery}
       status={<span className="stat"><span className="dot" aria-hidden="true" />
         <svg className="tick" width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d="M3 9.5l4 4 8-9" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" /></svg>
         <span className="bkr" hidden={!c.blockers}>{c.blockers} BLOCKER{c.blockers === 1 ? "" : "S"}</span><span className="cnt" role="status" aria-live="polite">{text}</span></span>}
@@ -236,11 +237,12 @@ export function Page() {
           <button className="copy" type="button" role="menuitem" onClick={() => void doCopy()}>Copy results</button>
           <button className="copy-blockers" type="button" role="menuitem" onClick={() => void copyBlockers()}>Copy blockers only</button>
           <button className="history" type="button" role="menuitem" disabled={!rows.length} onClick={() => { setPopup(""); const h = document.getElementById("rvhist") as HTMLDetailsElement; h.open = true; h.scrollIntoView({ behavior: "smooth", block: "start" }); }}>History</button>
+          {p.deck && <button className="deck-btn" type="button" role="menuitem" onClick={() => { setPopup(""); void deck(); }}>Build a deck</button>}
+          {pageActions.map(make => make(data)).filter(a => a !== null).map(a => <ActionEntry key={a.name} action={a} onPick={() => setPopup("")} />)}
           <button className="round-close" type="button" role="menuitem" disabled={!!sub} onClick={() => void roundClose()}>Save round now</button>
           <button className="clear" type="button" role="menuitem" disabled={!!sub} onClick={() => void clear()}>Clear my answers</button>
         </div></>}>
       {sends && !p.phases && <button className={"send-btn" + (c.allDone ? " ready" : "")} type="button" disabled={sendDone} onClick={() => void sendAll()}>{sendDone ? "Sent" : "Send to " + to}</button>}
-      {p.deck && <button className="deck-btn" type="button" onClick={() => void deck()}>Build a deck</button>}
       <button className="copy" type="button" onClick={() => void doCopy()}>Copy results</button>
       <button className="clear" type="button" disabled={!!sub} onClick={() => void clear()}>Clear my answers</button>
       <button className="ids" type="button" aria-haspopup="dialog" aria-expanded={popup === "ids"} onClick={e => { e.stopPropagation(); setPopup(popup === "ids" ? "" : "ids"); }}

@@ -197,7 +197,6 @@ const seg = (doc, id, v) => card(doc, id).querySelector('.seg button[data-v="' +
     for (const px of [1440, 1024, 800, 600, 390]) {
       f.style.width = px + "px"; await tick(120);
       ok(b().classList.contains("two"), px + ": the longest name and status split the bar");
-      ok(spread(r1()) < 6, px + ": the first row is one line");
       ok(r1().getBoundingClientRect().bottom <= r2().getBoundingClientRect().top, px + ": the rows stack");
       eq(shown(r1()).map(el => el.className.split(" ")[0]).join(","), "prev,next,stat,dlv");
       eq(shown(r2())[0].className.split(" ")[0], "send-btn");
@@ -292,8 +291,9 @@ const seg = (doc, id, v) => card(doc, id).querySelector('.seg button[data-v="' +
     const { win, doc, bar } = await load("/demo/sample-round-phases");
     click(seg(doc, "A3", "no")); await saved();
     let asked = ""; win.prompt = q => { asked = q; return "A presentation on the timeline and risks"; };
-    ok(bar.classList.contains("two"), "the button lives on the second row");
-    click(bar.querySelector(".deck-btn"));
+    ok(!bar.querySelector(".rvbar-r1 .deck-btn, .rvbar-r2 .deck-btn"), "it isn't on the bar");
+    click(bar.querySelector(".more-btn")); ok(!bar.querySelector(".menu").hidden);
+    click(bar.querySelector(".menu .deck-btn"));
     await until(() => asked, "the question"); match(asked, /^What are you trying to build\?/);
     const ph = await (async () => { for (let i = 0; i < 80; i++) { const x = await pageFile("demo/sample-round-phases"); if (x.submissions.some(s => s.kind === "deck")) return x; await tick(25); } })();
     const sub = ph.submissions.find(s => s.kind === "deck");
@@ -311,6 +311,9 @@ const seg = (doc, id, v) => card(doc, id).querySelector('.seg button[data-v="' +
     click(card(doc, "s2").querySelector(".item-more-btn"));
     click(menu.querySelector('[data-action="copy-title"]')); await tick(30);
     eq(doc.defaultView.__clip, "Book the change window");
+    const link = doc.querySelector('.rvbar .menu a[data-action="guide"]');
+    eq(link.getAttribute("href"), "/guide/", "a custom link takes a slot in the bar's More menu");
+    ok(!doc.querySelector('.rvbar-r2 [data-action]'), "nothing custom on the bar itself");
   });
 
   await t("round single: Accept risk on one set of items, sent from the bar", async () => {
@@ -320,6 +323,21 @@ const seg = (doc, id, v) => card(doc, id).querySelector('.seg button[data-v="' +
     ["s1", "s2"].forEach(id => click(seg(doc, id, "yes")));
     click(seg(doc, "s3", "risk")); typeIn(card(doc, "s3").querySelector("textarea"), "No staging, said up front");
     ok(bar.classList.contains("approved"), bar.querySelector(".cnt").textContent);
+  });
+
+  await t("bar: the longest count stays on one line beside a picked-up status, with the full text on hover", async () => {
+    const { bar } = await load("/demo/pf-bar-count");
+    const cnt = bar.querySelector(".cnt");
+    match(cnt.textContent, /^0 of 5 answered · 2 blocked · 3 approved and locked/);
+    eq(bar.querySelector(".dlv-t").textContent, "picked up 07:43");
+    match(bar.querySelector(".dlv-t").title, /^Picked up by a{41} 07:43/);
+    for (const px of [1440, 1024, 800, 600, 390]) {
+      f.style.width = px + "px"; await tick(120);
+      eq(cnt.getClientRects().length, 1, px + ": one box"); ok(cnt.getBoundingClientRect().height < 26, px + ": one line, " + cnt.getBoundingClientRect().height);
+      ok(cnt.scrollWidth <= cnt.clientWidth + 1, px + ": not clipped");
+      ok(cnt.getBoundingClientRect().right <= bar.querySelector(".rvbar-in").getBoundingClientRect().right + 1, px + ": inside the bar");
+    }
+    f.style.width = "1000px"; await tick(30);
   });
 
   await t("bar: a page with a reply status always shows row two, whatever the width", async () => {
@@ -492,7 +510,7 @@ const seg = (doc, id, v) => card(doc, id).querySelector('.seg button[data-v="' +
     await until(() => cur().dataset.state === "deaf", "the delivery state");
     const dlv = cur();
     match(asked[0], /^Send now\? 3 items are still open\./);
-    match(dlv.querySelector(".dlv-t").textContent, /^Sent \d\d:\d\d · ops isn't listening\.$/);
+    eq(dlv.querySelector(".dlv-t").textContent, "not listening"); match(dlv.querySelector(".dlv-t").title, /^Sent \d\d:\d\d · ops isn't listening\.$/);
     const cp = dlv.querySelector(".dlv-copy"); ok(cp, "Copy results instead"); eq(cp.textContent, "Copy results instead");
     click(cp); await tick(50);
     match(win.__clip, /^Review: pf-send/);
@@ -539,13 +557,13 @@ const seg = (doc, id, v) => card(doc, id).querySelector('.seg button[data-v="' +
     click(r.bar.querySelector(".send-btn"));
     await until(() => w().document.querySelector(".rvbar .dlv").dataset.state === "sent", "sent");
     let dlv = w().document.querySelector(".rvbar .dlv");
-    match(dlv.querySelector(".dlv-t").textContent, /^Sent \d\d:\d\d$/); ok(!dlv.querySelector(".dlv-copy"), "no copy offer while listening");
+    match(dlv.querySelector(".dlv-t").textContent, /^sent \d\d:\d\d$/); ok(!dlv.querySelector(".dlv-copy"), "no copy offer while listening");
     r = await load("/demo/pf-dlv-taken");
     dlv = r.bar.querySelector(".dlv");
-    eq(dlv.dataset.state, "taken"); eq(dlv.querySelector(".dlv-t").textContent, "Picked up by app 07:43");
+    eq(dlv.dataset.state, "taken"); eq(dlv.querySelector(".dlv-t").textContent, "picked up 07:43");
     r = await load("/demo/pf-dlv-replied");
     dlv = r.bar.querySelector(".dlv");
-    eq(dlv.dataset.state, "replied"); eq(dlv.querySelector(".dlv-t").textContent, "app replied 07:50");
+    eq(dlv.dataset.state, "replied"); eq(dlv.querySelector(".dlv-t").textContent, "replied 07:50");
     const go = dlv.querySelector("a.dlv-t"); ok(go, "the reply links to the page thread"); eq(go.getAttribute("href"), "#replies");
     ok(r.doc.getElementById("replies"), "the page thread is the target");
   });

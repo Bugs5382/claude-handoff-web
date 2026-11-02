@@ -9,7 +9,7 @@ export function DeliveryLine({ dl, cls }: { dl: Delivery; cls: string }) {
 export function BarDelivery({ dl, onCopy }: { dl: Delivery | null; onCopy: () => Promise<void> }) {
   if (!dl) return <span className="dlv" role="status" aria-live="polite" />;
   return <span className="dlv" role="status" aria-live="polite" data-state={dl.state}><span className="dlv-dot" aria-hidden="true" />
-    {dl.state === "replied" ? <a className="dlv-t" href="#replies" title={dl.full}>{dl.bar ?? dl.text}</a> : <span className="dlv-t">{dl.bar ?? dl.text}</span>}
+    {dl.state === "replied" ? <a className="dlv-t" href="#replies" title={dl.full ?? dl.text}>{dl.bar ?? dl.text}</a> : <span className="dlv-t" title={dl.text}>{dl.bar ?? dl.text}</span>}
     {dl.state === "deaf" && <button type="button" className="dlv-copy" onClick={e => { const b = e.currentTarget; void onCopy().then(() => { b.textContent = "Copied"; }); }}>Copy results instead</button>}
   </span>;
 }

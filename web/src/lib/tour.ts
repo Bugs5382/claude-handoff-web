@@ -30,7 +30,7 @@ export const tours: Record<string, TourStep[]> = {
     { element: '[data-v="risk"]', title: "Accept risk", text: "A phase closes when each step is Yes or Accept risk. Accept risk needs a note." },
     { element: ".phase-send", title: "Send a phase", text: "Each phase goes on its own, so one can go before the others." },
     { element: ".phase .st.blk", title: "Blocked by", text: "A phase can wait on another phase or on a single step." },
-    ITEM_MORE, { element: ".deck-btn", title: "Build a deck", text: "This asks what you're building, then sends only the final Yes and Accept risk items to the agent." }, COUNT, MORE],
+    ITEM_MORE, COUNT, { ...MORE, text: "Build a deck is here. It asks what you're building, then sends only the final Yes and Accept risk items to the agent." }],
   reference: [{ element: ".info", title: "Nothing to answer", text: "This page is for reading. It updates by itself when the agent changes it." }],
   status: [{ element: ".info", title: "Nothing to answer", text: "This page is for reading. It updates by itself when the agent changes it." }],
 };

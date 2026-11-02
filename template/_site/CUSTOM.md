@@ -30,13 +30,21 @@ A template gets `{ data, local, item, sendPhase, goTo }` and returns what goes i
 
 ## Per-item actions
 
-Each item has a More button that pops up its actions, such as Generate an email. `custom.js` can add its own. An entry gets the item and the page, and returns `{ name, label, onSelect, disabled }`, or `null` to skip that item.
+Each item has a More button that pops up its actions, such as Generate an email. `custom.js` can add its own. An entry gets the item and the page, and returns `{ name, label, onSelect, href, disabled }`, or `null` to skip that item. An action with `href` is a link.
 
 ```js
 window.HandoffSite.itemActions.push(it => ({
   name: "copy-title", label: "Copy this step's title",
   onSelect: () => navigator.clipboard.writeText(it.title),
 }));
+```
+
+## Actions in the bar's More menu
+
+Nothing custom goes on the bar itself. `window.HandoffSite.pageActions` adds buttons and links to the bar's More menu, in slots after Build a deck. An entry gets the page and returns an action, or `null`. An action with `href` is a link.
+
+```js
+window.HandoffSite.pageActions.push(() => ({ name: "guide", label: "Open the guide", href: "/guide/" }));
 ```
 
 ## A guided tour

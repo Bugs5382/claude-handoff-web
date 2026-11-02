@@ -129,7 +129,7 @@ are a segmented group of real buttons (44 px; pressing the chosen one again clea
 for Changes (required) and No (optional), or with "Add a note".
 
 The bar is one row when everything fits: Previous, Next, "Open IDs (n) ▴", the status dot and text, the Saved
-time, Send to <agent>, the delivery state, More. When anything would be cut, or a delivery state is showing, it splits into two rows. The first:
+time, Send to <agent>, the delivery state, More. When anything would be cut, or a delivery state is showing, it splits into two rows. The count always stays on one line, and the delivery state is short, such as "picked up 21:46", with the full text on hover. The first:
 Previous, Next, the status, and the delivery state or the Saved time. The second: Send, Copy results, Clear my
 answers, Open IDs, More. On a phone it's always two rows and the second may wrap between controls. No control
 wraps inside itself: long text ends in an ellipsis.

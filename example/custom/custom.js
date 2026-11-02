@@ -1,7 +1,8 @@
 // A custom template: a round with a progress line of its own at the top, plus one per-item action and a tour.
 // It runs as it stands, with no build. See _site/CUSTOM.md.
 (function () {
-  const { html, templates, itemActions, tours } = window.HandoffSite;
+  const { html, templates, itemActions, pageActions, tours } = window.HandoffSite;
+  pageActions.push(() => ({ name: "guide", label: "Open the guide", href: "/guide/" }));
   tours["progress-round"] = [
     { element: ".custom-progress", title: "A custom page", text: "This line comes from custom/, and the cards below are the site's own elements." },
     { element: ".item-more-btn", title: "Custom actions", text: "An action from custom/ joins the item's More button." },

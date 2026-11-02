@@ -68,7 +68,7 @@ The definition keys sit at the top level, and the server keys are managed by `pa
 | `options` | definition | a backlog's choices: `{"choices": [{"value": "start", "label": "Start"}, ...], "default": "hold"}` |
 | `items` | definition | the content, in order |
 | `phases` | definition | a round's phases: `[{"id": "A", "title": "...", "goal": "...", "dependsOn": ["A"]}]`; item ids become `A1`, `A2`, `B1` |
-| `deck` | definition | `true` adds Build a deck to the bar |
+| `deck` | definition | `true` adds Build a deck to the bar's More menu |
 | `template` | definition | a template from `custom/custom.js`, see `CUSTOM.md` |
 | `drafts` | definition | `true` adds Draft email to every item |
 | `emails` | server | versions of each item's email, numbered from 1 |
@@ -115,7 +115,7 @@ The agent answers with `page.py email`. The email appears in the step as To, Sub
 
 ### Building a deck
 
-With `"deck": true`, the bar has Build a deck, which runs only when it's pressed. It asks what the person is trying to build, and sends that as `framing` in a submission of kind `deck`. The deck's content is only the items whose final answer is Yes or Accept risk, each with its title, body and note. It locks nothing. The agent builds the deck, saves it beside the page and replies with the link, such as `page.py reply app/plan _page --from app "[The deck](/app/plan-deck.pptx)"`. On a page that only copies, the button copies the same content instead.
+With `"deck": true`, the bar's More menu has Build a deck, which runs only when it's pressed. It asks what the person is trying to build, and sends that as `framing` in a submission of kind `deck`. The deck's content is only the items whose final answer is Yes or Accept risk, each with its title, body and note. It locks nothing. The agent builds the deck, saves it beside the page and replies with the link, such as `page.py reply app/plan _page --from app "[The deck](/app/plan-deck.pptx)"`. On a page that only copies, the button copies the same content instead.
 
 ### Body blocks
 

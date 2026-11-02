@@ -5,13 +5,21 @@ export interface ItemAction {
   /** A stable name, which is also its data-action. */
   name: string;
   label: string;
-  onSelect: () => void;
+  /** What it does, or href for a link. */
+  onSelect?: () => void;
+  href?: string;
   disabled?: boolean;
 }
 
 export interface ItemMoreProps {
   id: string;
   actions: ItemAction[];
+}
+
+/** One slot in a More menu: a button, or a link when the action has an href. */
+export function ActionEntry({ action: a, onPick }: { action: ItemAction; onPick: () => void }) {
+  if (a.href) return <a role="menuitem" data-action={a.name} href={a.href} onClick={onPick}>{a.label}</a>;
+  return <button type="button" role="menuitem" data-action={a.name} disabled={a.disabled} onClick={() => { onPick(); a.onSelect?.(); }}>{a.label}</button>;
 }
 
 /** The More button on an item: it pops up that item's actions. Draws nothing when there are none. */
@@ -30,8 +38,7 @@ export function ItemMore({ id, actions }: ItemMoreProps) {
     <span className="item-more" ref={box}>
       <button type="button" className="item-more-btn" aria-haspopup="menu" aria-expanded={open} aria-label={"More for " + id} onClick={() => flushSync(() => setOpen(!open))}>More ▾</button>
       <span className="item-more-menu" role="menu" hidden={!open}>
-        {actions.map(a => <button key={a.name} type="button" role="menuitem" data-action={a.name} disabled={a.disabled}
-          onClick={() => { flushSync(() => setOpen(false)); a.onSelect(); }}>{a.label}</button>)}
+        {actions.map(a => <ActionEntry key={a.name} action={a} onPick={() => flushSync(() => setOpen(false))} />)}
       </span>
     </span>
   );

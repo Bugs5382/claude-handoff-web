@@ -46,6 +46,7 @@ SCENARIOS = [
     "bar: text that gets wider after the first draw splits the bar, as a late font does",
     "links: browsing stays in this tab, and a link inside an item opens a new one",
     "tour: started by the person, walks real controls on each page type, and remembers it's been seen",
+    "bar: the longest count stays on one line beside a picked-up status, with the full text on hover",
     "bar: one row when it fits, a clean split when it does not, and no control ever wraps",
     "finished page: green bar and back link; Copy results goes back to the folder",
     "copy results keeps the Copy results format",
@@ -171,6 +172,15 @@ def write_pages(root):
     pagefile.add_submission(long, {"kind": "send", "to": "a" * 41, "file": "l-{n}.json"}, now=T0)
     told = "Everything in this round is fixed, and here is a very long account of how. " * 6
     pagefile.reply(long, "_page", "a" * 41, told, now="2026-10-26T08:00:00-04:00")
+    count = demo / "pf-bar-count.json"
+    w(count, {"schema": "handoff.page/v1", "kind": "review", "title": "Count", "items": [
+        {"id": f"k{n}", "title": f"Item {n}", **({"dependsOn": ["k9"]} if n in (1, 2) else {})} for n in range(1, 11)]}, now=T0)
+    pagefile.set_route(count, "a" * 41, "send")
+    pagefile.save_answers(count, {f"k{n}": {"answer": "yes", "note": ""} for n in (6, 7, 8)}, by="Sam", now=T0)
+    pagefile.add_submission(count, {"kind": "send", "to": "a" * 41, "items": ["k6", "k7", "k8"], "file": "c-{n}.json"}, now=T0)
+    pagefile.mark_taken(count, 1, at="2026-10-26T07:43:00-04:00")
+    pagefile.write_definition(count, {"schema": "handoff.page/v1", "kind": "review", "title": "Count", "summary": "Back", "items": [
+        {"id": f"k{n}", "title": f"Item {n}", **({"dependsOn": ["k9"]} if n in (1, 2) else {})} for n in range(1, 11)]}, now=T0)
     reo = demo / "pf-reopened.json"
     pagefile.save_answers(reo, {"r1": {"answer": "yes", "note": ""}}, by="Sam", now=T0)
     pagefile.reply(reo, "r1", "app", "Look again.", action="reopen", reason="numbers moved", now="2026-10-26T08:00:00-04:00")

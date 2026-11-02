@@ -12,6 +12,15 @@ export const answerIn = (a: string): string => IN[a] ?? a;
 
 export const phaseOf = (id: string): string => /^[A-Z]+/.exec(id)?.[0] ?? "";
 
+/** What a locked item shows: its answer, from whichever round gave it. */
+function settledLocal(p: PageDoc, id: string, answer: string, open: Local | undefined): Local {
+  const it = p.items.find(x => x.id === id);
+  const given = [...p.rounds].reverse().map(r => r.answers[id]).find(a => a?.answer);
+  if (it && typeOf(p, it) === "question") return { a: answer };
+  if (it?.choices) return { v: answer, n: given?.note ?? "", o: given?.other ?? "" };
+  return { v: answer === "risk" ? "risk" : "yes", n: open?.n ?? "" };
+}
+
 export function toLocal(data: PageData): Locals {
   const p = data.page, r = openRound(p), out: Locals = {};
   const byId = new Map(p.items.map(it => [it.id, it]));
@@ -23,7 +32,7 @@ export function toLocal(data: PageData): Locals {
     else if (DONE.includes(a.answer) && data.states[id]?.reopened) out[id] = { v: "", n: a.note ?? "" };
     else { out[id] = { v: IN[a.answer] ?? "", n: a.note ?? "" }; if (a.answer === "skipped") out[id].locked = true; }
   }
-  for (const [id, s] of Object.entries(data.states)) if (s.hidden) out[id] = { v: s.answer === "risk" ? "risk" : "yes", n: out[id]?.n ?? "" };
+  for (const [id, s] of Object.entries(data.states)) if (s.hidden) out[id] = settledLocal(p, id, s.answer, out[id]);
   for (const s of p.submissions) {
     if (s.kind !== "blocker" || s.round !== r.round) continue;
     for (const id of s.items) out[id] = { v: "", n: "", ...out[id], blocker: true };

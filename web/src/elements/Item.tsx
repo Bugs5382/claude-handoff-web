@@ -87,13 +87,15 @@ export function Item(p: ItemProps) {
   const rid = <a className="rid" href={"#rv-" + encodeURIComponent(it.id)} title={"Go to " + it.id} onClick={e => { e.preventDefault(); flushSync(() => setShown(true)); p.goTo(it.id); }}>{it.id}</a>;
   const howBtn = it.howto && <button type="button" className="howto-btn" onClick={e => { e.preventDefault(); if (how.current) openHowto(how.current, it.id, it.title, p.build); }}>How to test {"↗"}</button>;
 
+  const showBtn = settled && <button type="button" className="settled-tg" aria-expanded={shown} onClick={() => flushSync(() => setShown(!shown))}>{shown ? "Hide" : "Show"}</button>;
+
   if (type === "question") return <>{group}
-    <section data-item={it.id} data-review-question={it.id} data-title={it.title} data-review-type="question" className={"rvcard" + (blockedBy ? " is-blocked" : "")}>
-      <div className="rvhead">{rid}<span className="sp" /><span className="st2" />{blocked ?? (state?.reopened ? <Chip tone="reo">Reopened: {state.reopened}</Chip> : <Chip>Question</Chip>)}{more}</div>
-      <h2>{heading}</h2>{content}
+    <section data-item={it.id} data-review-question={it.id} data-title={it.title} data-review-type="question" className={"rvcard" + (blockedBy ? " is-blocked" : "") + (settled ? " settled" : "") + (shown ? " shown" : "")}>
+      <div className="rvhead">{rid}{showBtn}<span className="sp" /><span className="st2" />{blocked ?? (settled ? <Chip tone="a-yes">Answered (locked)</Chip> : state?.reopened ? <Chip tone="reo">Reopened: {state.reopened}</Chip> : <Chip>Question</Chip>)}{more}</div>
+      <h2>{heading}</h2>{settled && <p className="locked-answer">{value.a}</p>}{content}
       <div className={"rv in-card question" + (blockedBy ? " blocked" : "")} id={"rv-" + it.id}>
-        <div className="qrow"><span className="ask">Your answer:</span>{it.suggested ? <button type="button" className="suggest-btn" onClick={() => p.onChange({ ...value, a: it.suggested })}>Use suggestion</button> : null}</div>
-        <textarea ref={qa} className="qans" placeholder="Type your answer" value={value.a ?? ""} onChange={e => p.onChange({ ...value, a: e.target.value })} />
+        <div className="qrow"><span className="ask">Your answer:</span>{it.suggested && !settled ? <button type="button" className="suggest-btn" onClick={() => p.onChange({ ...value, a: it.suggested })}>Use suggestion</button> : null}</div>
+        <textarea ref={qa} className="qans" placeholder="Type your answer" value={value.a ?? ""} disabled={settled || !!held} onChange={e => p.onChange({ ...value, a: e.target.value })} />
       </div>
     </section></>;
 
@@ -101,12 +103,12 @@ export function Item(p: ItemProps) {
     const picks = (value.v ?? "").split(",").filter(Boolean);
     const named = picks.map(x => (x === "other" ? "Other" : it.choices?.find(c => c.value === x)?.label ?? x)).join(", ");
     return <>{group}
-      <section data-item={it.id} data-review-question={it.id} data-title={it.title} data-answer={picks.length ? "pick" : "default"} className={"rvcard is-choice" + (blockedBy ? " is-blocked" : "")}>
-        <div className="rvhead">{rid}<span className="sp" /><span className="st2" />{blocked ?? <Chip tone={picks.length ? "a-yes" : ""}>{named || "Not picked"}</Chip>}{more}</div>
-        <h2>{heading}</h2>{content}
+      <section data-item={it.id} data-review-question={it.id} data-title={it.title} data-answer={picks.length ? "pick" : "default"} className={"rvcard is-choice" + (blockedBy ? " is-blocked" : "") + (settled ? " settled" : "") + (shown ? " shown" : "")}>
+        <div className="rvhead">{rid}{showBtn}<span className="sp" /><span className="st2" />{blocked ?? <Chip tone={picks.length ? "a-yes" : ""}>{settled ? "Answered (locked)" : named || "Not picked"}</Chip>}{more}</div>
+        <h2>{heading}</h2>{settled && <p className="locked-answer">{named}{value.o ? `: ${value.o}` : ""}</p>}{content}
         <div className={"rv in-card choice" + (blockedBy ? " blocked" : "")} id={"rv-" + it.id}>
-          <Choices id={it.id} title={it.title} options={it.choices} multi={it.multi} value={value} disabled={!!blockedBy || !!held} onChange={p.onChange} />
-          <label className="notel"><span>Note (optional)</span><textarea rows={2} disabled={!!blockedBy || !!held} value={note} onChange={e => p.onChange({ ...value, n: e.target.value })} /></label>
+          <Choices id={it.id} title={it.title} options={it.choices} multi={it.multi} value={value} disabled={!!blockedBy || !!held || settled} onChange={p.onChange} />
+          <label className="notel"><span>Note (optional)</span><textarea rows={2} disabled={!!blockedBy || !!held || settled} value={note} onChange={e => p.onChange({ ...value, n: e.target.value })} /></label>
         </div>
       </section></>;
   }
@@ -143,7 +145,7 @@ export function Item(p: ItemProps) {
     <section data-item={it.id} data-review-question={it.id} data-title={it.title} data-answer={v}
       className={"rvcard" + (settled ? " settled" : "") + (shown ? " shown" : "") + (blockedBy ? " is-blocked" : "") + (value.blocker ? " is-blocker" : "")}>
       <div className="rvhead">{rid}
-        {settled && <button type="button" className="settled-tg" aria-expanded={shown} onClick={() => flushSync(() => setShown(!shown))}>{shown ? "Hide" : "Show"}</button>}
+        {showBtn}
         <span className="sp" />
         {value.blocker ? <span className="st bkr">Blocker</span> : state?.reopened && v && !blockedBy ? <span className="st reo">Reopened: {state.reopened}</span> : <span className="st2" />}
         {pill}{howBtn}{more}

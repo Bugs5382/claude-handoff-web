@@ -56,7 +56,7 @@ Full walk-through with a network migration: `_site/GUIDE.md`. Pick the `kind` by
 
 Each file in `_inbox/<agent>/` has a `kind`. Blockers first.
 
-- `send`: the person answered and these items are locked. Act, then reply under each item with `page.py reply`. A reply under a No or Changes clears it, and the note stays in its history. Change the item with `page.py set` if the data changed.
+- `send`: the person answered and these items are locked. Answered questions and picks stay locked once you update the page, so take them into your work. If you need more, add a new question saying which answer it follows from. Act, then reply under each item with `page.py reply`. A reply under a No or Changes clears it, and the note stays in its history. Change the item with `page.py set` if the data changed.
 - `blocker`: one item is stopping them. Deal with it now.
 - `email`: write the email from `recipient`, `ask`, `tone` and `context`, which holds the step, what changed between rounds, and the comments. For `change`, start from version `basedOn`. Answer with `page.py email <page> <id> --from <agent> --request <n> --subject "..." "body"`. This doesn't answer or lock the item.
 - `deck`: build it from `framing` and `items`, which are only the final Yes and Accept risk items. Save it beside the page and reply under `_page` with the link.

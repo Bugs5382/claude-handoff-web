@@ -434,6 +434,11 @@ def _sent(doc, cur, iid, answer):
                and iid in s["items"] and _at(answer["at"]) <= _at(s["at"]) for s in doc["submissions"])
 
 
+def _settles(item, typ, answer):
+    """An answer that locks once it's gone back: a Yes or Accept risk, any answered question, an item's own pick."""
+    return bool(answer) and (answer in DONE and typ != "question" or typ == "question" or bool(item.get("choices")))
+
+
 def item_states(doc):
     """Where each answerable item stands in the open round.
 
@@ -446,22 +451,22 @@ def item_states(doc):
     cur = rounds[-1]
     out = {}
     for it in items:
-        iid, h = it["id"], item_hash(it)
+        iid, h, typ = it["id"], item_hash(it), item_type(doc, it)
         state = {"answer": "", "hidden": False, "reopened": cur.get("reopened", {}).get(iid), "round": None}
         mine = cur["answers"].get(iid)
         if mine and mine["answer"]:
-            if mine["answer"] in DONE and mine.get("hash") not in (None, h):
+            if _settles(it, typ, mine["answer"]) and mine.get("hash") not in (None, h):
                 state["reopened"] = f"changed since round {cur['round']}"
             elif state["reopened"] is None:
                 state.update(answer=mine["answer"], round=cur["round"])
-                state["hidden"] = mine["answer"] in DONE and "awaiting" not in cur and _sent(doc, cur, iid, mine)
+                state["hidden"] = _settles(it, typ, mine["answer"]) and "awaiting" not in cur and _sent(doc, cur, iid, mine)
         elif state["reopened"] is None and not cur.get("restart") and iid not in cur.get("handled", {}):
             for r in reversed(rounds[:-1]):
                 if iid in r.get("handled", {}):
                     break
                 a = r["answers"].get(iid)
                 if a and a["answer"]:
-                    if a["answer"] in DONE:
+                    if _settles(it, typ, a["answer"]):
                         if a.get("hash") not in (None, h):
                             state["reopened"] = f"changed since round {r['round']}"
                         else:

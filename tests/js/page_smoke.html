@@ -455,6 +455,19 @@ const seg = (doc, id, v) => card(doc, id).querySelector('.seg button[data-v="' +
     match(r, /- \[r1\] OTHER \(Tuesday morning\): When do we restart/); match(r, /- \[r2\] THE SERVICE DESK, THE WARDS: Who needs telling/);
   });
 
+  await t("questions: an answered question locks on Send, stays readable, and only a follow-up stays open", async () => {
+    const { doc, bar } = await load("/demo/sample-answered");
+    const q = card(doc, "q1");
+    ok(q.classList.contains("settled"), "a locked row"); eq(q.querySelector(".rvhead .st").textContent, "Answered (locked)");
+    eq(q.querySelector(".locked-answer").textContent, "The second weekend of the month", "the answer stays readable");
+    ok(q.querySelector(".locked-answer").offsetParent !== null, "even collapsed");
+    ok(q.querySelector("textarea").disabled, "it can't change");
+    eq(card(doc, "q2").querySelector(".locked-answer").textContent, "yes", "an answer of yes keeps its text");
+    ok(!card(doc, "f1").classList.contains("settled")); ok(!card(doc, "f1").querySelector("textarea").disabled, "the follow-up is open");
+    match(doc.querySelector(".rvdone").textContent, /^2 answered and locked\./);
+    match(w().siteReview.results(), /Q q1: The second weekend of the month/);
+  });
+
   await t("finished page: green bar and back link; Copy results goes back to the folder", async () => {
     const { doc, bar } = await load("/demo/pf-fin-1");
     ok(doc.querySelector("header.top .crumb"), "the crumb back to the folder");

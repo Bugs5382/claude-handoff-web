@@ -101,7 +101,7 @@ export function Page() {
     if (!data) return null;
     const p = data.page, r = openRound(p);
     const blocked = blockers(data);
-    const hidden = new Set(p.items.filter(it => data.states[it.id]?.hidden && typeOf(p, it) !== "choice").map(it => it.id));
+    const hidden = new Set(p.items.filter(it => data.states[it.id]?.hidden && (typeOf(p, it) !== "choice" || it.choices)).map(it => it.id));
     const kinds: CountItem[] = p.items.filter(it => typeOf(p, it) !== "info").map(it => { const t = typeOf(p, it); return { id: it.id, kind: t === "question" ? "question" : t === "choice" ? "choice" : "ync", own: !!it.choices }; });
     return { p, r, blocked, hidden, kinds, held: new Set(heldIds(p)), sub: heldBy(p) };
   }, [data]);
@@ -267,7 +267,7 @@ export function Page() {
       {sub && <Held data={data} sub={sub} onUnlock={async () => { await postPage("/unlock", {}); await redraw(); }} />}
       {pageReplies.length > 0 && <section className="pthread" id="replies"><h2>Replies about this page</h2><Thread entries={pageReplies} label="Replies about this page" /></section>}
       {p.kind === "journey" && <Restart data={data} onRestart={async cp => { await flush(); await postPage("/restart", { checkpoint: cp, results: results() }); await redraw(); }} />}
-      {hidden.size > 0 && <div className="rvdone">{hidden.size} approved and locked. They stay in Copy results.</div>}
+      {hidden.size > 0 && <div className="rvdone">{[c.hidden ? `${c.hidden} approved` : "", hidden.size > c.hidden ? `${hidden.size - c.hidden} answered` : ""].filter(Boolean).join(", ")} and locked. They stay in Copy results.</div>}
       {body(renderItem)}
       {!reference && <History rows={rows} />}
     </main>

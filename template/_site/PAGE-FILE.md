@@ -260,6 +260,7 @@ raises `PageError`, whose `errors` list says which item and why.
 - A round opens when the page is created, when `build` or `reset` changes, on Save round now and on Restart.
   Only the last round is open.
 - A Yes from an earlier round stays on the page as a collapsed row with Yes pressed and locked. Show opens the row.
+- An answered question and an item's own pick lock the same way once a Send has carried them and the agent has updated the page, with the answer still readable on the row. To ask more, add a new item that says which answer it follows from. Don't ask the same item again.
 - A Send locks the items it carried, and a banner says where it stands: in the agent's inbox, nobody listening, or
   picked up. Everything else stays open, and a later Send carries only what's new. The agent's next `page.py set`
   or `reply` unlocks them live, in the same round, and every Yes that Send carried is

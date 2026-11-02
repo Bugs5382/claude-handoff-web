@@ -300,7 +300,8 @@ body.site th { background: var(--soft-2); font-weight: 600; }
 .rvcard[data-answer="no"], .rv.no { border-color: var(--no-edge); }
 .rvcard.settled { padding: 10px 22px; background: var(--soft); }
 .rvcard.settled > h2 { font-size: 1em; margin: 6px 0 0; }
-.rvcard.settled:not(.shown) > :not(.rvhead, h2) { display: none; }
+.rvcard.settled:not(.shown) > :not(.rvhead, h2, .locked-answer) { display: none; }
+.locked-answer { margin: 6px 0 2px; white-space: pre-wrap; overflow-wrap: anywhere; }
 .rvcard[data-answer="risk"], .rv.risk { border-color: var(--chg-edge); }
 .st.a-risk { background: var(--chg-bg); color: var(--chg); }
 .item-more { position: relative; display: inline-block; margin-left: 8px; }

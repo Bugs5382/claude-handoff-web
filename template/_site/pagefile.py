@@ -19,7 +19,7 @@ from datetime import datetime
 from schema import DEFAULT_TYPE, SCHEMA, TYPE_ANSWERS, validate
 
 MAX_BYTES = 2 * 1024 * 1024
-SERVER_KEYS = ("rev", "rounds", "thread", "submissions", "route", "emails")
+SERVER_KEYS = ("rev", "rounds", "thread", "submissions", "route", "emails", "revisions")
 DEFINITION_KEYS = ("schema", "kind", "title", "summary", "build", "reset", "status", "options", "items", "phases", "drafts", "deck",
                    "template")
 DONE = ("yes", "risk")
@@ -159,14 +159,17 @@ def write_definition(path, definition, *, now=None):
         if os.path.exists(p):
             doc = load(p)
             old_build, old_reset = doc.get("build"), doc.get("reset")
-            old_hashes = {it["id"]: item_hash(it) for it in doc["items"]}
+            old_items = {it["id"]: it for it in doc["items"]}
             for k in DEFINITION_KEYS:
                 doc.pop(k, None)
             doc.update(definition)
             _clear_hold(doc["rounds"][-1])
             for it in doc["items"]:
-                if old_hashes.get(it["id"], item_hash(it)) != item_hash(it):
+                old = old_items.get(it["id"])
+                if old is not None and item_hash(old) != item_hash(it):
                     _settle(doc, it["id"], at, "definition")
+                    doc.setdefault("revisions", {}).setdefault(it["id"], []).append(
+                        {"at": at, "round": doc["rounds"][-1]["round"], "before": old, "after": it})
             if doc.get("build") != old_build:
                 _open_next(doc, at, "build changed")
             elif doc.get("reset") != old_reset:
@@ -310,14 +313,13 @@ def add_email(path, item_id, frm, subject, body, *, to=None, request=None, now=N
             raise PageError(f"{item_id}: no item {item_id} on this page")
         versions = doc.setdefault("emails", {}).setdefault(item_id, [])
         entry = {"n": len(versions) + 1, "at": at, "from": frm, "body": body}
-        for k, val in (("subject", subject), ("to", to), ("request", request)):
+        asked = doc["submissions"][request - 1] if request is not None else {}
+        for k, val in (("subject", subject), ("to", to or asked.get("recipient")), ("request", request)):
             if val is not None:
                 entry[k] = val
-        if request is not None:
-            asked = doc["submissions"][request - 1]
-            for k in ("instructions", "prose", "basedOn"):
-                if k in asked:
-                    entry[k] = asked[k]
+        for k in ("ask", "tone", "change", "basedOn"):
+            if k in asked:
+                entry[k] = asked[k]
         versions.append(entry)
         _commit(p, doc)
         return entry["n"]
@@ -356,7 +358,7 @@ def add_submission(path, record, *, now=None):
         sub = {"n": n, "kind": record["kind"], "at": now or now_iso(), "to": record["to"],
                "round": doc["rounds"][-1]["round"], "rev": doc["rev"], "items": list(record.get("items", [])),
                "file": record["file"].replace("{n}", str(n)), "state": "sent"}
-        for k in ("instructions", "prose", "basedOn", "framing"):
+        for k in ("recipient", "ask", "tone", "change", "basedOn", "framing"):
             if record.get(k):
                 sub[k] = record[k]
         doc["submissions"].append(sub)
@@ -448,6 +450,19 @@ def item_states(doc):
                     break
         out[iid] = state
     return out
+
+
+def email_context(doc, item_id):
+    """What an agent needs to write an email about a step, so the person doesn't retype it."""
+    it = _items_by_id(doc)[item_id]
+    comments = []
+    for r in doc["rounds"]:
+        entries = [r["answers"][item_id]] if item_id in r["answers"] else []
+        entries += r.get("handled", {}).get(item_id, [])
+        comments += [{"round": r["round"], "answer": e.get("answer", ""), "note": e["note"]} for e in entries if e.get("note")]
+    answer = item_states(doc).get(item_id, {}).get("answer", "")
+    return {"id": item_id, "title": it["title"], "body": it.get("body", []), "answer": answer,
+            "changed": doc.get("revisions", {}).get(item_id, []), "comments": comments, "replies": doc["thread"].get(item_id, [])}
 
 
 def deck_items(doc):

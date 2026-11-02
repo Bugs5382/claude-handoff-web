@@ -583,19 +583,36 @@ def test_a_sent_accept_risk_settles_like_a_yes(path):
 def test_a_draft_comes_back_as_a_new_version_with_what_produced_it(path):
     make(path, review(drafts=True))
     first = pagefile.add_submission(path, {"kind": "email", "to": "ops", "items": ["s1"], "file": "e-{n}.json",
-                                           "instructions": "Explain why", "prose": "Plain"}, now=T0)
+                                           "recipient": "The network team", "ask": "Confirm the list", "tone": "Plain"}, now=T0)
     assert pagefile.add_email(path, "s1", "ops", "Why", "First draft", request=first["n"], now=T1) == 1
     second = pagefile.add_submission(path, {"kind": "email", "to": "ops", "items": ["s1"], "file": "e-{n}.json",
-                                            "instructions": "Shorter", "prose": "Brief", "basedOn": 1}, now=T1)
+                                            "recipient": "The network team", "change": "Shorter", "basedOn": 1}, now=T1)
     assert pagefile.add_email(path, "s1", "ops", "Why", "Second", request=second["n"], now=T2) == 2
     versions = pagefile.load(path)["emails"]["s1"]
     assert [v["n"] for v in versions] == [1, 2] and versions[0]["body"] == "First draft"
-    assert versions[1]["instructions"] == "Shorter" and versions[1]["prose"] == "Brief" and versions[1]["basedOn"] == 1
+    assert versions[0]["to"] == "The network team" and versions[0]["ask"] == "Confirm the list" and versions[0]["tone"] == "Plain"
+    assert versions[1]["change"] == "Shorter" and versions[1]["basedOn"] == 1
+
+
+def test_an_email_gets_the_step_what_changed_between_rounds_and_the_comments(path):
+    make(path, review(drafts=True))
+    pagefile.save_answers(path, {"s1": {"answer": "changes", "note": "Two switches are missing"}}, by="me", now=T0)
+    sent(path, ["s1"])
+    pagefile.reply(path, "s1", "ops", "Re-verified.", action="fixed", now=T1)
+    changed = review(drafts=True)
+    changed["items"][0]["body"] = [{"p": "Now with the two switches."}]
+    pagefile.write_definition(path, changed, now=T2)
+    ctx = pagefile.email_context(pagefile.load(path), "s1")
+    assert ctx["title"] == "Purpose" and ctx["body"] == [{"p": "Now with the two switches."}]
+    assert ctx["changed"][0]["before"]["body"] == [{"p": "Why."}]
+    assert ctx["changed"][0]["after"]["body"] == [{"p": "Now with the two switches."}]
+    assert [c["note"] for c in ctx["comments"]] == ["Two switches are missing"]
+    assert ctx["replies"][0]["text"] == "Re-verified."
 
 
 def test_asking_for_a_draft_locks_nothing(path):
     make(path, review(drafts=True))
-    pagefile.add_submission(path, {"kind": "email", "to": "ops", "items": ["s1"], "file": "e-{n}.json", "instructions": "x"}, now=T0)
+    pagefile.add_submission(path, {"kind": "email", "to": "ops", "items": ["s1"], "file": "e-{n}.json", "ask": "x"}, now=T0)
     assert pagefile.held_items(pagefile.load(path)) == set()
     pagefile.save_answers(path, {"s1": {"answer": "yes"}}, by="me", now=T1)
 

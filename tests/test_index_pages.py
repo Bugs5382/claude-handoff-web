@@ -92,6 +92,18 @@ def test_history_page_lists_page_file_rounds(tree):
     assert '<a href="/app/plan">Full page</a>' in hist
 
 
+def test_history_page_lists_a_round_page_with_a_closed_round(tree):
+    path = tree / "app" / "rollout.json"
+    pagefile.write_definition(path, {"schema": "handoff.page/v1", "kind": "round", "title": "Rollout",
+                                     "items": [{"id": "s1", "title": "Plan"}, {"id": "s2", "title": "Risks"},
+                                               {"id": "q1", "type": "question", "title": "Window?"}]}, now=T0)
+    pagefile.save_answers(path, {"s1": {"answer": "yes", "note": ""}, "s2": {"answer": "risk", "note": "Known"}}, by="Alex", now=T0)
+    pagefile.new_round(path, results="Round 1: Rollout\n- [s1] YES: Plan", now=T0)
+    gen(tree)
+    hist = (tree / "app" / "history" / "index.html").read_text()
+    assert "Rollout (1 round)" in hist and "1 of 2 Yes" in hist and "- [s1] YES: Plan" in hist
+
+
 def test_a_backlog_page_file_card_shows_its_tally(tree):
     pagefile.write_definition(tree / "app" / "backlog.json", {
         "schema": "handoff.page/v1", "kind": "backlog", "title": "Backlog",

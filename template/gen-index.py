@@ -401,9 +401,7 @@ def page_file_rounds(folder, key):
         doc = pagefile.load(os.path.join(ROOT, folder, key + ".json"))
     except (OSError, ValueError):
         return []
-    kind_type = {"review": "section", "checklist": "check", "journey": "step", "backlog": "choice",
-                 "questions": "question", "reference": "info", "status": "info"}[doc["kind"]]
-    types = {it["id"]: it.get("type", kind_type) for it in doc["items"]}
+    types = {it["id"]: pagefile.item_type(doc, it) for it in doc["items"]}
     yn = [i for i, t in types.items() if t not in ("question", "choice", "info")]
     choice = [i for i, t in types.items() if t == "choice"]
     out = []

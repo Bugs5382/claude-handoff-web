@@ -11,7 +11,7 @@ Serves a directory exactly like `python3 -m http.server`, and adds:
   POST /_round-close       {"name": "<page-key>", "results_text": "..." (optional)}: archive the
                            current round by hand, same as an automatic rollover
 Page files (<folder>/<slug>.json in handoff.page/v1, written only through pagefile.py; see PAGE-FILE.md):
-  GET  /<folder>/<slug>                  the renderer shell, _site/page.html; an old <slug>.html URL redirects here
+  GET  /<folder>/<slug>                  the app shell, _site/app.html; an old <slug>.html URL redirects here
   GET  /_page/<folder>/<slug>            {page, states, summary, route, listening}, with an ETag for If-None-Match
   PUT  /_page/<folder>/<slug>/answers    {"base": rev, "answers": {id: {answer, note}}}: merge into the open round
   POST /_page/<folder>/<slug>/round      {"results": "..."}: Save round now
@@ -520,7 +520,7 @@ class Handler(SimpleHTTPRequestHandler):
         return super().do_HEAD()
 
     def _page_url(self):
-        """Serve the renderer shell for /<folder>/<slug>, or redirect a converted page's old .html URL.
+        """Serve the app shell for /<folder>/<slug>, or redirect a converted page's old .html URL.
         Anything that exists on disk is served as a file first."""
         p = self._path()
         if os.path.exists(self.translate_path(p)):
@@ -534,9 +534,7 @@ class Handler(SimpleHTTPRequestHandler):
             return True
         if p.endswith("/") or not page_file(self.root, rel):
             return False
-        wants_app = load_config(self.root).get("renderer") == "app" or "app=1" in urlsplit(self.path).query
-        shell = "app.html" if wants_app else "page.html"
-        with open(os.path.join(self.root, "_site", shell), "rb") as f:
+        with open(os.path.join(self.root, "_site", "app.html"), "rb") as f:
             data = f.read()
         self._shell = True
         self.send_response(HTTPStatus.OK)

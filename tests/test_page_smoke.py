@@ -1,4 +1,4 @@
-"""Smoke tests for JSON pages in a real browser: render.js draws each page file into today's DOM, review.js answers
+"""Smoke tests for JSON pages in a real browser: the app draws each page file into today's DOM, review.js answers
 it, and every feature of the HTML pages still works (design section 11), plus Send, the delivery state, the thread,
 Restart and a live redraw. Drives headless Chrome against a real serve.py; skipped when no Chrome or Chromium is
 installed. The scenarios live in tests/js/page_smoke.html."""
@@ -189,8 +189,8 @@ def write_pages(root):
     w(demo / "pf-mixed.json", MIXED, now=T0)
 
 
-@pytest.fixture(scope="module", params=["old", "app"])
-def smoke(tmp_path_factory, request):
+@pytest.fixture(scope="module")
+def smoke(tmp_path_factory):
     chrome = find_chrome()
     if not chrome:
         pytest.skip("Chrome or Chromium is not installed")
@@ -203,9 +203,6 @@ def smoke(tmp_path_factory, request):
     shutil.copy(ROOT / "example" / "site.json", root / "site.json")
     shutil.copy(HARNESS, root / "harness.html")
     write_pages(root)
-    if request.param == "app":
-        config = json.loads((root / "site.json").read_text())
-        (root / "site.json").write_text(json.dumps({**config, "renderer": "app"}))
     port = free_port()
     proc = subprocess.Popen([sys.executable, str(root / "_site" / "serve.py"), str(port), "--bind", "127.0.0.1",
                              "--directory", str(root)], stderr=subprocess.DEVNULL)
@@ -228,14 +225,11 @@ def smoke(tmp_path_factory, request):
         proc.wait(timeout=5)
     assert "harness" not in data, data["harness"]
     data["_root"] = str(root)
-    data["_renderer"] = request.param
     return data
 
 
 @pytest.mark.parametrize("name", SCENARIOS)
 def test_page_smoke(smoke, name):
-    if name.startswith(("round ", "email ", "deck", "custom")) and smoke["_renderer"] == "old":
-        pytest.skip("rounds are drawn by the app only")
     assert smoke.get(name) == "ok", smoke.get(name, "did not run")
 
 

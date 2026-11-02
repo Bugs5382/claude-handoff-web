@@ -1,4 +1,4 @@
-"""The React app: the shell is opt-in, and the first page draws from a page file in a real browser."""
+"""The React app: every page file gets its shell, and a page draws in a real browser."""
 import json
 import shutil
 import subprocess
@@ -21,7 +21,7 @@ import samples  # noqa: E402
 def site(tmp_path):
     root = tmp_path / "site"
     shutil.copytree(SITE, root / "_site")
-    (root / "site.json").write_text(json.dumps({"renderer": "app", "folders": [{"id": "demo", "name": "Demo"}]}))
+    (root / "site.json").write_text(json.dumps({"folders": [{"id": "demo", "name": "Demo"}]}))
     samples.load(str(root / "demo"), route="app")
     proc = subprocess.Popen([sys.executable, "-u", str(root / "_site" / "serve.py"), "0", "--directory", str(root)],
                             stderr=subprocess.PIPE, text=True)
@@ -31,26 +31,15 @@ def site(tmp_path):
     proc.wait(timeout=10)
 
 
-def test_an_install_without_the_setting_keeps_the_old_shell():
-    assert "render.js" in (SITE / "page.html").read_text() and "app/app.js" in (SITE / "app.html").read_text()
-
-
-def test_the_app_shell_is_served_when_the_site_asks_for_it(site):
+def test_a_page_file_gets_the_app_shell(site):
     assert "app/app.js" in urllib.request.urlopen(f"http://{site}/demo/sample-review").read().decode()
-
-
-def test_one_page_can_try_the_app_on_a_site_without_the_setting(site, tmp_path):
-    config = tmp_path / "site" / "site.json"
-    config.write_text(json.dumps({"folders": [{"id": "demo", "name": "Demo"}]}))
-    assert "render.js" in urllib.request.urlopen(f"http://{site}/demo/sample-review").read().decode()
-    assert "app/app.js" in urllib.request.urlopen(f"http://{site}/demo/sample-review?app=1").read().decode()
 
 
 def test_the_built_app_is_in_the_template():
     assert (SITE / "app" / "app.js").stat().st_size > 1000
 
 
-def test_the_first_page_draws_in_a_browser(site):
+def test_a_page_draws_in_a_browser(site):
     chrome = find_chrome()
     if not chrome:
         pytest.skip("no Chrome")

@@ -28,7 +28,7 @@ attributes in `template/_site/README.md`, the save API in `template/_site/SAVE-A
 
 <!-- The directories that matter and what lives in each. Keep it short; point at the entry points. -->
 
-- `template/` - what `install.sh` copies: `_site/` (assets, `serve.py`, `build-review.py`, `schema.py`, `pagefile.py`, `pageindex.py`, `page.py`, `samples.py` and `samples/`, `render.js` and `page.html`, docs),
+- `template/` - what `install.sh` copies: `_site/` (assets, `serve.py`, `build-review.py`, `schema.py`, `pagefile.py`, `pageindex.py`, `page.py`, `samples.py` and `samples/`, `app.html` and the built `app/`, docs),
   `gen-index.py`, and the instance `CLAUDE.md`/`AGENTS.md`
 - `web/` - the React app (Vite, TypeScript): named elements in `web/src/elements/`. `npm run build` there writes
   `template/_site/app/app.js`, which is committed, so installing needs only Python
@@ -38,7 +38,7 @@ attributes in `template/_site/README.md`, the save API in `template/_site/SAVE-A
 - `memory/` - the drop-in memory file for Claude sessions
 - `install.sh` - installer (refuses git work trees)
 - `tests/` - end-to-end tests against a real `serve.py` in a temp folder; the browser suites drive `review.js`
-  and `render.js` in `chrome-headless-shell` when it's installed (no Dock icon on a Mac:
+  and the app in `chrome-headless-shell` when it's installed (no Dock icon on a Mac:
   `npx @puppeteer/browsers install chrome-headless-shell@stable --path ~/.cache/puppeteer`), else headless
   Chrome or Chromium, and skip when there's none; `CHROME` names one
 

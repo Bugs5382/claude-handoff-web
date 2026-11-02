@@ -369,7 +369,7 @@ const seg = (doc, id, v) => card(doc, id).querySelector('.seg button[data-v="' +
     ok(r.doc.getElementById("replies"), "the page thread is the target");
   });
 
-  await t("sent: a banner says it reached the inbox, every item locks, and an update unlocks it live", async () => {
+  await t("sent: a banner says it reached the inbox, only what was sent locks, and an update unlocks it live", async () => {
     const { win, doc, bar } = await load("/demo/pf-held");
     win.__alive = true;
     ok(!doc.querySelector(".sentlock"), "no banner before a Send");
@@ -379,13 +379,16 @@ const seg = (doc, id, v) => card(doc, id).querySelector('.seg button[data-v="' +
     const d2 = w().document, box = d2.querySelector(".sentlock");
     eq(box.dataset.state, "sent");
     match(box.textContent, /Sent to app at \d\d:\d\d\. It's in app's inbox, waiting to be picked up\./);
-    match(box.textContent, /Every item is locked until app updates this page\./);
-    ok(seg(d2, "r2", "yes").disabled, "an open item is locked"); ok(seg(d2, "r1", "yes").disabled, "a Yes is locked");
-    ok(card(d2, "r2").querySelector(".blocker-btn").disabled, "Blocker is locked");
-    const send = d2.querySelector(".rvbar .send-btn"); ok(send.disabled, "Send is locked"); eq(send.textContent, "Sent");
+    match(box.textContent, /The item you sent is locked until app updates this page\. Everything else stays open\./);
+    ok(seg(d2, "r1", "yes").disabled, "the sent Yes is locked"); ok(card(d2, "r1").querySelector(".blocker-btn").disabled, "so is its Blocker");
+    ok(!seg(d2, "r2", "yes").disabled, "an item not sent stays open"); ok(!card(d2, "r2").querySelector(".blocker-btn").disabled);
+    const send = d2.querySelector(".rvbar .send-btn"); ok(send.disabled, "nothing new to send"); eq(send.textContent, "Sent");
+    click(seg(d2, "r2", "yes"));
+    ok(!send.disabled, "a new answer can go"); match(send.textContent, /^Send to /);
+    await saved();
     const put = await fetch("/_page/demo/pf-held/answers", { method: "PUT", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ answers: { r2: { answer: "yes", note: "" } } }) });
-    eq(put.status, 400, "the server refuses too");
+      body: JSON.stringify({ answers: { r1: { answer: "no", note: "" } } }) });
+    eq(put.status, 400, "the server refuses a sent item");
     await fetch("/_page/demo/pf-held/unlock", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
     await until(() => !w().document.querySelector(".sentlock"), "the live unlock", 15000);
     eq(w().__alive, true, "no reload"); ok(!seg(w().document, "r2", "yes").disabled, "open again");
@@ -409,7 +412,9 @@ const seg = (doc, id, v) => card(doc, id).querySelector('.seg button[data-v="' +
     const row = card(doc, "r1"), tg = row.querySelector(".settled-tg");
     ok(row.classList.contains("settled"), "the Yes is a locked row"); eq(seg(doc, "r1", "yes").getAttribute("aria-pressed"), "true"); ok(seg(doc, "r1", "yes").disabled);
     eq(row.querySelector(".rv").offsetParent, null, "collapsed"); click(tg); ok(row.querySelector(".rv").offsetParent !== null, "opens");
+    click(tg); click(row.querySelector("a.rid")); ok(row.querySelector(".rv").offsetParent !== null, "the id link opens a locked row");
     const ch = card(doc, "r2");
+    eq(ch.querySelector("a.rid").getAttribute("href"), "#rv-r2");
     eq(seg(doc, "r2", "chg").getAttribute("aria-pressed"), "false"); eq(ch.querySelector(".rv textarea").value, "");
     eq(ch.querySelector(".rvhead .st").textContent, "Updated: answer again");
     match(ch.querySelector(".thread").textContent, /Changes/);

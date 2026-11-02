@@ -118,6 +118,21 @@ def _items_by_id(doc):
     return {it["id"]: it for it in doc["items"]}
 
 
+def _held_sends(rnd):
+    return rnd.get("held") or ([rnd["awaiting"]] if "awaiting" in rnd else [])
+
+
+def held_items(doc):
+    """The items Sends carried that wait on the agent. Every other item stays open to answer."""
+    subs = doc["submissions"]
+    return {iid for n in _held_sends(doc["rounds"][-1]) for iid in subs[n - 1]["items"]}
+
+
+def _clear_hold(rnd):
+    rnd.pop("awaiting", None)
+    rnd.pop("held", None)
+
+
 def _settle(doc, iid, at, via):
     """A sent No or Changes the agent dealt with leaves the open answers for good, so its note can't be sent again."""
     rnd = doc["rounds"][-1]
@@ -143,7 +158,7 @@ def write_definition(path, definition, *, now=None):
             for k in DEFINITION_KEYS:
                 doc.pop(k, None)
             doc.update(definition)
-            doc["rounds"][-1].pop("awaiting", None)
+            _clear_hold(doc["rounds"][-1])
             for it in doc["items"]:
                 if old_hashes.get(it["id"], item_hash(it)) != item_hash(it):
                     _settle(doc, it["id"], at, "definition")
@@ -180,14 +195,16 @@ def save_answers(path, answers, *, by, base=None, now=None):
         doc = load(p)
         items = _items_by_id(doc)
         rnd = doc["rounds"][-1]
-        if "awaiting" in rnd:
-            raise PageError("this page was sent; unlock it, or wait for the update, to change an answer")
+        held = held_items(doc)
         errors = []
         changed = False
         for iid, new in answers.items():
             item = items.get(iid)
             if item is None:
                 errors.append(f"{iid}: no item {iid} on this page")
+                continue
+            if iid in held:
+                errors.append(f"{iid}: this was sent; unlock it, or wait for the update, to change the answer")
                 continue
             answer, note = str(new.get("answer", "")), str(new.get("note", ""))
             ok = allowed_answers(doc, item)
@@ -261,7 +278,7 @@ def reply(path, item_id, frm, text, *, action=None, reason=None, ref=None, now=N
         if item_id != "_page" and item_id not in _items_by_id(doc):
             raise PageError(f"{item_id}: no item {item_id} on this page")
         rnd = doc["rounds"][-1]
-        rnd.pop("awaiting", None)
+        _clear_hold(rnd)
         replies = doc["thread"].setdefault(item_id, [])
         entry = {"n": len(replies) + 1, "from": frm, "at": at, "round": rnd["round"], "text": text}
         for k, val in (("action", action), ("reason", reason), ("ref", ref)):
@@ -315,10 +332,12 @@ def add_submission(path, record, *, now=None):
 
 
 def hold(path, n):
-    """Submission n reached the inbox: lock the page until the agent's next update or an unlock. Returns the rev."""
+    """Submission n reached the inbox: lock its items until the agent's next update or an unlock. Returns the rev."""
     with _locked(path) as p:
         doc = load(p)
-        doc["rounds"][-1]["awaiting"] = n
+        rnd = doc["rounds"][-1]
+        rnd["held"] = _held_sends(rnd) + [n]
+        rnd["awaiting"] = n
         return _commit(p, doc)
 
 
@@ -326,9 +345,10 @@ def release(path):
     """Unlock a held page without waiting for the agent: that Send no longer settles anything. Returns the rev."""
     with _locked(path) as p:
         doc = load(p)
-        n = doc["rounds"][-1].pop("awaiting", None)
-        if n is not None:
+        rnd = doc["rounds"][-1]
+        for n in _held_sends(rnd):
             doc["submissions"][n - 1]["released"] = True
+        _clear_hold(rnd)
         return _commit(p, doc)
 
 

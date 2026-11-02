@@ -47,7 +47,7 @@ SCENARIOS = [
     "thread: earlier answers and replies show under the item",
     "thread: filed, reopen, unblock and won't fix read at a glance; a long thread folds its oldest entries",
     "delivery: sent to a listening agent, picked up, then the agent's reply, in the bar",
-    "sent: a banner says it reached the inbox, every item locks, and an update unlocks it live",
+    "sent: a banner says it reached the inbox, only what was sent locks, and an update unlocks it live",
     "sent: nobody listening says so on the page, and Unlock opens it again",
     "sent: a Yes it carried stays locked after the update, a handled Changes clears, and both stay on record",
     "reopened Yes: shows unanswered, and one Yes clears it",

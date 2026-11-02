@@ -899,7 +899,10 @@ class Handler(SimpleHTTPRequestHandler):
         ids = {it["id"] for it in doc["items"]}
         items = req.get("items")
         if items is None:
-            items = [i for i in doc["rounds"][-1]["answers"] if i in ids]
+            held, states = pagefile.held_items(doc), pagefile.item_states(doc)
+            items = [i for i in doc["rounds"][-1]["answers"] if i in ids and i not in held and not states.get(i, {}).get("hidden")]
+            if held and not items:
+                raise ValueError("everything answered is already sent")
         if not isinstance(items, list) or any(i not in ids for i in items):
             raise ValueError("items must be ids of items on this page")
         if kind == "blocker" and len(items) != 1:

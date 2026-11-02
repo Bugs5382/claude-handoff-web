@@ -311,7 +311,10 @@ body.site th { background: var(--soft-2); font-weight: 600; }
 .rvcard.is-choice[data-answer="pick"] { border-color: var(--line-2); }
 .rvcard > .rv { margin: 14px 0 0; padding: 0; border: 0; box-shadow: none; background: transparent; }
 .rvhead { display: flex; align-items: center; gap: 10px; margin: 0 0 6px; }
-.rvhead .rid { font: 13px var(--mono); color: var(--muted); }
+.rvhead .rid { font: 500 13px var(--mono); color: var(--link); text-decoration: none; }
+.rvhead .rid:hover { color: var(--link-hover); text-decoration: underline; }
+:root[data-theme="dark"] .rvhead .rid { font-weight: 700; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .rvhead .rid { font-weight: 700; } }
 .rvhead .sp { flex-grow: 1; }
 .rv { margin: 14px 0 24px; padding: 16px 18px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--card); box-shadow: var(--shadow); font: 15px/1.5 var(--font); color: var(--ink); scroll-margin-top: 16px; }
 .rv .st { display: inline-block; font-size: 13px; font-weight: 600; line-height: 1.4; padding: 3px 10px; border-radius: 999px; color: var(--ink-2); background: var(--soft); }

@@ -135,13 +135,18 @@
   }
   // The page stays locked from a Send until the agent's next update; this says where the Send stands.
   const heldBy = () => { const n = data.page.rounds[data.page.rounds.length - 1].awaiting; return n ? data.page.submissions[n - 1] : null; };
+  function heldIds() {
+    const r = data.page.rounds[data.page.rounds.length - 1], nums = r.held || (r.awaiting ? [r.awaiting] : []);
+    return [...new Set(nums.flatMap(n => data.page.submissions[n - 1].items || []))];
+  }
   function heldHtml(s) {
     const dl = deliveryOf(s), to = dl.to;
     const said = dl.state === "taken" ? to + " picked this up at " + clock(s.takenAt) + "." :
       dl.state === "deaf" ? "Saved to " + to + "'s inbox at " + clock(s.at) + ", but " + to + " isn't listening right now, so it may not be seen yet." :
       "Sent to " + to + " at " + clock(s.at) + ". It's in " + to + "'s inbox, waiting to be picked up.";
+    const n = heldIds().length, what = n === 1 ? "The item you sent is" : "The " + n + " items you sent are";
     return '<section class="sentlock" data-state="' + dl.state + '" role="status"><span class="dlv-dot" aria-hidden="true"></span>' +
-      '<p><strong>' + esc(said) + "</strong> Every item is locked until " + esc(to) + " updates this page.</p>" +
+      '<p><strong>' + esc(said) + "</strong> " + what + " locked until " + esc(to) + " updates this page. Everything else stays open.</p>" +
       '<button type="button" class="unlock">Unlock to change an answer</button></section>';
   }
   const restartOf = s => (data.page.rounds.find(r => r.round === s.round) || {}).restart || "";
@@ -230,7 +235,8 @@
     set("data-review-settled", "on");
     set("data-review-handled", Object.keys(p.rounds[p.rounds.length - 1].handled || {}).join(","));
     const held = heldBy();
-    set("data-review-locked", held ? "on" : "");
+    set("data-review-sending", held ? "on" : "");
+    set("data-review-held", held ? heldIds().join(",") : "");
     set("data-review-reopen", Object.entries(data.states).filter(([, s]) => s.reopened).map(([k, s]) => k + "=" + s.reopened).join("|"));
     let top = body.querySelector("header.top");
     if (!top) { top = document.createElement("header"); top.className = "top"; body.prepend(top); }
@@ -446,7 +452,7 @@
       setTimeout(boot, POLL); return;
     }
     render();
-    if (!reviewLoaded) { reviewLoaded = true; loadScript("/_site/review.js?v=32"); }
+    if (!reviewLoaded) { reviewLoaded = true; loadScript("/_site/review.js?v=33"); }
     setInterval(() => { if (!document.hidden) refresh(false).catch(() => {}); }, POLL);
   })();
 })();

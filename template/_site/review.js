@@ -9,6 +9,8 @@
 //   data-review-page      storage page id (default: the path)
 //   data-review-approved  "s1,s3": answered Yes in a pasted result; hidden, count as Yes
 //   data-review-settled   "on" (page files): approved items stay as a collapsed, locked row instead of hidden
+//   data-review-sending   "on" (page files): a Send waits on the agent; Clear and Save round wait with it
+//   data-review-held      "s1,s3": the items that Send carried; they're locked, every other item stays open
 //   data-review-handled   "s2,s5": a sent No or Changes the agent dealt with; the item is open again, marked so
 //   data-review-reopen    "s4=reason|s11=reason": brings an answered item back, with a reason
 //   data-review-stale     "a.html|b/": pages marked Stale recently; listed as "STALE: <page>" in Copy results
@@ -84,7 +86,7 @@ window.rvCount = function (items, state, o) {
 (function () {
   // Pages that render their own items (and their own pop-out) opt out.
   if (document.body.getAttribute("data-review-controls") === "off") return;
-  const V = "27";
+  const V = "28";
   function itemOf(el) {
     const box = el.closest("[data-review-question], .item");
     if (box) {
@@ -284,6 +286,8 @@ if (!window.siteTheme) { const t = document.createElement("script"); t.src = "/_
   for (const part of (body.getAttribute("data-review-reopen") || "").split("|")) {
     const i = part.indexOf("="); if (i > 0) reopen[part.slice(0, i).trim()] = part.slice(i + 1).trim();
   }
+  const sending = body.getAttribute("data-review-sending") === "on";
+  const heldIds = new Set((body.getAttribute("data-review-held") || "").split(",").filter(Boolean));
   const SETTLED = body.getAttribute("data-review-settled") === "on";
   const handled = new Set((body.getAttribute("data-review-handled") || "").split(",").filter(Boolean));
   const blocked = {};
@@ -313,7 +317,7 @@ if (!window.siteTheme) { const t = document.createElement("script"); t.src = "/_
   }
 
   if (!document.querySelector('link[href*="/_site/site.css"]')) {
-    const l = document.createElement("link"); l.rel = "stylesheet"; l.href = "/_site/site.css?v=27"; document.head.appendChild(l);
+    const l = document.createElement("link"); l.rel = "stylesheet"; l.href = "/_site/site.css?v=28"; document.head.appendChild(l);
   }
 
   // data-review-skip="on" (test checklists): adds Skipped; a skipped item is locked.
@@ -414,8 +418,14 @@ if (!window.siteTheme) { const t = document.createElement("script"); t.src = "/_
   }
   function headEl(it) {
     const h = document.createElement("div"); h.className = "rvhead";
-    h.innerHTML = '<span class="rid"></span><span class="sp"></span><span class="st2" data-pill="2"></span><span class="st" data-pill="1" role="status"></span>';
-    h.querySelector(".rid").textContent = it.id;
+    h.innerHTML = '<a class="rid" href="#rv-' + encodeURIComponent(it.id) + '"></a><span class="sp"></span><span class="st2" data-pill="2"></span><span class="st" data-pill="1" role="status"></span>';
+    const rid = h.querySelector(".rid"); rid.textContent = it.id; rid.title = "Go to " + it.id;
+    rid.addEventListener("click", e => {
+      e.preventDefault();
+      const tg = it.card && !it.card.classList.contains("shown") && it.card.querySelector(".settled-tg");
+      if (tg) tg.click();
+      go(it);
+    });
     return h;
   }
   function segEl(it, opts) {
@@ -699,8 +709,8 @@ if (!window.siteTheme) { const t = document.createElement("script"); t.src = "/_
       e.preventDefault(); const it = pickShown[pickActive]; if (it) { showIds(false); go(it); }
     }
   });
-  // A sent page: render.js shows why and how to unlock, and the server refuses answers until then.
-  const heldPage = body.getAttribute("data-review-locked") === "on";
+  // Answers a Send could still carry: anything answered that isn't held or settled.
+  const unsent = () => items.some(it => { const s = state[it.id] || {}; return !heldIds.has(it.id) && !hidden.has(it.id) && (s.v || (s.a || "").trim()); });
   if (store.msg) setStatus(store.msg, store.bad);
   else if (store.loadPending) setStatus("Not saved · retrying", true);
   else if (store.lastMod) setStatus("Saved " + hhmm(store.lastMod));
@@ -781,7 +791,11 @@ if (!window.siteTheme) { const t = document.createElement("script"); t.src = "/_
     bar.classList.toggle("all-done", c.allDone);
     bar.classList.toggle("approved", c.approved);
     bar.classList.toggle("has-blocker", c.blockers > 0);
-    if (sendBtn) sendBtn.classList.toggle("ready", c.allDone);
+    if (sendBtn) {
+      sendBtn.classList.toggle("ready", c.allDone);
+      const done = sending && !unsent();
+      sendBtn.disabled = done; sendBtn.textContent = done ? "Sent" : "Send to " + PF.route.to;
+    }
     const back = bar.querySelector(".back");
     back.hidden = !(c.allDone && folder); back.href = FOLDER_URL; back.textContent = "\u2190 Back to " + FOLDER_PAGES;
     if (wasDone === false && c.allDone && folder) actToast((c.approved ? "Approved." : "Every item answered.") + " Copy results from More, then", "back to " + FOLDER_PAGES);
@@ -1019,10 +1033,10 @@ if (!window.siteTheme) { const t = document.createElement("script"); t.src = "/_
     } catch (e) { alert("Couldn't save the round: " + e.message); }
   });
 
-  if (heldPage) {
-    for (const it of items) { lock(it); it.box.querySelectorAll("button, textarea, input").forEach(x => x.disabled = true); }
+  // render.js shows why and how to unlock, and the server refuses a held item's answer until then.
+  if (sending) {
+    for (const it of items) if (heldIds.has(it.id)) { lock(it); it.box.querySelectorAll("button, textarea, input").forEach(x => x.disabled = true); }
     bar.querySelectorAll(".clear, .round-close").forEach(x => x.disabled = true);
-    if (sendBtn) { sendBtn.disabled = true; sendBtn.textContent = "Sent"; }
   }
   if (sendBtn) sendBtn.addEventListener("click", async () => {
     const c = rvCount(kinds(), state, { hidden, blocked });

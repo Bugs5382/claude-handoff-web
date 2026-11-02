@@ -392,7 +392,7 @@ def _rounds(v, rounds):
         v.err("rounds", "expected a list of rounds")
         return
     keys = ("round", "build", "reset", "opened", "closed", "openedBy", "answers", "checkpoints", "reopened", "awaiting",
-            "results", "restart", "handled")
+            "results", "restart", "handled", "held")
     for i, r in enumerate(rounds, 1):
         p = f"rounds[#{i}]"
         if not isinstance(r, dict):
@@ -424,6 +424,8 @@ def _rounds(v, rounds):
             if k in r:
                 _strmap(v, r[k], _join(p, k))
         _handled(v, r.get("handled"), _join(p, "handled"))
+        if "held" in r and not (isinstance(r["held"], list) and all(type(n) is int for n in r["held"])):
+            v.err(_join(p, "held"), "expected a list of submission numbers")
 
 
 def _handled(v, handled, p):

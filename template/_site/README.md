@@ -177,6 +177,10 @@ browser without JavaScript keep the plain link (a new tab). Keep pictures in a s
 A subfolder with no `.html` file in it is never a page, so the index leaves it out; it needs no
 `_status.json` entry.
 
+## Guided tour
+
+Each page file has a Take the tour button in its header. It runs [driver.js](https://driverjs.com) over the page's real controls, one tour per page kind, and is bundled in the app with no CDN. It never starts by itself. Once it's been seen, the browser remembers and the button says See the tour again. `CUSTOM.md` shows how a custom page adds its steps.
+
 ## Links (new window)
 
 `live.js` makes a link inside a step or item open in a new window (`target="_blank"`, `rel="noopener"`), set

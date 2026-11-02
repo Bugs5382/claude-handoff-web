@@ -310,6 +310,10 @@ body.site th { background: var(--soft-2); font-weight: 600; }
 .item-more-menu[hidden] { display: none; }
 .item-more-menu button { min-height: var(--tap); padding: 0 14px; font: 15px var(--font); text-align: left; border: 0; border-radius: 8px; background: var(--card); color: var(--ink); cursor: pointer; }
 .item-more-menu button:hover { background: var(--soft); }
+.tour-btn { align-self: flex-start; min-height: 32px; padding: 0 12px; font: 600 14px var(--font); border: 1px solid var(--line-2); border-radius: var(--radius-sm); background: var(--card); color: var(--link); cursor: pointer; }
+.driver-popover { background: var(--card); color: var(--ink); font-family: var(--font); }
+.driver-popover .driver-popover-title, .driver-popover .driver-popover-description, .driver-popover .driver-popover-progress-text { color: inherit; font-family: var(--font); }
+.driver-popover .driver-popover-footer button { background: var(--soft); color: var(--ink); border-color: var(--line-2); text-shadow: none; }
 .email { margin: 12px 0; padding: 12px 14px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--soft); }
 .email-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .email-h { font-weight: 600; }

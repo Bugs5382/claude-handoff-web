@@ -347,6 +347,30 @@ const seg = (doc, id, v) => card(doc, id).querySelector('.seg button[data-v="' +
     eq(press(d(), d().querySelector('a[href="/demo/"]')), null, "a folder link");
   });
 
+  await t("tour: started by the person, walks real controls on each page type, and remembers it's been seen", async () => {
+    localStorage.clear();
+    const pages = { "sample-review": "Answer each item", "sample-signoff": "Answer each item", "sample-journey": "Answer each item", "sample-backlog": "Pick for each item",
+      "sample-questions": "Type your answer", "sample-round-single": "Answer each item", "sample-round-phases": "Phases", "sample-custom": "A custom page" };
+    for (const [page, first] of Object.entries(pages)) {
+      const { doc } = await load("/demo/" + page);
+      ok(!doc.querySelector(".driver-popover"), page + ": it never starts by itself");
+      const btn = doc.querySelector(".tour-btn"); eq(btn.textContent, "Take the tour", page);
+      click(btn);
+      await until(() => doc.querySelector(".driver-popover-title"), "the tour on " + page);
+      eq(doc.querySelector(".driver-popover-title").textContent, first, page);
+      ok(doc.querySelector(".driver-active-element"), page + ": it points at a real control");
+      click(doc.querySelector(".driver-popover-next-btn")); await tick(450);
+      ok(doc.querySelector(".driver-popover-title"), page + ": the next step shows");
+      click(doc.querySelector(".driver-popover-close-btn"));
+      await until(() => !doc.querySelector(".driver-popover") && doc.querySelector(".tour-btn").textContent === "See the tour again", "closing on " + page);
+    }
+    const { doc } = await load("/demo/sample-review");
+    eq(doc.querySelector(".tour-btn").textContent, "See the tour again", "it's remembered");
+    click(doc.querySelector(".tour-btn"));
+    await until(() => doc.querySelector(".driver-popover-title"), "seeing it again");
+    click(doc.querySelector(".driver-popover-close-btn")); await tick(50);
+  });
+
   await t("finished page: green bar and back link; Copy results goes back to the folder", async () => {
     const { doc, bar } = await load("/demo/pf-fin-1");
     ok(doc.querySelector("header.top .crumb"), "the crumb back to the folder");

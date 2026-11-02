@@ -10,6 +10,7 @@ import { JumpBar, OpenIds } from "@/elements/JumpBar";
 import { Restart } from "@/elements/Restart";
 import { Round } from "@/elements/Round";
 import { Thread, itemEntries, replyEntry } from "@/elements/Thread";
+import { TourButton } from "@/elements/TourButton";
 import { postPage, rel } from "@/lib/api";
 import { wireDiffs } from "@/lib/diffs";
 import { actToast, returnSoon } from "@/lib/finish";
@@ -17,6 +18,7 @@ import { folder, folderPages, folderUrl } from "@/lib/howto";
 import { DONE, blockers, count, deliveryOf, heldBy, heldIds, openRound, typeOf, type CountItem } from "@/lib/model";
 import { itemActions, templates } from "@/lib/custom";
 import { inline } from "@/lib/text";
+import { tours } from "@/lib/tour";
 import { usePage } from "@/lib/usePage";
 import type { ItemDef, Locals, PageData } from "@/lib/types";
 
@@ -248,7 +250,7 @@ export function Page() {
     </Footer>);
 
   return <>
-    <header className="top"><div className="wrap">{folder && <a className="crumb" href={folderUrl}>{"← " + folderPages}</a>}<h1>{p.title}</h1>{p.summary && <p dangerouslySetInnerHTML={{ __html: inline(p.summary) }} />}</div></header>
+    <header className="top"><div className="wrap">{folder && <a className="crumb" href={folderUrl}>{"← " + folderPages}</a>}<h1>{p.title}</h1>{p.summary && <p dangerouslySetInnerHTML={{ __html: inline(p.summary) }} />}<TourButton tour={p.template && tours[p.template] ? p.template : p.phases ? "round-phases" : p.kind} /></div></header>
     <main className="wrap" id="page">
       {sub && <Held data={data} sub={sub} onUnlock={async () => { await postPage("/unlock", {}); await redraw(); }} />}
       {pageReplies.length > 0 && <section className="pthread" id="replies"><h2>Replies about this page</h2><Thread entries={pageReplies} label="Replies about this page" /></section>}

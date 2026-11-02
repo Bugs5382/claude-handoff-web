@@ -116,7 +116,7 @@ export function deliveryOf(data: PageData, s: Submission): Delivery {
   const replies = Object.values(data.page.thread ?? {}).flat().filter(x => x.at > s.at).sort((a, b) => a.at.localeCompare(b.at));
   const reply = replies[replies.length - 1];
   const restart = data.page.rounds.find(r => r.round === s.round)?.restart ?? "";
-  const label = s.kind === "restart" ? "Restarted from " + cpName(restart) : s.kind === "blocker" ? "Blocker sent" : "Sent";
+  const label = s.kind === "restart" ? "Restarted from " + cpName(restart) : s.kind === "blocker" ? "Blocker sent" : s.scope === "item" ? `${s.items[0]} sent` : "Sent";
   const base = { kind: s.kind, to };
   if (reply) {
     const t = reply.text.length > 90 ? reply.text.slice(0, 89) + "\u2026" : reply.text;

@@ -55,7 +55,7 @@ Full walk-through with a network migration: `_site/GUIDE.md`. Pick the `kind` by
 
 Each file in `_inbox/<agent>/` has a `kind`. Blockers first.
 
-- `send`: the person answered and these items are locked. Answered questions and picks stay locked once you update the page, so take them into your work. If you need more, add a new question saying which answer it follows from. Act, then reply under each item with `page.py reply`. A reply under a No or Changes clears it, and the note stays in its history. Change the item with `page.py set` if the data changed.
+- `send`: the person answered and these items are locked. Answered questions and picks stay locked once you update the page, so take them into your work. If you need more, add a new question saying which answer it follows from. Act, then reply under each item with `page.py reply`. A reply under a No or Changes clears it, and the note stays in its history. Change the item with `page.py set` if the data changed. A `send` with `"scope": "item"` carries one item the person sent on its own: it stays locked until you reply under that item or change it, whatever else you update.
 - `blocker`: one item is stopping them. Deal with it now.
 - `email`: write the email from `recipient`, `ask`, `tone` and `context`, which holds the step, what changed between rounds, and the comments. For `change`, start from version `basedOn`. Answer with `page.py email <page> <id> --from <agent> --request <n> --subject "..." "body"`. This doesn't answer or lock the item.
 - `deck`: build it from `framing` and `items`, which are only the final Yes and Accept risk items. Save it beside the page and reply under `_page` with the link.
@@ -69,7 +69,8 @@ Everything custom goes in `custom/`, which no update touches, with `htm` templat
 
 - Each item answers its own way: Yes / No / Changes (Changes needs a note), Skipped on checks and steps, the
   page's own choices on a backlog, free text on an open question. One page can mix them.
-- A Send locks the items it carried until your next `page.py set` or `reply`, so always answer on the page.
+- A Send locks the items it carried until your next `page.py set` or `reply`, so always answer on the page. An item
+  sent on its own unlocks only when you reply under it or change it.
 - An item answered Yes in an earlier round, or sent as Yes, stays as a collapsed, locked row and in Copy results. A sent
   No or Changes clears once you reply under the item or change it, so answer item by item; your note stays in its
   thread. A Yes comes back only when its

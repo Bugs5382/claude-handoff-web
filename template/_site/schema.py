@@ -583,7 +583,7 @@ def _submissions(v, subs):
             v.err(p, "expected an object")
             continue
         v.keys(s, p, ("n", "kind", "at", "to", "round", "rev", "items", "file", "state", "takenAt", "released",
-                            "recipient", "ask", "tone", "change", "basedOn", "framing", "handled"), ("n", "kind", "at"))
+                            "recipient", "ask", "tone", "change", "basedOn", "framing", "handled", "scope"), ("n", "kind", "at"))
         if s.get("n") != i:
             v.err(_join(p, "n"), f"expected {i}")
         v.choice(s, "kind", p, SUBMISSION_KINDS)
@@ -594,6 +594,7 @@ def _submissions(v, subs):
         v.integer(s, "rev", p, minimum=0)
         v.strings(s, "items", p)
         v.choice(s, "state", p, SUBMISSION_STATES)
+        v.choice(s, "scope", p, ("item",))
         if "released" in s and not isinstance(s["released"], bool):
             v.err(_join(p, "released"), "expected true or false")
 

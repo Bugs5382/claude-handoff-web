@@ -135,6 +135,20 @@ export function Page() {
     if (!(await flush())) { alert("Can't send yet: the answers aren't saved. Try again once it says Saved."); return; }
     try { await postPage("/send", { kind: "send", phase: id, results: results() }); await redraw(); } catch (e) { alert(`Couldn't send: ${(e as Error).message}. Use Copy results instead.`); }
   };
+  const sendItem = async (it: ItemDef) => {
+    if (!(await flush())) { alert("Can't send yet: the answers aren't saved. Try again once it says Saved."); return; }
+    const l = live.current[it.id] ?? {};
+    const out = `Item: ${p.title} (/${rel}${p.build ? ", build " + p.build : ""})\n- [${it.id}] ${LOUD[l.v ?? ""] ?? "NOT ANSWERED"}: ${it.title}${l.n ? `\n    Note: ${l.n.replace(/\n/g, " ")}` : ""}\n`;
+    try {
+      const sent = await postPage("/send", { kind: "send", scope: "item", items: [it.id], results: out }) as { to: string; listening: boolean };
+      await redraw();
+      if (!sent.listening) { await navigator.clipboard.writeText(out); alert(`${it.id} is sent to ${sent.to}, who isn't listening right now, so it's copied too. Paste it to them.`); }
+    } catch (e) { alert(`Couldn't send ${it.id}: ${(e as Error).message}.`); }
+  };
+  const sendable = (it: ItemDef) => {
+    const l = local[it.id] ?? {};
+    return sends && !["info", "question", "choice"].includes(typeOf(p, it)) && !held.has(it.id) && !hidden.has(it.id) && !blocked[it.id] && !l.locked && !!(l.v || (l.n ?? "").trim());
+  };
   const emailFor = (it: ItemDef) => {
     const versions = p.emails?.[it.id] ?? [];
     if (!p.drafts && !versions.length) return undefined;
@@ -225,7 +239,7 @@ export function Page() {
   const renderItem = (it: ItemDef, n: number | string) => (
         <Item key={it.id} item={it} n={n} risk={p.kind === "round"} type={typeOf(p, it)} state={data.states[it.id]} value={local[it.id] ?? {}} blockedBy={blocked[it.id]} held={held.has(it.id)}
           handled={!!r.handled?.[it.id]} entries={itemEntries(data, it.id)} email={emailFor(it)} emailLabel={p.drafts ? (p.emails?.[it.id]?.length ? "Generate another email" : "Generate an email") : undefined}
-          actions={itemActions.map(make => make(it, data)).filter(a => a !== null)} diffs={data.diffs} build={p.build} choices={p.options?.choices} defaultChoice={p.options?.default}
+          actions={[...(sendable(it) ? [{ name: "send-item", label: "Send this item", onSelect: () => void sendItem(it) }] : []), ...itemActions.map(make => make(it, data)).filter(a => a !== null)]} diffs={data.diffs} build={p.build} choices={p.options?.choices} defaultChoice={p.options?.default}
           blockerLabel={sends ? "Blocker: send now" : "Blocker: copy now"}
           blockerTitle={`Something stops you testing or using it: ${sends ? "send this one item to" : "copy this one item and paste it to"} ${to} straight away`}
           isItem={id => p.items.some(x => x.id === id) || !!data.phases[id]} goTo={goTo} onChange={next => set(it.id, next)} onBlocker={note => void blocker(it, note)} />

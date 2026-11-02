@@ -81,7 +81,7 @@ ls _inbox/ops/
 A Send records the submission on the page, then writes one file to the route's inbox, atomically. Only once the
 file is there do its items lock: the open round's `held` lists the Sends waiting (`awaiting` is the latest), and
 `PUT /answers` answers `400` for those items, and only those, until the agent's next `page.py set` or `reply`, or an unlock. A file that can't be written answers `500` and marks
-the submission `failed`, with nothing locked. A Blocker never locks. On a round with phases, `"phase": "A"` sends just that phase, and a blocked phase answers `400`. `items`
+the submission `failed`, with nothing locked. A Blocker never locks. On a round with phases, `"phase": "A"` sends just that phase, and a blocked phase answers `400`. `"scope": "item"` with one id in `items` sends that item on its own; it answers `400` when the item has no new answer, is already sent, or is blocked. Its hold lifts only on a reply under that item, a change to it, or an unlock. `items`
 defaults to every item answered in the open round that isn't held or settled; a blocker sends exactly one. The answers and notes come
 from the page file, not from the request. A route whose `mode` is `copy` answers `409`: that page copies its
 results instead.

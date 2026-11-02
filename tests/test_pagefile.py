@@ -800,3 +800,70 @@ def test_a_question_can_still_be_reopened_with_a_reason(path):
     pagefile.reply(path, "q1", "ops", "Which Saturday?", action="reopen", reason="Which Saturday?", now=T2)
     state = pagefile.item_states(pagefile.load(path))["q1"]
     assert state["reopened"] == "Which Saturday?" and state["hidden"] is False
+
+
+def item_sent(path, iid, at=T1):
+    sub = pagefile.add_submission(path, {"kind": "send", "scope": "item", "to": "ops", "items": [iid], "file": "f-{n}.json"}, now=at)
+    pagefile.hold(path, sub["n"])
+    return sub
+
+
+def test_a_reply_under_an_item_send_unlocks_only_that_item(path):
+    make(path)
+    pagefile.save_answers(path, {"s1": {"answer": "yes"}, "s2": {"answer": "changes", "note": "Move it"}}, by="me", now=T0)
+    item_sent(path, "s1")
+    item_sent(path, "s2")
+    assert pagefile.held_items(pagefile.load(path)) == {"s1", "s2"}
+    pagefile.reply(path, "s2", "ops", "Moved.", now=T2)
+    doc = pagefile.load(path)
+    assert pagefile.held_items(doc) == {"s1"}, "s1 waits for its own reply"
+    assert "s2" not in doc["rounds"][-1]["answers"] and doc["rounds"][-1]["handled"]["s2"][0]["note"] == "Move it"
+
+
+def test_a_page_reply_or_update_leaves_an_item_send_locked(path):
+    make(path)
+    pagefile.save_answers(path, {"s1": {"answer": "yes"}}, by="me", now=T0)
+    item_sent(path, "s1")
+    pagefile.reply(path, "_page", "ops", "Looking.", now=T2)
+    pagefile.write_definition(path, review(), now=T2)
+    assert pagefile.held_items(pagefile.load(path)) == {"s1"}
+
+
+def test_a_page_send_still_unlocks_on_any_update(path):
+    make(path)
+    pagefile.save_answers(path, {"s1": {"answer": "yes"}, "s2": {"answer": "yes"}}, by="me", now=T0)
+    sent(path, ["s1"])
+    item_sent(path, "s2")
+    pagefile.reply(path, "_page", "ops", "Updated.", now=T2)
+    assert pagefile.held_items(pagefile.load(path)) == {"s2"}
+
+
+def test_a_yes_an_item_send_carried_locks_once_its_item_is_answered_while_others_wait(path):
+    make(path)
+    pagefile.save_answers(path, {"s1": {"answer": "yes"}, "s2": {"answer": "yes"}}, by="me", now=T0)
+    item_sent(path, "s1")
+    item_sent(path, "s2")
+    pagefile.reply(path, "s1", "ops", "Noted.", now=T2)
+    states = pagefile.item_states(pagefile.load(path))
+    assert states["s1"]["hidden"] is True and states["s2"]["hidden"] is False
+
+
+def test_a_changed_item_releases_its_item_send(path):
+    make(path)
+    pagefile.save_answers(path, {"s1": {"answer": "yes"}, "s2": {"answer": "yes"}}, by="me", now=T0)
+    item_sent(path, "s1")
+    item_sent(path, "s2")
+    changed = review()
+    changed["items"][0]["body"] = [{"p": "New."}]
+    pagefile.write_definition(path, changed, now=T2)
+    assert pagefile.held_items(pagefile.load(path)) == {"s2"}
+
+
+def test_blocked_items_follow_depends_on_steps_phases_and_blocked_by(path):
+    make(path, {"schema": "handoff.page/v1", "kind": "round", "title": "Plan",
+                                     "phases": [{"id": "A", "title": "One"}, {"id": "B", "title": "Two", "dependsOn": ["A"]}],
+                                     "items": [{"id": "A1", "title": "a"}, {"id": "A2", "title": "b", "dependsOn": ["A1"]},
+                                               {"id": "A3", "title": "c", "blockedBy": "the vendor"}, {"id": "B1", "title": "d"}]})
+    assert pagefile.blocked_items(pagefile.load(path)) == {"A2", "A3", "B1"}
+    pagefile.save_answers(path, {"A1": {"answer": "yes"}}, by="me", now=T0)
+    assert pagefile.blocked_items(pagefile.load(path)) == {"A3", "B1"}

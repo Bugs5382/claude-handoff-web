@@ -98,6 +98,7 @@ Any page can mix them with `type`.
 |---|---|---|
 | Send | sends the answers and locks what was sent | reads the inbox file, acts, and replies |
 | Send phase | the same, for one phase | the same |
+| Send this item | in an answered item's More menu: sends just that item and locks only it | replies under that item, which unlocks it |
 | Blocker | sends one item straight away, and locks nothing | deals with it first |
 | Copy results | copies the answers as text | nothing: the person pastes it |
 | Unlock to change an answer | takes that Send back | nothing |

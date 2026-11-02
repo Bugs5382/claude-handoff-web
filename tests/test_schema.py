@@ -245,3 +245,46 @@ def test_submissions_shape():
     found = errors(doc)
     assert "submissions[#1].state: expected one of sent, taken, failed" in found
     assert "submissions[#1].extra: unknown key" in found
+
+
+def choice_item(**extra):
+    return {"schema": schema.SCHEMA, "kind": "review", "title": "T", "items": [{"id": "c1", "type": "choice", "title": "Pick", **extra}]}
+
+
+ONE, TWO_MORE = {"value": "a", "label": "A", "description": "Short", "recommended": True}, {"value": "b", "label": "B"}
+
+
+def test_an_item_with_its_own_choices_needs_no_page_options():
+    assert schema.validate(choice_item(choices=[ONE, TWO_MORE], multi=True)) == []
+
+
+@pytest.mark.parametrize("choices, error", [
+    ([ONE], "items[c1].choices: expected 2 to 4 options"),
+    ([ONE, TWO_MORE, *[{"value": v, "label": v} for v in "cde"]], "items[c1].choices: expected 2 to 4 options"),
+    ([ONE, {"value": "b"}], "items[c1].choices[#2].label: required"),
+    ([ONE, {"value": "a", "label": "A again"}], "items[c1].choices[#2].value: duplicate value"),
+    ([ONE, {"value": "other", "label": "Mine"}], "items[c1].choices[#2].value: other is the built-in Other"),
+    ([ONE, {"value": "b c", "label": "B"}], "items[c1].choices[#2].value: expected a-z, 0-9, _ and -"),
+    ([TWO_MORE, ONE], "items[c1].choices[#2].recommended: the recommended option goes first"),
+])
+def test_item_choices_are_checked(choices, error):
+    assert error in schema.validate(choice_item(choices=choices))
+
+
+def test_a_section_cannot_carry_choices():
+    item = {"id": "s1", "title": "A", "choices": [ONE, TWO_MORE]}
+    doc = {"schema": schema.SCHEMA, "kind": "review", "title": "T", "items": [item]}
+    assert "items[s1].choices: not allowed on a section item" in schema.validate(doc)
+
+
+def test_multi_needs_choices():
+    doc = {**choice_item(multi=True), "options": {"choices": [TWO_MORE]}}
+    assert "items[c1].multi: only with the item's own choices" in schema.validate(doc)
+
+
+def test_lint_warns_when_text_lists_options_but_the_item_has_none():
+    doc = {"schema": schema.SCHEMA, "kind": "review", "title": "T", "items": [
+        {"id": "s1", "title": "Which way?", "body": [{"list": ["Option 1: restart", "Option 2: wait"]}]},
+        {"id": "s2", "title": "Options reviewed", "body": [{"p": "We looked at the options last week."}]}]}
+    assert schema.validate(doc) == [], "a warning never blocks a page"
+    assert schema.lint(doc) == ["items[s1]: its text lists options, but it has no choices"]

@@ -73,6 +73,7 @@ window.HandoffSite.tours["progress-round"] = [
 | `Answer` | the segmented answer buttons |
 | `Button` | a named button, such as `send-btn` or `copy` |
 | `Chip` | a status pill |
+| `Choices` | an item's own question, with its options, Other and a note |
 | `TourButton` | starts the page's guided tour |
 | `EmailDraft` | an item's generated email, with its versions |
 | `Thread` | an item's history |

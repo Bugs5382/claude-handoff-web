@@ -1,0 +1,70 @@
+{
+  "definition": {
+    "schema": "handoff.page/v1",
+    "kind": "review",
+    "title": "Sample: items with their own choices",
+    "summary": "Each question has its own options, with Other and a note.",
+    "status": {
+      "state": "needs-you",
+      "priority": 8
+    },
+    "items": [
+      {
+        "id": "s1",
+        "title": "The restart plan reads right",
+        "body": [
+          {
+            "p": "A plain item, on the same page as the questions below."
+          }
+        ]
+      },
+      {
+        "id": "r1",
+        "type": "choice",
+        "title": "When do we restart the Harbor services?",
+        "choices": [
+          {
+            "value": "tonight",
+            "label": "Tonight",
+            "description": "Lowest traffic, and the fix goes in soonest",
+            "recommended": true
+          },
+          {
+            "value": "weekend",
+            "label": "At the weekend",
+            "description": "More people on hand if it goes wrong"
+          },
+          {
+            "value": "wait",
+            "label": "Wait for the vendor",
+            "description": "Safest, but the fault stays until they answer"
+          }
+        ]
+      },
+      {
+        "id": "r2",
+        "type": "choice",
+        "title": "Who needs telling first?",
+        "multi": true,
+        "choices": [
+          {
+            "value": "desk",
+            "label": "The service desk",
+            "description": "They take the calls",
+            "recommended": true
+          },
+          {
+            "value": "wards",
+            "label": "The wards",
+            "description": "They see the outage"
+          },
+          {
+            "value": "oncall",
+            "label": "On-call engineers"
+          }
+        ]
+      }
+    ]
+  },
+  "steps": []
+}

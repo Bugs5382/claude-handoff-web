@@ -429,6 +429,32 @@ const seg = (doc, id, v) => card(doc, id).querySelector('.seg button[data-v="' +
     await tick(1000); ok(!w().document.querySelector("[data-moment]"), "it clears");
   });
 
+  await t("choices: labelled options, recommended first, Other with its text, a note, and multi-select", async () => {
+    const { doc, bar } = await load("/demo/sample-choices");
+    const c = card(doc, "r1"), opts = Array.from(c.querySelectorAll(".rv-opt"));
+    eq(opts.length, 4, "three options and Other");
+    eq(opts[0].querySelector(".rv-opt-l").textContent, "Tonight (Recommended)");
+    match(opts[0].querySelector(".rv-opt-d").textContent, /Lowest traffic/);
+    eq(opts[3].querySelector(".rv-opt-l").textContent, "Other", "Other is last");
+    eq(opts[0].querySelector("input").type, "radio"); ok(opts[1].getBoundingClientRect().top > opts[0].getBoundingClientRect().bottom - 1, "one option per line");
+    ok(!c.querySelector(".seg"), "not Yes, No, Changes");
+    match(bar.querySelector(".cnt").textContent, /^0 of 3 /);
+    click(opts[1].querySelector("input")); eq(c.querySelector(".rvhead .st").textContent, "At the weekend");
+    click(opts[3].querySelector("input"));
+    eq(opts[1].querySelector("input").checked, false, "a radio takes one");
+    const other = c.querySelector(".rv-opt-other input"); ok(other, "Other opens a text box");
+    match(bar.querySelector(".cnt").textContent, /^0 of 3 /, "Other doesn't count until it has text");
+    typeIn(other, "Tuesday morning");
+    typeIn(c.querySelector(".notel textarea"), "Ask the vendor first");
+    const m = card(doc, "r2"); eq(m.querySelector(".rv-opt input").type, "checkbox");
+    const picks = m.querySelectorAll(".rv-opt input"); click(picks[0]); click(picks[1]);
+    await saved();
+    const a = (await pageFile("demo/sample-choices")).rounds[0].answers;
+    eq(a.r1.answer, "other"); eq(a.r1.other, "Tuesday morning"); eq(a.r1.note, "Ask the vendor first"); eq(a.r2.answer, "desk,wards");
+    const r = w().siteReview.results();
+    match(r, /- \[r1\] OTHER \(Tuesday morning\): When do we restart/); match(r, /- \[r2\] THE SERVICE DESK, THE WARDS: Who needs telling/);
+  });
+
   await t("finished page: green bar and back link; Copy results goes back to the folder", async () => {
     const { doc, bar } = await load("/demo/pf-fin-1");
     ok(doc.querySelector("header.top .crumb"), "the crumb back to the folder");

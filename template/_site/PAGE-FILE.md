@@ -98,12 +98,24 @@ Answers are keyed by id, so reordering items never moves an answer.
 | `contract` | Yes / No / Changes | `fields`, `forms` (`[{name, fields}]`), `body` |
 | `diff` | Yes / No / Changes | `old`, `new`, `code` |
 | `question` | free text | `body`, `suggested` |
-| `choice` | the page's `options` | `body` |
+| `choice` | the page's `options`, or its own `choices` | `body`, `choices`, `multi` |
 | `info` | none | `body` |
 
 Answerable items also take `answers` (their own set, such as `["yes", "no"]`), `skip: true` (adds Skipped),
 `dependsOn` (ids on the same page) and `blockedBy` (free text), and any item can take `section`, a group
 heading.
+
+### An item's own choices
+
+A `choice` item can carry its own options, and then works like a question in a dialog: 2 to 4 options, one per line, each with a `label` and a short `description`. The recommended option goes first, with `"recommended": true`, and shows "(Recommended)". Other is always there at the bottom and opens a text box. There's an optional note. `"multi": true` lets the person pick several.
+
+```json
+{"id": "r1", "type": "choice", "title": "When do we restart?", "choices": [
+  {"value": "tonight", "label": "Tonight", "description": "Lowest traffic", "recommended": true},
+  {"value": "weekend", "label": "At the weekend", "description": "More people on hand"}]}
+```
+
+The answer is the value, comma-joined when it's `multi`. Other is `other`, with its text in the answer's `other` field. `page.py new`, `set` and `check` warn, without stopping, when an item's text lists options such as "Option 1" and "Option 2" but the item has no choices.
 
 ### Generating an email
 

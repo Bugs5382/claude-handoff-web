@@ -74,12 +74,14 @@ def cmd_new(a):
     os.makedirs(os.path.dirname(path), exist_ok=True)
     pagefile.write_definition(path, definition)
     print(f"created {a.page}")
+    warn_about(a.page, path)
 
 
 def cmd_set(a):
     path = page_path(a.root, a.page)
     rev = pagefile.write_definition(path, read_definition(a.source))
     print(f"{a.page} at rev {rev}")
+    warn_about(a.page, path)
 
 
 def cmd_reply(a):
@@ -105,6 +107,13 @@ def cmd_round_close(a):
     print(f"round {n} open")
 
 
+def warn_about(ref, path):
+    """A likely mistake on a valid page: it says so and never stops the write."""
+    with open(path, encoding="utf-8") as f:
+        for w in schema.lint(json.load(f)):
+            print(f"warning: {ref}: {w}", file=sys.stderr)
+
+
 def cmd_check(a):
     bad = 0
     for ref in a.pages:
@@ -116,6 +125,8 @@ def cmd_check(a):
         for err in errors:
             print(f"{ref}: {err}" if len(a.pages) > 1 else err)
         bad += bool(errors)
+        if not errors:
+            warn_about(ref, page_path(a.root, ref))
     return 1 if bad else 0
 
 

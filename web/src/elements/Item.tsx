@@ -3,6 +3,7 @@ import { flushSync } from "react-dom";
 import { Answer, type AnswerOption } from "@/elements/Answer";
 import { Blocks, ItemExtras } from "@/elements/Blocks";
 import { Chip } from "@/elements/Chip";
+import { Choices } from "@/elements/Choices";
 import { ItemMore, type ItemAction } from "@/elements/ItemMore";
 import { Thread, type Entry } from "@/elements/Thread";
 import { openHowto } from "@/lib/howto";
@@ -95,6 +96,20 @@ export function Item(p: ItemProps) {
         <textarea ref={qa} className="qans" placeholder="Type your answer" value={value.a ?? ""} onChange={e => p.onChange({ ...value, a: e.target.value })} />
       </div>
     </section></>;
+
+  if (type === "choice" && it.choices) {
+    const picks = (value.v ?? "").split(",").filter(Boolean);
+    const named = picks.map(x => (x === "other" ? "Other" : it.choices?.find(c => c.value === x)?.label ?? x)).join(", ");
+    return <>{group}
+      <section data-item={it.id} data-review-question={it.id} data-title={it.title} data-answer={picks.length ? "pick" : "default"} className={"rvcard is-choice" + (blockedBy ? " is-blocked" : "")}>
+        <div className="rvhead">{rid}<span className="sp" /><span className="st2" />{blocked ?? <Chip tone={picks.length ? "a-yes" : ""}>{named || "Not picked"}</Chip>}{more}</div>
+        <h2>{heading}</h2>{content}
+        <div className={"rv in-card choice" + (blockedBy ? " blocked" : "")} id={"rv-" + it.id}>
+          <Choices id={it.id} title={it.title} options={it.choices} multi={it.multi} value={value} disabled={!!blockedBy || !!held} onChange={p.onChange} />
+          <label className="notel"><span>Note (optional)</span><textarea rows={2} disabled={!!blockedBy || !!held} value={note} onChange={e => p.onChange({ ...value, n: e.target.value })} /></label>
+        </div>
+      </section></>;
+  }
 
   if (type === "choice") {
     const first = p.choices?.[0]?.value, def = p.defaultChoice ?? "";

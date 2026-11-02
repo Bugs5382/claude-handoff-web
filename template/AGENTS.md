@@ -48,6 +48,7 @@ Full walk-through with a network migration: `_site/GUIDE.md`. Pick the `kind` by
 - `round`: a set of items to answer and send, with Accept risk. Without `phases` it's round single, sent from the bar. With `phases` it's round phases: phases `A`, `B`, steps `A1`, `A2`, and a Send per phase.
 - Item types mix on a page: `section`, `check`, `step`, `screen`, `contract`, `diff`, `question`, `choice`, `info`.
 - A phase's or item's `dependsOn` can name a phase or a step. Use it to say what waits on what.
+- To ask something with set answers, use a `choice` item with its own `choices`: 2 to 4 options, each with a `label` and a short `description`, the recommended one first with `"recommended": true`, and `"multi": true` for several picks. Other and a note are built in. Don't list options in an item's text.
 - `"drafts": true` adds Generate an email to each item's More. `"deck": true` adds Build a deck to the bar's More.
 - Run `python3 _site/page.py check <page>` before you hand a page over.
 
@@ -63,7 +64,7 @@ Each file in `_inbox/<agent>/` has a `kind`. Blockers first.
 
 ## Extending the site
 
-Everything custom goes in `custom/`, which no update touches, with `htm` templates and no build. `_site/CUSTOM.md` lists the elements (`Page`, `Round`, `Phase`, `Item`, `ItemMore`, `Answer`, `Button`, `Chip`, `EmailDraft`, `Thread`, `History`, `Restart`, `Footer`, `JumpBar`, `OpenIds`, `Blocks`, `TourButton`) and what stays stable. Never edit `_site/`: an update replaces it. Custom buttons and links go in the More menus as slots, never on the bar.
+Everything custom goes in `custom/`, which no update touches, with `htm` templates and no build. `_site/CUSTOM.md` lists the elements (`Page`, `Round`, `Phase`, `Item`, `ItemMore`, `Answer`, `Button`, `Chip`, `Choices`, `EmailDraft`, `Thread`, `History`, `Restart`, `Footer`, `JumpBar`, `OpenIds`, `Blocks`, `TourButton`) and what stays stable. Never edit `_site/`: an update replaces it. Custom buttons and links go in the More menus as slots, never on the bar.
 
 ## Reviews
 

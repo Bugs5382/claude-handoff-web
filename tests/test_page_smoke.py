@@ -48,6 +48,7 @@ SCENARIOS = [
     "tour: started by the person, walks real controls on each page type, and remembers it's been seen",
     "bar: the longest count stays on one line beside a picked-up status, with the full text on hover",
     "moments: each thing that happens gets its own, and the first draw has none",
+    "choices: labelled options, recommended first, Other with its text, a note, and multi-select",
     "bar: one row when it fits, a clean split when it does not, and no control ever wraps",
     "finished page: green bar and back link; Copy results goes back to the folder",
     "copy results keeps the Copy results format",

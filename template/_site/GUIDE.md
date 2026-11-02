@@ -89,7 +89,7 @@ Any page can mix them with `type`.
 | `contract` | fields and forms | Yes, No or Changes |
 | `diff` | a change, with Diff and Final | Yes, No or Changes |
 | `question` | a question | free text |
-| `choice` | the page's own `options` | a pick |
+| `choice` | the page's `options`, or its own question with labelled options | a pick, or Other with text, plus a note |
 | `info` | text | nothing |
 
 ## What each control does

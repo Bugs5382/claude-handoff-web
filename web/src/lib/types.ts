@@ -2,6 +2,8 @@
 export type Block = Record<string, unknown>;
 export interface Field { name: string; type?: string; rule?: string }
 
+export interface ItemChoice { value: string; label: string; description?: string; recommended?: boolean }
+
 export interface ItemDef {
   id: string;
   title: string;
@@ -16,12 +18,14 @@ export interface ItemDef {
   checkpoint?: string;
   dependsOn?: string[];
   blockedBy?: string;
+  choices?: ItemChoice[];
+  multi?: boolean;
   images?: { src: string; alt?: string; caption?: string }[];
   fields?: Field[];
   forms?: { name: string; fields?: Field[] }[];
 }
 
-export interface Answer { answer: string; note?: string; at?: string; by?: string }
+export interface Answer { answer: string; note?: string; other?: string; at?: string; by?: string }
 export interface Handled extends Answer { handled: string; via: string }
 
 export interface Round {
@@ -76,5 +80,5 @@ export interface PageData {
 }
 
 /** One item's answer in this tab: v is yes, no, chg, skip or a choice, n the note, a a question's answer. */
-export interface Local { v?: string; n?: string; a?: string; locked?: boolean; blocker?: boolean }
+export interface Local { v?: string; n?: string; a?: string; o?: string; locked?: boolean; blocker?: boolean }
 export type Locals = Record<string, Local>;

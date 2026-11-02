@@ -896,11 +896,20 @@ class Handler(SimpleHTTPRequestHandler):
 
     def _page_send(self, rel, path, req, cfg):
         kind = req.get("kind")
-        if kind not in ("send", "blocker"):
-            raise ValueError("kind must be send or blocker")
+        if kind not in ("send", "blocker", "email"):
+            raise ValueError("kind must be send, blocker or email")
         doc = pagefile.load(path)
         ids = {it["id"] for it in doc["items"]}
         items = req.get("items")
+        extra = {}
+        if kind == "email":
+            if not doc.get("drafts"):
+                raise ValueError("this page doesn't take email drafts")
+            if not isinstance(items, list) or len(items) != 1:
+                raise ValueError("a draft is for exactly one item")
+            if not str(req.get("instructions") or "").strip():
+                raise ValueError("say how to draft it")
+            extra = {k: req[k] for k in ("instructions", "prose", "basedOn") if req.get(k)}
         if items is None:
             held, states = pagefile.held_items(doc), pagefile.item_states(doc)
             items = [i for i in doc["rounds"][-1]["answers"] if i in ids and i not in held and not states.get(i, {}).get("hidden")]
@@ -917,15 +926,15 @@ class Handler(SimpleHTTPRequestHandler):
         if kind == "blocker" and len(items) != 1:
             raise ValueError("a blocker sends exactly one item")
         results = req.get("results") if isinstance(req.get("results"), str) else ""
-        return self._submit(rel, path, cfg, kind, items, results, now_local(cfg))
+        return self._submit(rel, path, cfg, kind, items, results, now_local(cfg), extra)
 
-    def _submit(self, rel, path, cfg, kind, items, results, when):
+    def _submit(self, rel, path, cfg, kind, items, results, when, extra=None):
         """Record the submission on the page, then write it to the route's inbox atomically."""
         doc = pagefile.load(path)
         route = page_route(cfg, rel.split("/")[0], doc)
         if route["mode"] == "copy":
             return HTTPStatus.CONFLICT, {"error": "This page copies its results; it doesn't send them"}
-        sub = pagefile.add_submission(path, {"kind": kind, "to": route["to"], "items": items,
+        sub = pagefile.add_submission(path, {"kind": kind, "to": route["to"], "items": items, **(extra or {}),
                                              "file": submission_name(kind, rel, when)}, now=when.isoformat(timespec="seconds"))
         doc = pagefile.load(path)
         answers = doc["rounds"][-1]["answers"]
@@ -937,7 +946,7 @@ class Handler(SimpleHTTPRequestHandler):
                    "round": sub["round"], "rev": sub["rev"], "at": sub["at"],
                    "items": [{"id": i, "n": pos[i], "answer": (answers.get(i) or {}).get("answer", ""),
                               "note": (answers.get(i) or {}).get("note", ""), "blocker": kind == "blocker"} for i in items],
-                   "results": results}
+                   "results": results, **(extra or {})}
         idir = os.path.join(self.root, "_inbox", route["to"])
         try:
             os.makedirs(idir, exist_ok=True)

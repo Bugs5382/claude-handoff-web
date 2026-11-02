@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { flushSync } from "react-dom";
 import { Answer, type AnswerOption } from "@/elements/Answer";
 import { Blocks, ItemExtras } from "@/elements/Blocks";
@@ -36,6 +36,8 @@ export interface ItemProps {
   /** A sent No or Changes the agent dealt with. */
   handled?: boolean;
   entries: Entry[];
+  /** The email element, when the page takes drafts. */
+  email?: ReactNode;
   diffs?: Record<string, string>;
   build?: string | null;
   choices?: { value: string; label: string }[];
@@ -64,6 +66,7 @@ export function Item(p: ItemProps) {
     <Blocks blocks={it.body} id={it.id} diffs={p.diffs} />
     {it.howto && <div hidden ref={how}><Blocks blocks={it.howto} id={it.id} part="howto" diffs={p.diffs} /></div>}
     <Thread entries={p.entries} label={"History of " + it.id} />
+    {p.email}
   </>;
   if (type === "info") return <>{group}<section className="info" data-item={it.id}><h2>{heading}</h2>{content}</section></>;
 

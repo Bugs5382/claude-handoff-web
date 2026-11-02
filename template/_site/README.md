@@ -151,14 +151,13 @@ in place and light up "New"/"Updated". Review pages reload softly, never while t
 of a click, or while answers are unsaved, and keep the scroll position. Just write the file and rerun
 gen-index.py; nobody needs to refresh.
 
-## How to test (pop-out)
+## How to test (inline)
 
-Test steps never sit inline with the answers. Put them in a `<template data-howto>` inside the item (or its
-h2 section); review.js adds a "How to test" button next to the item title that opens the steps in one named
-pop-out window (`howto`, 520x720, reused), styled with site.css, showing the item id, title and `data-build`.
-Every `<pre>` and `code.cmd` in it gets a Copy button. Existing `class="howto"` blocks and checklist
-`.item .how` lines are converted automatically. Checklists with their own answer script and pop-out load
-review.js with `<body data-review-controls="off">`: review.js then only starts live updates.
+Put test steps in a `<template data-howto>` inside the item (or its h2 section). review.js shows them right
+there as a collapsed "How to test" row (`<details class="howto">`) that opens in place, with `data-build` in its
+heading. Every `<pre>` and `code.cmd` in it gets a Copy button. Existing `class="howto"` blocks and checklist
+`.item .how` lines are converted automatically. Checklists with their own answer script load review.js with
+`<body data-review-controls="off">`: review.js then only starts live updates.
 
 ## Pictures (pop-out)
 
@@ -193,7 +192,7 @@ Each page file has a Take the tour button in its header. It runs [driver.js](htt
 
 `live.js` makes a link inside a step or item open in a new window (`target="_blank"`, `rel="noopener"`), set
 as the click happens, so cards and threads drawn later are covered too. That covers item cards, threads, the
-How to test pop-out and the main column of an HTML review page. Browsing the site stays in the same tab: index
+How to test steps and the main column of an HTML review page. Browsing the site stays in the same tab: index
 cards, folder links, the header and the bar. Same-page `#` anchors, picture links (the pop-out above), `download`
 links, `mailto:` and other non-web links, and any link that sets its own `target` keep their behaviour. Writing `target="_blank"` into a page by hand is never needed.
 

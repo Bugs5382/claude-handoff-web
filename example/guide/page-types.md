@@ -79,8 +79,8 @@ locked in the next one (hidden on an HTML page) and stay in Copy results.
 
 ### checklist
 
-One item per feature or fix, in test order. Each check can carry a `howto`, opened in its own pop-out window
-with a Copy button on every code block. `dependsOn` keeps an item greyed and uncounted until the items it names
+One item per feature or fix, in test order. Each check can carry a `howto`, shown inline under it as a collapsed
+How to test row that opens in place, with a Copy button on every code block. `dependsOn` keeps an item greyed and uncounted until the items it names
 are Yes; `blockedBy` holds it until an agent replies with `--action unblock`.
 
 ```json

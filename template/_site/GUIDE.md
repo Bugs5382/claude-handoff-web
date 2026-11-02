@@ -83,8 +83,8 @@ Any page can mix them with `type`.
 | Type | The person sees | They answer |
 |---|---|---|
 | `section` | text | Yes, No or Changes |
-| `check` | a test, with How to test | adds Skipped |
-| `step` | numbered steps, with How to test | adds Skipped |
+| `check` | a test, with How to test inline under it | adds Skipped |
+| `step` | numbered steps, with How to test inline under them | adds Skipped |
 | `screen` | pictures and fields | Yes, No or Changes |
 | `contract` | fields and forms | Yes, No or Changes |
 | `diff` | a change, with Diff and Final | Yes, No or Changes |
@@ -103,6 +103,7 @@ Any page can mix them with `type`.
 | Copy results | copies the answers as text | nothing: the person pastes it |
 | Unlock to change an answer | takes that Send back | nothing |
 | More on an item | pops up that item's actions | depends on the action |
+| How to test | opens an item's test steps in place under it, collapsed until pressed | nothing |
 | Generate an email | asks who it's to, what's needed and the tone | writes it, with `page.py email` |
 | Build a deck | asks what's being built | builds it, and replies with the link |
 | Save round now | closes the round into History | nothing |

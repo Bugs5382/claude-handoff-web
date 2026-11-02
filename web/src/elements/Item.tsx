@@ -6,7 +6,6 @@ import { Chip } from "@/elements/Chip";
 import { Choices } from "@/elements/Choices";
 import { ItemMore, type ItemAction } from "@/elements/ItemMore";
 import { Thread, type Entry } from "@/elements/Thread";
-import { openHowto } from "@/lib/howto";
 import type { ItemDef, ItemState, Local } from "@/lib/types";
 
 const LABEL: Record<string, string> = { yes: "Yes", no: "No", chg: "Changes", skip: "Skipped", risk: "Accept risk" };
@@ -63,7 +62,6 @@ export function Item(p: ItemProps) {
   const [noteOpen, setNoteOpen] = useState(false);
   const [shown, setShown] = useState(false);
   const [asking, setAsking] = useState(false);
-  const how = useRef<HTMLDivElement>(null);
   const ta = useRef<HTMLTextAreaElement>(null);
   const qa = useRef<HTMLTextAreaElement>(null);
   useEffect(() => { if (qa.current) { qa.current.style.height = "auto"; qa.current.style.height = qa.current.scrollHeight + 2 + "px"; } });
@@ -71,7 +69,10 @@ export function Item(p: ItemProps) {
   const content = <>
     <ItemExtras item={it} diffs={p.diffs} isDiff={type === "diff"} />
     <Blocks blocks={it.body} id={it.id} diffs={p.diffs} />
-    {it.howto && <div hidden ref={how}><Blocks blocks={it.howto} id={it.id} part="howto" diffs={p.diffs} /></div>}
+    {it.howto && <details className="howto" data-howto={it.id}>
+      <summary>How to test{p.build ? <span className="howto-build"> · build <code>{p.build}</code></span> : null}</summary>
+      <div className="howto-body"><Blocks blocks={it.howto} id={it.id} part="howto" diffs={p.diffs} /></div>
+    </details>}
     <Thread entries={p.entries} label={"History of " + it.id} />
     {p.email?.(asking, () => flushSync(() => setAsking(false)))}
   </>;
@@ -86,7 +87,6 @@ export function Item(p: ItemProps) {
   const blocked = blockedBy ? <span className="st blk">Blocked by {p.isItem(blockedBy)
     ? <a className="rid" href={"#rv-" + encodeURIComponent(blockedBy)} title={"Go to " + blockedBy} onClick={e => { e.preventDefault(); p.goTo(blockedBy); }}>{blockedBy}</a> : blockedBy}</span> : null;
   const rid = <a className="rid" href={"#rv-" + encodeURIComponent(it.id)} title={"Go to " + it.id} onClick={e => { e.preventDefault(); flushSync(() => setShown(true)); p.goTo(it.id); }}>{it.id}</a>;
-  const howBtn = it.howto && <button type="button" className="howto-btn" onClick={e => { e.preventDefault(); if (how.current) openHowto(how.current, it.id, it.title, p.build); }}>How to test {"↗"}</button>;
 
   const showBtn = settled && <button type="button" className="settled-tg" aria-expanded={shown} onClick={() => flushSync(() => setShown(!shown))}>{shown ? "Hide" : "Show"}</button>;
 
@@ -149,7 +149,7 @@ export function Item(p: ItemProps) {
         {showBtn}
         <span className="sp" />
         {value.blocker ? <span className="st bkr">Blocker</span> : state?.reopened && v && !blockedBy ? <span className="st reo">Reopened: {state.reopened}</span> : <span className="st2" />}
-        {pill}{howBtn}{more}
+        {pill}{more}
       </div>
       <h2>{heading}</h2>{content}
       <div className={`rv in-card ${v}` + (locked ? " locked" : "") + (blockedBy ? " blocked" : "") + (value.blocker ? " blocker" : "") + ((v === "chg" || v === "risk") && !note.trim() ? " empty" : "")} id={"rv-" + it.id}>

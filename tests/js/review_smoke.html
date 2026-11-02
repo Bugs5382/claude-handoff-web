@@ -128,6 +128,20 @@ const saved = () => until(() => !w().siteReview.unsaved(), "the save");
     eq(doc.querySelector(".open-total").textContent, "2");
     ok(doc.querySelector(".grp-copy"));
   });
+  await t("how to test: steps sit inline under each item, collapsed, open in place with Copy buttons, no pop-out", async () => {
+    const { win, doc } = await load("/demo/sm-howto.html");
+    let popped = 0; win.open = () => { popped++; return null; };
+    ok(!doc.querySelector(".howto-btn"), "no pop-out button");
+    const hows = doc.querySelectorAll("details.howto"); eq(hows.length, 2, "one per item");
+    ok(!hows[0].open && !hows[1].open, "collapsed to start");
+    match(hows[0].querySelector("summary").textContent, /How to test/); match(hows[0].querySelector("summary").textContent, /1\.2\.3/);
+    ok(hows[0].querySelector(".howto-body pre"), "the steps"); ok(hows[0].querySelector(".copy-cmd"), "a Copy button");
+    ok(hows[1].querySelector(".howto-body a"), "the converted .howto block");
+    click(hows[0].querySelector("summary")); ok(hows[0].open, "opens in place"); eq(popped, 0, "no window opens");
+    click(hows[0].querySelector(".copy-cmd")); eq(win.__clip, "./install.sh");
+    eq(win.siteReview.results().includes("How to test"), false, "steps stay out of Copy results");
+  });
+
   await t("synthetic: h2 items, skip locks, approved hidden, blocked, question", async () => {
     const { win, doc, bar } = await load("/demo/sm-synth.html");
     eq(doc.querySelectorAll(".rv").length, 5);

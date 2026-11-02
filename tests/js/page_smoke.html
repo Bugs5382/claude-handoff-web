@@ -400,6 +400,28 @@ const seg = (doc, id, v) => card(doc, id).querySelector('.seg button[data-v="' +
     click(doc.querySelector(".driver-popover-close-btn")); await tick(50);
   });
 
+  await t("moments: each thing that happens gets its own, and the first draw has none", async () => {
+    const { win, doc, bar } = await load("/demo/sample-round-phases");
+    const { momentsFor } = win.HandoffSite;
+    const base = { page: { submissions: [], thread: {}, emails: {} }, states: { A1: { hidden: false, answer: "yes" }, A2: { hidden: false, answer: "risk" } }, phases: { A: { closed: false } } };
+    eq(momentsFor(null, base).length, 0, "the first draw");
+    const next = JSON.parse(JSON.stringify(base));
+    next.page.submissions = [{ kind: "send", items: ["A1"] }];
+    next.states.A1.hidden = true; next.states.A2.hidden = true;
+    next.page.thread = { A1: [{}], _page: [{}] }; next.page.emails = { A2: [{}] }; next.phases.A.closed = true;
+    const names = momentsFor(base, next).map(m => m.name).sort().join(",");
+    eq(names, "draft,phase,reply,reply,reply,risk,send,send,settle");
+    const rules = Array.from(doc.styleSheets).flatMap(s => { try { return Array.from(s.cssRules); } catch (e) { return []; } }).map(r => r.cssText).join("\n");
+    match(rules, /prefers-reduced-motion: reduce[^}]*data-moment[^}]*animation: (auto ease 0s 1 normal none running none|none)/, "reduced motion turns them off");
+    ok(!/data-moment[^{]*\{[^}]*(transform|height|width|margin)/.test(rules), "moments never move anything");
+    const page = await load("/demo/pf-moment");
+    click(seg(page.doc, "r1", "yes")); await saved();
+    click(page.bar.querySelector(".send-btn"));
+    await until(() => w().document.querySelector('.rvbar[data-moment="send"]'), "the Send pulse");
+    ok(w().document.querySelector('[data-review-question="r1"][data-moment="send"]'), "the sent item pulses too");
+    await tick(1000); ok(!w().document.querySelector("[data-moment]"), "it clears");
+  });
+
   await t("finished page: green bar and back link; Copy results goes back to the folder", async () => {
     const { doc, bar } = await load("/demo/pf-fin-1");
     ok(doc.querySelector("header.top .crumb"), "the crumb back to the folder");

@@ -732,3 +732,14 @@ body.site .rvrestart > h2 { font-size: 16px; margin: 0 0 4px; }
 .restart-dlv[data-state="deaf"] .dlv-dot { background: var(--chg-solid); }
 .restart-dlv[data-state="deaf"] { color: var(--chg); }
 .restart-dlv a.dlv-t { color: var(--link); }
+
+/* Moments: a short glow when something happens. Colour only, so nothing on the page moves. */
+@keyframes moment-glow { 0% { box-shadow: 0 0 0 0 var(--moment); } 40% { box-shadow: 0 0 0 5px var(--moment); } 100% { box-shadow: 0 0 0 10px transparent; } }
+@keyframes moment-wash { 0% { background-color: var(--moment-bg); } 100% { background-color: transparent; } }
+[data-moment] { animation: moment-glow .7s ease-out; }
+[data-moment="send"], [data-moment="settle"], [data-moment="phase"] { --moment: var(--yes-solid); --moment-bg: var(--yes-bg); }
+[data-moment="risk"] { --moment: var(--chg-solid); --moment-bg: var(--chg-bg); }
+[data-moment="reply"], [data-moment="draft"] { --moment: var(--link); --moment-bg: var(--soft); animation: moment-wash .8s ease-out; }
+[data-moment="draft"] { animation: moment-glow .7s ease-out, moment-wash .8s ease-out; }
+[data-moment="phase"] { animation: moment-wash .8s ease-out; }
+@media (prefers-reduced-motion: reduce) { [data-moment] { animation: none; } }

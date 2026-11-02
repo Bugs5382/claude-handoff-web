@@ -37,12 +37,12 @@
 // rounds, Blocker sends the item to the page's route ("Blocker: send now", unless the route only copies), the
 // bar gains "Send to <agent>" and a delivery line, and render.js redraws the page in place through
 // siteReview.unmount() and siteReviewMount() instead of a reload.
-// "How to test": an item's test steps open in their own pop-out window (named "howto", reused so it
-// stays where he put it), never inline with the answers. Sources, per item:
+// "How to test": an item's test steps show inline, in a collapsed <details class="howto"> placed where the
+// steps sit in the item, and open in place. Sources, per item:
 //   <template data-howto>...steps...</template>   inside the item (or its h2 section)
 //   <div class="howto">...</div>                   converted to a template automatically
 //   .item .how                                     checklist hint lines, converted the same way
-// The window shows the item id, its title and the build under test (body data-build).
+// The summary shows the build under test (body data-build), and every <pre> and code.cmd gets a Copy button.
 // Unified pages: size each detail iframe to its content, again whenever its group or toggle opens.
 window.rvFit = function (f) { try { const h = f.contentDocument.documentElement.scrollHeight; if (h) f.style.height = (h + 8) + "px"; } catch (e) {} };
 document.addEventListener("toggle", e => { if (e.target.open) e.target.querySelectorAll("iframe.shot").forEach(window.rvFit); }, true);
@@ -84,9 +84,8 @@ window.rvCount = function (items, state, o) {
 // rv-count:end
 
 (function () {
-  // Pages that render their own items (and their own pop-out) opt out.
+  // Pages that render their own items (and their own How to test) opt out.
   if (document.body.getAttribute("data-review-controls") === "off") return;
-  const V = "29";
   function itemOf(el) {
     const box = el.closest("[data-review-question], .item");
     if (box) {
@@ -99,42 +98,32 @@ window.rvCount = function (items, state, o) {
     const i = Array.from(document.querySelectorAll("h2")).indexOf(n);
     return { id: "s" + (i + 1), title: textOf(n), at: n };
   }
-  function textOf(el) { const c = el.cloneNode(true); c.querySelectorAll(".chip, .howto-btn, template").forEach(x => x.remove()); return c.textContent.trim().replace(/\s+/g, " "); }
-  function open(tpl, it) {
-    const w = window.open("about:blank", "howto", "width=520,height=720");
-    if (!w) { alert("Allow pop-ups for this site to see the test steps."); return; }
-    const build = document.body.getAttribute("data-build");
-    const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-    const d = w.document; d.open();
-    const th = document.documentElement.getAttribute("data-theme");
-    d.write('<!doctype html><html lang="en"' + (th ? ' data-theme="' + esc(th) + '"' : "") + '><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">' +
-      '<title>How to test: ' + esc(it.id) + '</title><link rel="stylesheet" href="' + location.origin + '/_site/site.css?v=' + V + '"></head>' +
-      '<body class="site page howto-win"><p class="muted">How to test &middot; <code>' + esc(it.id) + '</code>' + (build ? ' &middot; Build under test: <code>' + esc(build) + '</code>' : '') + '</p>' +
-      '<h1>' + esc(it.title) + '</h1><div class="howto-body"></div><p class="muted">Answer on the main page.</p></body></html>');
-    d.close();
-    d.querySelector(".howto-body").appendChild(d.importNode(tpl.content, true));
-    d.querySelectorAll(".howto-body pre, .howto-body code.cmd").forEach(blk => {
-      const b = d.createElement("button"); b.type = "button"; b.className = "copy-cmd"; b.textContent = "Copy";
+  function textOf(el) { const c = el.cloneNode(true); c.querySelectorAll(".chip, details.howto, template").forEach(x => x.remove()); return c.textContent.trim().replace(/\s+/g, " "); }
+  function copyButtons(root) {
+    root.querySelectorAll("pre, code.cmd").forEach(blk => {
+      const b = document.createElement("button"); b.type = "button"; b.className = "copy-cmd"; b.textContent = "Copy";
       b.addEventListener("click", async () => {
         const t = blk.textContent.trim();
-        try { await w.navigator.clipboard.writeText(t); } catch (e) { const x = d.createElement("textarea"); x.value = t; d.body.appendChild(x); x.select(); d.execCommand("copy"); x.remove(); }
+        try { await navigator.clipboard.writeText(t); } catch (e) { const x = document.createElement("textarea"); x.value = t; document.body.appendChild(x); x.select(); document.execCommand("copy"); x.remove(); }
         b.textContent = "Copied"; setTimeout(() => { b.textContent = "Copy"; }, 1500);
       });
       blk.insertAdjacentElement("afterend", b);
     });
-    // d.open() dropped the listeners of any earlier pop-out, so hook the fresh document again.
-    if (window.siteLinks) { d.siteLinks = false; window.siteLinks.hook(d); }
-    w.focus();
   }
   function wire(tpl) {
     if (tpl.dataset.howtoWired) return; tpl.dataset.howtoWired = "1";
     const it = itemOf(tpl); if (!it) return;
-    const b = document.createElement("button"); b.type = "button"; b.className = "howto-btn"; b.textContent = "How to test \u2197";
-    b.addEventListener("click", e => { e.preventDefault(); e.stopPropagation(); open(tpl, it); });
-    it.at.append(" ", b);
+    const build = document.body.getAttribute("data-build");
+    const det = document.createElement("details"); det.className = "howto"; det.setAttribute("data-howto", it.id);
+    const sum = document.createElement("summary"); sum.textContent = "How to test";
+    if (build) { const s = document.createElement("span"); s.className = "howto-build"; const c = document.createElement("code"); c.textContent = build; s.append(" \u00b7 build ", c); sum.append(s); }
+    const body = document.createElement("div"); body.className = "howto-body"; body.appendChild(document.importNode(tpl.content, true));
+    copyButtons(body);
+    det.append(sum, body);
+    tpl.insertAdjacentElement("afterend", det);
   }
   function scan() {
-    document.querySelectorAll(".howto:not(template), .item .how").forEach(el => {
+    document.querySelectorAll(".howto:not(template):not(details), .item .how").forEach(el => {
       if (!el.textContent.trim() && !el.children.length) { el.remove(); return; }
       const t = document.createElement("template"); t.setAttribute("data-howto", "");
       while (el.firstChild) t.content.appendChild(el.firstChild);
@@ -317,7 +306,7 @@ if (!window.siteTheme) { const t = document.createElement("script"); t.src = "/_
   }
 
   if (!document.querySelector('link[href*="/_site/site.css"]')) {
-    const l = document.createElement("link"); l.rel = "stylesheet"; l.href = "/_site/site.css?v=44"; document.head.appendChild(l);
+    const l = document.createElement("link"); l.rel = "stylesheet"; l.href = "/_site/site.css?v=45"; document.head.appendChild(l);
   }
 
   // data-review-skip="on" (test checklists): adds Skipped; a skipped item is locked.
@@ -346,7 +335,7 @@ if (!window.siteTheme) { const t = document.createElement("script"); t.src = "/_
     let anchor = h; let n = h.nextElementSibling;
     const nodes = [h];
     while (n && n.tagName !== "H2" && !n.hasAttribute("data-review-question") && n.tagName !== "SCRIPT") { anchor = n; nodes.push(n); n = n.nextElementSibling; }
-    const hc = h.cloneNode(true); hc.querySelectorAll(".howto-btn").forEach(x => x.remove());
+    const hc = h.cloneNode(true); hc.querySelectorAll("details.howto").forEach(x => x.remove());
     items.push({ id, title: hc.textContent.trim(), after: anchor, nodes, type: h.getAttribute("data-review-type") || "", suggested: h.getAttribute("data-suggested") || "", ch: choicesOf(h) });
   });
   if (!PF) document.querySelectorAll("[data-review-question]").forEach(el => {

@@ -46,6 +46,7 @@ SCENARIOS = [
     "mark unanswered: confirm with the count, fill only open items, keep earlier answers and notes, saved",
     "mark unanswered: hidden, blocked, locked and question items are left alone",
     "mark unanswered: a page of choices only says nothing is unanswered and asks nothing",
+    "how to test: steps sit inline under each item, collapsed, open in place with Copy buttons, no pop-out",
 ]
 
 
@@ -99,6 +100,12 @@ def free_port() -> int:
         return int(s.getsockname()[1])
 
 
+HOWTO = ('<!doctype html><html><head><title>Howto</title></head><body class="site" data-build="1.2.3">'
+         '<header class="top"><div class="wrap"><h1>Howto</h1><p>x</p></div></header><main class="wrap"><h2>One</h2><p>a</p>'
+         '<template data-howto><ol><li>Run it:</li></ol><pre>./install.sh</pre></template>'
+         '<h2>Two</h2><p>b</p><div class="howto"><p>Open <a href="/demo/">the folder</a>.</p></div></main>' + REVIEW + '</body></html>')
+
+
 def write_pages(root):
     demo = root / "demo"
     backlog = (demo / "backlog.html").read_text()
@@ -111,6 +118,7 @@ def write_pages(root):
     (demo / "sm-unified").mkdir()
     (demo / "sm-unified" / "index.html").write_text(UNIFIED)
     (demo / "sm-synth.html").write_text(SYNTH)
+    (demo / "sm-howto.html").write_text(HOWTO)
     for name in ("sm-diff", "sm-diff-2", "sm-diff-3", "sm-diff-4"):
         (demo / f"{name}.html").write_text(DIFFS)
     for n in (1, 2, 3):

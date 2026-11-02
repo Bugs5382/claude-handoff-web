@@ -131,7 +131,9 @@ With `"deck": true`, the bar's More menu has Build a deck, which runs only when 
 
 ### Body blocks
 
-`body` and `howto` are lists of blocks, each with exactly one of these keys:
+`body` and `howto` are lists of blocks, each with exactly one of these keys. A `howto` shows inline under its item
+as a collapsed How to test row that opens in place, on checklist, review and round pages alike. Its heading names
+the `build` under test, and every code block in it has a Copy button. No window opens.
 
 | Block | Shape |
 |---|---|

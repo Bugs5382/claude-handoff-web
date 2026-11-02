@@ -516,14 +516,18 @@ body.site .item.later textarea { display: none; }
 /* Hand-built pages with no .wrap (checklists): keep a readable column */
 body.site.page { max-width: 1120px; margin: 0 auto; padding: 1.5rem 24px 6rem; box-sizing: border-box; }
 
-/* "How to test" button and its pop-out window */
-.howto-btn { display: inline-flex; align-items: center; vertical-align: middle; margin-left: .4rem; font: 500 14px/1.2 var(--font); min-height: var(--tap); box-sizing: border-box; padding: 0 14px; border: 1px solid var(--line-2); border-radius: var(--radius-sm); background: var(--card); color: var(--link); cursor: pointer; }
-.howto-btn:hover { background: var(--accent-soft); border-color: var(--accent); }
-.howto-btn:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
-body.site.howto-win { padding-top: 1rem; }
-body.site.howto-win h1 { font-size: 20px; margin: .2rem 0 1rem; }
-body.site.howto-win .howto-body { background: var(--card); border: 1px solid var(--line-2); border-radius: var(--radius); padding: 16px; box-shadow: var(--pop-shadow); font-size: 15px; }
-.howto-win pre { position: relative; white-space: pre-wrap; word-break: break-all; font: 13px/1.5 var(--mono); background: var(--soft-2); border: 0; border-radius: 8px; padding: 10px 12px; margin: .4rem 0 .2rem; }
+/* "How to test": collapsed under the item, opens in place */
+details.howto { margin: .7rem 0; border: 1px solid var(--line-2); border-radius: var(--radius-sm); background: var(--card); }
+details.howto > summary { display: flex; align-items: center; gap: .4rem; min-height: var(--tap); padding: 0 14px; cursor: pointer; list-style: none; font: 500 14px/1.2 var(--font); color: var(--link); border-radius: var(--radius-sm); }
+details.howto > summary::-webkit-details-marker { display: none; }
+details.howto > summary::before { content: "\25B8"; display: inline-block; width: 1em; transition: transform .15s ease; }
+details.howto[open] > summary::before { transform: rotate(90deg); }
+details.howto > summary:hover { background: var(--soft-2); }
+details.howto > summary:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+details.howto .howto-build { color: var(--muted); font-weight: 400; }
+details.howto .howto-body { padding: 6px 16px 12px; border-top: 1px solid var(--line-2); font-size: 15px; }
+details.howto pre { position: relative; white-space: pre-wrap; word-break: break-all; font: 13px/1.5 var(--mono); background: var(--soft-2); border: 0; border-radius: 8px; padding: 10px 12px; margin: .4rem 0 .2rem; }
+@media (prefers-reduced-motion: reduce) { details.howto > summary::before { transition: none; } }
 .rv.skip { border-color: var(--line); } .rv.locked { background: var(--card); color: var(--muted); }
 .rv.locked .seg button { cursor: not-allowed; }
 .rv .blocker-btn { font: 600 14px var(--font); min-height: var(--tap); padding: 0 14px; border-radius: var(--radius-sm); border: 1px solid var(--no-edge); background: var(--no-bg); color: var(--no); cursor: pointer; }
@@ -750,7 +754,7 @@ body.site .rvrestart > h2 { font-size: 16px; margin: 0 0 4px; }
 .copy-cmd:focus-visible, .email-change:focus-visible, .email-cancel:focus-visible, .item-more-btn:focus-visible, .settled-tg:focus-visible, .unlock:focus-visible, .tour-btn:focus-visible, .email-vers button:focus-visible, .email-send:focus-visible, .phase-send:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
 .tour-btn { color: var(--link); align-self: flex-start; }
 .settled-tg { margin-left: 8px; min-height: 28px; padding: 0 10px; }
-.howto-win .copy-cmd { margin: 0 0 .8rem; }
+details.howto .howto-body > .copy-cmd { margin: 0 0 .8rem; }
 .copyblk { display: flex; align-items: flex-start; gap: 8px; }
 .copyblk pre { flex: 1 1 auto; min-width: 0; margin: 0; }
 .email-part-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 4px; }

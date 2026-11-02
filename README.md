@@ -13,7 +13,7 @@ listening. 🔌 **Python standard library only:** no build step, no framework, n
 - 🧭 **One place to look:** folder indexes and a root "Needs you now" list, built from the page files on every request.
 - ✅ **Reviews that stick:** Yes / No / Changes per section, approved items locked or hidden, reopened ones marked with the reason, and More, Mark unanswered Yes (or No) to fill in the rest at once.
 - 🎛️ **Your own choices:** a page can swap Yes / No / Changes for its own answers and a default, such as a backlog of Start or Hold.
-- 🧪 **Sign-off checklists:** ordered tests, How to test pop-outs with Copy buttons, dependencies, blockers, Skipped.
+- 🧪 **Sign-off checklists:** ordered tests, inline How to test steps with Copy buttons, dependencies, blockers, Skipped.
 - 🪟 **Links in an item open a new window:** they never replace the page you're reviewing, while browsing the site stays in the same tab.
 - 🖼️ **Pictures in one pop-out:** click a picture and it opens in one reused window; the next one swaps in, no pile of tabs.
 - 🧷 **A bar that tells you where you are:** Previous, Next, an Open IDs picker with a filter, and More; it turns green when every item is answered and points you back to the folder.

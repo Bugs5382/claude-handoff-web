@@ -178,7 +178,7 @@ Today's other page types map like this:
 | Type | Answerable | Extra fields |
 |---|---|---|
 | `section` | Yes / No / Changes | `body` (blocks) |
-| `check` | adds Skipped | `body`, `howto` (blocks, opened in the pop-out), `dependsOn`, `blockedBy` |
+| `check` | adds Skipped | `body`, `howto` (blocks, shown inline under the item, collapsed), `dependsOn`, `blockedBy` |
 | `step` | adds Skipped | `steps` (strings, shown as a numbered list), `checkpoint`, `dependsOn`, `blockedBy`, `howto` |
 | `screen` | Yes / No / Changes | `images` (`[{src, alt, caption}]`), `fields` (a table of name, type, rule), `body` |
 | `contract` | Yes / No / Changes | `fields`, `forms` (`[{name, fields: [...]}]`), `body` |

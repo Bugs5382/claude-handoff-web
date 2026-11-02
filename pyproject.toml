@@ -3,7 +3,7 @@ name = "claude-handoff-web"
 version = "1.0.0"
 description = "A small self-updating review and sign-off site for handing work to a human: chips, live updates, Yes/No/Changes reviews, checklists with blockers"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.9"
 license = { text = "MIT" }
 authors = [{ name = "Shane" }]
 dependencies = []
@@ -25,7 +25,7 @@ package = false
 
 [tool.ruff]
 line-length = 140
-target-version = "py310"
+target-version = "py39"
 src = ["template", "tests"]
 
 [tool.ruff.lint]
@@ -36,7 +36,7 @@ addopts = "-q"
 testpaths = ["tests"]
 
 [tool.mypy]
-python_version = "3.10"
+python_version = "3.9"
 files = ["template/_site/serve.py", "template/_site/schema.py", "template/_site/pagefile.py", "template/_site/page.py", "template/_site/pageindex.py"]
 mypy_path = "template/_site"
 ignore_missing_imports = true

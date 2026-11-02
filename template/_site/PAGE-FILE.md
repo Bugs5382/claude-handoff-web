@@ -10,7 +10,7 @@ draws it. HTML pages keep working as they always have.
 
 ## Before you start
 
-- Python 3.10 or newer. Both modules are standard library only.
+- Python 3.9 or newer, the system Python on macOS included. Both modules are standard library only.
 - Run them from `_site/` (or put `_site/` on `sys.path`): `pagefile.py` imports `schema.py`.
 
 ## Viewing a page

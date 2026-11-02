@@ -1,0 +1,23 @@
+{
+  "definition": {
+    "schema": "handoff.page/v1",
+    "kind": "reference",
+    "title": "Sample: a reference page",
+    "status": {
+      "state": "reference",
+      "priority": 70
+    },
+    "items": [
+      {
+        "id": "n1",
+        "title": "Contacts",
+        "body": [
+          {
+            "p": "Reach the team at ops@example.org."
+          }
+        ]
+      }
+    ]
+  },
+  "steps": []
+}

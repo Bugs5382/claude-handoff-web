@@ -1,0 +1,48 @@
+{
+  "definition": {
+    "schema": "handoff.page/v1",
+    "kind": "journey",
+    "title": "Sample: a journey with checkpoints",
+    "build": "app 7",
+    "status": {
+      "state": "needs-you",
+      "priority": 50
+    },
+    "items": [
+      {
+        "id": "j1",
+        "title": "Install",
+        "steps": [
+          "Run the installer"
+        ],
+        "checkpoint": "after-install"
+      },
+      {
+        "id": "j2",
+        "title": "First order",
+        "steps": [
+          "Order a laptop"
+        ],
+        "checkpoint": "after-order"
+      },
+      {
+        "id": "j3",
+        "title": "Refund it",
+        "steps": [
+          "Refund the order"
+        ]
+      }
+    ]
+  },
+  "steps": [
+    {
+      "answers": {
+        "j1": {
+          "answer": "yes",
+          "note": ""
+        }
+      },
+      "at": "2026-01-05T09:00:00+00:00"
+    }
+  ]
+}

@@ -11,6 +11,7 @@
   page.py wait <agent> [--timeout S] [--poll]     block until a submission is in _inbox/<agent>/, print the files
                                                   (blockers first) and exit; exit 3 on --timeout with nothing
   page.py hook <agent>                            one line when the inbox has untaken files or nothing listens
+  page.py samples <folder> [--route AGENT]        load the sample pages into a folder, or reset them
   page.py convert <page>.html [--print]           turn a review.js page into a page file, importing its saved
                                                   answers and round history; --print shows the definition only
 
@@ -533,6 +534,12 @@ def _entries(pairs, items, by, at):
             for iid, (answer, note) in pairs.items()}
 
 
+def cmd_samples(a):
+    import samples
+    for path in samples.load(os.path.join(a.root, a.folder), route=a.route):
+        print(os.path.relpath(path, a.root)[:-5])
+
+
 def cmd_convert(a):
     src_path = os.path.abspath(a.html)
     root = os.path.abspath(a.root)
@@ -672,6 +679,10 @@ def build_parser():
     p = sub.add_parser("hook")
     p.add_argument("agent")
     p.set_defaults(fn=cmd_hook)
+    p = sub.add_parser("samples")
+    p.add_argument("folder")
+    p.add_argument("--route")
+    p.set_defaults(fn=cmd_samples)
     p = sub.add_parser("convert")
     p.add_argument("html")
     p.add_argument("--print", action="store_true", help="print the definition instead of writing the page file")

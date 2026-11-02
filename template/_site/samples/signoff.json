@@ -1,0 +1,68 @@
+{
+  "definition": {
+    "schema": "handoff.page/v1",
+    "kind": "checklist",
+    "title": "Sample: a sign-off checklist",
+    "build": "2.4.0",
+    "status": {
+      "state": "needs-you",
+      "priority": 20
+    },
+    "items": [
+      {
+        "id": "c1",
+        "title": "Install finishes",
+        "howto": [
+          {
+            "olist": [
+              "Run the installer",
+              "Wait for the green check"
+            ]
+          },
+          {
+            "code": "./install.sh"
+          }
+        ]
+      },
+      {
+        "id": "c2",
+        "title": "Sign in works",
+        "dependsOn": [
+          "c1"
+        ]
+      },
+      {
+        "id": "c3",
+        "title": "Reports open",
+        "dependsOn": [
+          "c2"
+        ],
+        "howto": [
+          {
+            "p": "Open Reports and pick last week."
+          }
+        ]
+      },
+      {
+        "id": "c4",
+        "title": "Vendor export runs",
+        "blockedBy": "the vendor's new key"
+      },
+      {
+        "id": "c5",
+        "title": "Audit log is on"
+      }
+    ]
+  },
+  "steps": [
+    {
+      "answers": {
+        "c5": {
+          "answer": "skipped",
+          "note": ""
+        }
+      },
+      "at": "2026-01-05T09:00:00+00:00"
+    }
+  ]
+}

@@ -115,6 +115,12 @@ heading.
 | `note` | `{"note": "text", "tone": "warn"}`, tone `info`, `warn`, `ok` or `danger` |
 | `html` | `{"html": "..."}`, an escape hatch for content nothing else fits |
 
+## Sample pages
+
+`_site/samples/` holds one sample of every page kind, including pages part-way through a round: a Blocked by, a
+reopened item, a handled Changes and a part-sent page. All the data is made up. `page.py samples <folder>` loads
+them, and running it again puts them back as they were, without touching any other page in the folder.
+
 ## Checking a file
 
 ```bash
@@ -145,6 +151,7 @@ Agents use `page.py`; it writes through `pagefile.py`, so it takes the same lock
 | `page.py check app/design` | validates a page or a `.json` file; errors give the JSON path, exit 1 on any |
 | `page.py wait app` | blocks until a submission is in `_inbox/app/`, prints the files (blockers first) and exits |
 | `page.py hook app` | prints one line when the inbox has untaken files or nothing is listening |
+| `page.py samples demo --route app` | loads the sample pages into a folder as `sample-*`; run it again to reset them |
 | `page.py convert app/design.html` | turns a review.js page into a page file next to it (`--print` shows the definition only) |
 
 ### Waiting for submissions

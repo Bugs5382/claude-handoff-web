@@ -211,6 +211,23 @@ const seg = (doc, id, v) => card(doc, id).querySelector('.seg button[data-v="' +
     f.style.width = "1000px"; await tick(30);
   });
 
+  await t("samples: every sample page draws, and the states they show are the ones they claim", async () => {
+    for (const name of ["review", "signoff", "part-sent", "journey", "backlog"]) {
+      const { doc, bar } = await load("/demo/sample-" + name);
+      ok(doc.querySelector("[data-review-question]"), name + " has items"); ok(bar.querySelector(".cnt").textContent, name + " counts");
+    }
+    let { doc } = await load("/demo/sample-signoff");
+    eq(card(doc, "c2").querySelector(".rvhead .st").textContent, "Blocked by c1");
+    eq(card(doc, "c4").querySelector(".rvhead .st").textContent, "Blocked by the vendor's new key");
+    ({ doc } = await load("/demo/sample-came-back"));
+    eq(card(doc, "a").querySelector(".rvhead .st").textContent, "Yes (locked)");
+    eq(card(doc, "b").querySelector(".rvhead .st").textContent, "Updated: answer again");
+    match(card(doc, "c").querySelector(".rvhead .st").textContent, /^Reopened: The address changed/);
+    ({ doc } = await load("/demo/sample-part-sent"));
+    ok(seg(doc, "a", "yes").disabled, "the sent item is locked"); ok(!seg(doc, "b", "yes").disabled, "the rest stay open");
+    eq((await fetch("/_page/demo/sample-reference")).status, 200);
+  });
+
   await t("finished page: green bar and back link; Copy results goes back to the folder", async () => {
     const { doc, bar } = await load("/demo/pf-fin-1");
     ok(doc.querySelector("header.top .crumb"), "the crumb back to the folder");

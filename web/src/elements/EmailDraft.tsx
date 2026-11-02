@@ -19,9 +19,10 @@ export interface EmailDraftProps {
 }
 
 function Part({ label, text }: { label: string; text: string }) {
-  return <div className="email-part"><span className="email-label">{label}</span>
-    <div className="copyblk"><pre>{text}</pre>
-      <button type="button" className="copy-cmd" aria-label={"Copy " + label} onClick={async e => { const b = e.currentTarget; await navigator.clipboard.writeText(text); b.textContent = "Copied"; setTimeout(() => { b.textContent = "Copy"; }, 1500); }}>Copy</button></div></div>;
+  return <div className="email-part">
+    <div className="email-part-top"><span className="email-label">{label}</span>
+      <button type="button" className="copy-cmd" aria-label={"Copy " + label} onClick={async e => { const b = e.currentTarget; await navigator.clipboard.writeText(text); b.textContent = "Copied"; setTimeout(() => { b.textContent = "Copy"; }, 1500); }}>Copy</button></div>
+    <pre>{text}</pre></div>;
 }
 
 /** An item's generated email: every version as To, Subject and Body, and asking for one. It never touches the answer. */
@@ -64,9 +65,9 @@ export function EmailDraft({ id, versions, waiting, to, asking, onClose, onAsk }
         <Part label="Body" text={shown.body} />
         {changing ? <div className="email-form">
           <label>What should change?<textarea rows={2} value={change} placeholder="For example: shorter, and name the two new switches" onChange={e => setChange(e.target.value)} /></label>
-          <span className="email-tools"><button type="button" className="email-send" disabled={busy || !change.trim()} onClick={() => void send({ recipient: shown.to ?? "them", change: change.trim(), basedOn: shown.n }, () => { setChange(""); setChanging(false); })}>Generate a new version</button>
-            <button type="button" className="email-cancel" onClick={() => flushSync(() => setChanging(false))}>Cancel</button></span>
-        </div> : <button type="button" className="email-change" onClick={() => flushSync(() => setChanging(true))}>Change this</button>}
+          <div className="email-actions"><button type="button" className="email-send" disabled={busy || !change.trim()} onClick={() => void send({ recipient: shown.to ?? "them", change: change.trim(), basedOn: shown.n }, () => { setChange(""); setChanging(false); })}>Generate a new version</button>
+            <button type="button" className="email-cancel" onClick={() => flushSync(() => setChanging(false))}>Cancel</button></div>
+        </div> : <div className="email-actions"><button type="button" className="email-change" onClick={() => flushSync(() => setChanging(true))}>Ask for changes</button></div>}
       </>}
       {waiting && <p className="muted email-wait">Waiting for {to} to send the email.</p>}
     </div>

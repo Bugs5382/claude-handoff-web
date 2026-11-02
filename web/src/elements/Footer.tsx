@@ -25,12 +25,18 @@ export function Footer({ flags, status, saved, savedBad, delivery, pops, jump, c
     const fit = () => {
       const cut = (x: Element | null) => !!x && x.scrollWidth > x.clientWidth + 1;
       el.classList.remove("two");
-      if (alwaysTwo || matchMedia("(max-width: 480px)").matches || cut(el.querySelector(".rvbar-in")) || cut(el.querySelector(".cnt")) || cut(el.querySelector(".dlv-t"))) el.classList.add("two");
+      const shows = (x: Element | null) => !!x && x.childNodes.length > 0;
+      if (alwaysTwo || matchMedia("(max-width: 480px)").matches || shows(el.querySelector(".dlv")) ||
+        cut(el.querySelector(".rvbar-in")) || cut(el.querySelector(".cnt")) || cut(el.querySelector(".dlv-t"))) el.classList.add("two");
     };
     fit();
+    // Text can get wider after the first draw: a web font arriving late changes nothing the layout would report.
+    const watch = new ResizeObserver(fit);
+    watch.observe(el.querySelector(".rvbar-in") as Element);
     addEventListener("resize", fit);
+    document.fonts?.addEventListener("loadingdone", fit);
     void document.fonts?.ready.then(fit);
-    return () => removeEventListener("resize", fit);
+    return () => { watch.disconnect(); removeEventListener("resize", fit); document.fonts?.removeEventListener("loadingdone", fit); };
   });
   return (
     <div ref={bar} className={"rvbar " + flags} role="region" aria-label="Review progress">

@@ -1,0 +1,19 @@
+import htm from "htm";
+import { createElement } from "react";
+import { createRoot } from "react-dom/client";
+import { Answer } from "@/elements/Answer";
+import { Blocks } from "@/elements/Blocks";
+import { Button } from "@/elements/Button";
+import { Chip } from "@/elements/Chip";
+import { Footer } from "@/elements/Footer";
+import { Item } from "@/elements/Item";
+import { JumpBar } from "@/elements/JumpBar";
+import { Page } from "@/elements/Page";
+import { Phase } from "@/elements/Phase";
+
+/** htm bound to React: custom templates use this with no compile step. */
+export const html = htm.bind(createElement);
+export { Answer, Blocks, Button, Chip, Footer, Item, JumpBar, Page, Phase };
+
+const root = document.getElementById("app");
+if (root) createRoot(root).render(createElement(Page));

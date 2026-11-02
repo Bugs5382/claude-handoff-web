@@ -534,7 +534,9 @@ class Handler(SimpleHTTPRequestHandler):
             return True
         if p.endswith("/") or not page_file(self.root, rel):
             return False
-        with open(os.path.join(self.root, "_site", "page.html"), "rb") as f:
+        wants_app = load_config(self.root).get("renderer") == "app" or "app=1" in urlsplit(self.path).query
+        shell = "app.html" if wants_app else "page.html"
+        with open(os.path.join(self.root, "_site", shell), "rb") as f:
             data = f.read()
         self._shell = True
         self.send_response(HTTPStatus.OK)

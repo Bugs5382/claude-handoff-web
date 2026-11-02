@@ -42,6 +42,8 @@ SCENARIOS = [
     "deck: asks what you're building, sends only final Yes and Accept risk, and locks nothing",
     "custom: a template from custom/ draws the page, on the same elements",
     "round single: Accept risk on one set of items, sent from the bar",
+    "bar: a page with a reply status always shows row two, whatever the width",
+    "bar: text that gets wider after the first draw splits the bar, as a late font does",
     "bar: one row when it fits, a clean split when it does not, and no control ever wraps",
     "finished page: green bar and back link; Copy results goes back to the folder",
     "copy results keeps the Copy results format",

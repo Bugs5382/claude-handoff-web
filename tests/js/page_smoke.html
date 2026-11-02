@@ -185,7 +185,7 @@ const seg = (doc, id, v) => card(doc, id).querySelector('.seg button[data-v="' +
   });
 
   await t("bar: one row when it fits, a clean split when it does not, and no control ever wraps", async () => {
-    const { win, doc, bar } = await load("/demo/pf-bar");
+    const { win, doc, bar } = await load("/demo/pf-theme");
     const r1 = () => w().document.querySelector(".rvbar-r1"), r2 = () => w().document.querySelector(".rvbar-r2"), b = () => w().document.querySelector(".rvbar");
     const shown = row => Array.from(row.children).filter(el => el.getClientRects().length);
     const spread = row => { const m = shown(row).map(el => { const r = el.getBoundingClientRect(); return r.top + r.height / 2; }); return Math.max(...m) - Math.min(...m); };
@@ -298,6 +298,29 @@ const seg = (doc, id, v) => card(doc, id).querySelector('.seg button[data-v="' +
     ["s1", "s2"].forEach(id => click(seg(doc, id, "yes")));
     click(seg(doc, "s3", "risk")); typeIn(card(doc, "s3").querySelector("textarea"), "No staging, said up front");
     ok(bar.classList.contains("approved"), bar.querySelector(".cnt").textContent);
+  });
+
+  await t("bar: a page with a reply status always shows row two, whatever the width", async () => {
+    const { bar } = await load("/demo/pf-dlv-replied");
+    for (const px of [1440, 1000]) {
+      f.style.width = px + "px"; await tick(120);
+      ok(bar.classList.contains("two"), px + ": split");
+      ok(bar.querySelector(".rvbar-r2 > .copy").getClientRects().length, px + ": Copy results shows");
+      ok(bar.querySelector(".rvbar-r2 > .clear").getClientRects().length, px + ": Clear my answers shows");
+    }
+    f.style.width = "1000px"; await tick(30);
+  });
+
+  await t("bar: text that gets wider after the first draw splits the bar, as a late font does", async () => {
+    const { doc, bar } = await load("/demo/pf-theme");
+    f.style.width = "1000px"; await tick(120);
+    ok(!bar.classList.contains("two"), "it starts as one row");
+    const wide = doc.createElement("style"); wide.textContent = ".rvbar .cnt { letter-spacing: 2em; }"; doc.head.appendChild(wide);
+    doc.fonts.dispatchEvent(new (w().Event)("loadingdone"));
+    await tick(120);
+    ok(bar.classList.contains("two"), "split once the text no longer fits");
+    ok(bar.querySelector(".rvbar-r2 > .copy").getClientRects().length, "row two shows");
+    wide.remove();
   });
 
   await t("finished page: green bar and back link; Copy results goes back to the folder", async () => {

@@ -611,3 +611,19 @@ def test_a_returned_draft_does_not_unlock_a_sent_item(path):
     sent(path, ["s1"])
     pagefile.add_email(path, "s2", "ops", "Hi", "Body", now=T2)
     assert pagefile.held_items(pagefile.load(path)) == {"s1"}
+
+
+def test_a_deck_takes_only_final_yes_and_accept_risk_items(path):
+    make(path, phased())
+    pagefile.save_answers(path, {"A1": {"answer": "yes"}, "A2": {"answer": "risk", "note": "Said so"},
+                                 "B1": {"answer": "no", "note": "Not this"}}, by="me", now=T0)
+    doc = pagefile.load(path)
+    assert [(i["id"], i["answer"], i["note"]) for i in pagefile.deck_items(doc)] == [("A1", "yes", ""), ("A2", "risk", "Said so")]
+
+
+def test_a_deck_keeps_a_yes_from_an_earlier_round_and_drops_a_reopened_one(path):
+    make(path, phased())
+    pagefile.save_answers(path, {"A1": {"answer": "risk", "note": "Said so"}, "A2": {"answer": "yes"}}, by="me", now=T0)
+    pagefile.new_round(path, now=T1)
+    pagefile.reply(path, "A2", "ops", "Look again", action="reopen", reason="Moved", now=T2)
+    assert [(i["id"], i["note"]) for i in pagefile.deck_items(pagefile.load(path))] == [("A1", "Said so")]

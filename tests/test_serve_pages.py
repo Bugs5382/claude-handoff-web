@@ -355,3 +355,19 @@ def test_a_draft_ask_lands_in_the_inbox_and_needs_instructions(pages):
     assert sub["kind"] == "email" and sub["instructions"] == "Say why" and sub["prose"] == "Plain"
     assert "awaiting" not in pagefile.load(root / "demo" / "mail.json")["rounds"][-1]
     assert post(base, "/_page/demo/design/send", {"kind": "email", "items": ["s1"], "instructions": "x"})[0] == 400
+
+
+def test_a_deck_goes_to_the_inbox_with_only_final_items_and_needs_a_framing(pages):
+    root, base = pages
+    pagefile.write_definition(root / "demo" / "plan.json", {
+        "schema": "handoff.page/v1", "kind": "round", "title": "Plan", "deck": True,
+        "items": [{"id": "s1", "title": "a"}, {"id": "s2", "title": "b"}]})
+    assert post(base, "/_page/demo/plan/send", {"kind": "deck", "framing": "x"})[0] == 400, "nothing final yet"
+    put_json(base, "/_page/demo/plan/answers", {"answers": {"s1": {"answer": "risk", "note": "Said so"}, "s2": {"answer": "no"}}})
+    assert post(base, "/_page/demo/plan/send", {"kind": "deck", "framing": " "})[0] == 400
+    assert post(base, "/_page/demo/plan/send", {"kind": "deck", "framing": "Timeline and risks"})[0] == 200
+    name = next(n for n in inbox(root) if "plan" in n)
+    sub = json.loads((root / "_inbox" / "ops" / name).read_text())
+    assert sub["kind"] == "deck" and sub["framing"] == "Timeline and risks"
+    assert [i["id"] for i in sub["items"]] == ["s1"] and sub["items"][0]["note"] == "Said so"
+    assert "awaiting" not in pagefile.load(root / "demo" / "plan.json")["rounds"][-1]

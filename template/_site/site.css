@@ -395,6 +395,7 @@ body.site th { background: var(--soft-2); font-weight: 600; }
 .rvbar-r2 > .copy, .rvbar-r2 > .clear { background: transparent; color: var(--on-bar); border: 1px solid var(--bar-line); }
 .rvbar-r2 > .copy:hover, .rvbar-r2 > .clear:hover:not(:disabled) { background: var(--bar-hover); }
 .rvbar-r2 > .clear:disabled { opacity: .6; cursor: default; }
+.rvbar .deck-btn { background: transparent; color: var(--on-bar); border: 1px solid var(--bar-line); }
 .rvbar .prev, .rvbar .next { background: transparent; color: var(--on-bar); border: 1px solid var(--bar-line); }
 .rvbar .ids { display: inline-flex; align-items: center; gap: 6px; background: var(--bar-fill); color: var(--on-bar); border: 1px solid var(--bar-line); }
 .rvbar .ids .mono, .rvbar .mono { font-family: var(--mono); }

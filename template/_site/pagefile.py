@@ -20,7 +20,7 @@ from schema import DEFAULT_TYPE, SCHEMA, TYPE_ANSWERS, validate
 
 MAX_BYTES = 2 * 1024 * 1024
 SERVER_KEYS = ("rev", "rounds", "thread", "submissions", "route", "emails")
-DEFINITION_KEYS = ("schema", "kind", "title", "summary", "build", "reset", "status", "options", "items", "phases", "drafts")
+DEFINITION_KEYS = ("schema", "kind", "title", "summary", "build", "reset", "status", "options", "items", "phases", "drafts", "deck")
 DONE = ("yes", "risk")
 
 
@@ -355,7 +355,7 @@ def add_submission(path, record, *, now=None):
         sub = {"n": n, "kind": record["kind"], "at": now or now_iso(), "to": record["to"],
                "round": doc["rounds"][-1]["round"], "rev": doc["rev"], "items": list(record.get("items", [])),
                "file": record["file"].replace("{n}", str(n)), "state": "sent"}
-        for k in ("instructions", "prose", "basedOn"):
+        for k in ("instructions", "prose", "basedOn", "framing"):
             if record.get(k):
                 sub[k] = record[k]
         doc["submissions"].append(sub)
@@ -446,6 +446,19 @@ def item_states(doc):
                 if r.get("restart"):
                     break
         out[iid] = state
+    return out
+
+
+def deck_items(doc):
+    """What a deck is built from: the items whose final answer is Yes or Accept risk, in page order."""
+    states = item_states(doc)
+    out = []
+    for it in doc["items"]:
+        st = states.get(it["id"])
+        if st and st["answer"] in DONE and not st["reopened"]:
+            answer = next((r["answers"][it["id"]] for r in reversed(doc["rounds"]) if it["id"] in r["answers"]), {})
+            out.append({"id": it["id"], "title": it["title"], "body": it.get("body", []),
+                        "answer": st["answer"], "note": answer.get("note", "")})
     return out
 
 

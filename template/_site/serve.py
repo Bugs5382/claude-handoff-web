@@ -896,8 +896,8 @@ class Handler(SimpleHTTPRequestHandler):
 
     def _page_send(self, rel, path, req, cfg):
         kind = req.get("kind")
-        if kind not in ("send", "blocker", "email"):
-            raise ValueError("kind must be send, blocker or email")
+        if kind not in ("send", "blocker", "email", "deck"):
+            raise ValueError("kind must be send, blocker, email or deck")
         doc = pagefile.load(path)
         ids = {it["id"] for it in doc["items"]}
         items = req.get("items")
@@ -910,7 +910,7 @@ class Handler(SimpleHTTPRequestHandler):
             if not str(req.get("instructions") or "").strip():
                 raise ValueError("say how to draft it")
             extra = {k: req[k] for k in ("instructions", "prose", "basedOn") if req.get(k)}
-        if items is None:
+        if items is None and kind != "deck":
             held, states = pagefile.held_items(doc), pagefile.item_states(doc)
             items = [i for i in doc["rounds"][-1]["answers"] if i in ids and i not in held and not states.get(i, {}).get("hidden")]
             phase = req.get("phase")
@@ -921,14 +921,24 @@ class Handler(SimpleHTTPRequestHandler):
                 items = [i for i in items if i in info["items"]]
             if held and not items:
                 raise ValueError("everything answered is already sent")
-        if not isinstance(items, list) or any(i not in ids for i in items):
+        if kind != "deck" and (not isinstance(items, list) or any(i not in ids for i in items)):
             raise ValueError("items must be ids of items on this page")
         if kind == "blocker" and len(items) != 1:
             raise ValueError("a blocker sends exactly one item")
+        detail = None
+        if kind == "deck":
+            if not doc.get("deck"):
+                raise ValueError("this page doesn't build decks")
+            if not str(req.get("framing") or "").strip():
+                raise ValueError("say what you're trying to build")
+            detail = pagefile.deck_items(doc)
+            if not detail:
+                raise ValueError("a deck needs at least one Yes or Accept risk item")
+            items, extra = [d["id"] for d in detail], {"framing": req["framing"]}
         results = req.get("results") if isinstance(req.get("results"), str) else ""
-        return self._submit(rel, path, cfg, kind, items, results, now_local(cfg), extra)
+        return self._submit(rel, path, cfg, kind, items, results, now_local(cfg), extra, detail)
 
-    def _submit(self, rel, path, cfg, kind, items, results, when, extra=None):
+    def _submit(self, rel, path, cfg, kind, items, results, when, extra=None, detail=None):
         """Record the submission on the page, then write it to the route's inbox atomically."""
         doc = pagefile.load(path)
         route = page_route(cfg, rel.split("/")[0], doc)
@@ -947,6 +957,8 @@ class Handler(SimpleHTTPRequestHandler):
                    "items": [{"id": i, "n": pos[i], "answer": (answers.get(i) or {}).get("answer", ""),
                               "note": (answers.get(i) or {}).get("note", ""), "blocker": kind == "blocker"} for i in items],
                    "results": results, **(extra or {})}
+        if detail is not None:
+            payload["items"] = detail
         idir = os.path.join(self.root, "_inbox", route["to"])
         try:
             os.makedirs(idir, exist_ok=True)

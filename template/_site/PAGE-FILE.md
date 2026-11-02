@@ -106,7 +106,7 @@ heading.
 
 ### Email drafts
 
-With `"drafts": true`, every item has Draft email in its More button, whatever its answer. The person says how to draft it and the prose they want, and that goes to the agent's inbox like a Send, as a submission of kind `email`. It locks nothing. The agent answers with `page.py email`, and the draft appears in that item as a new version with the instructions that produced it. Earlier versions stay readable, and the person can pick one and ask for another, which sends `basedOn`.
+With `"drafts": true`, every item has Generate an email in its More button, whatever its answer. The person says how to draft it and the prose they want, and that goes to the agent's inbox like a Send, as a submission of kind `email`. It locks nothing. The agent answers with `page.py email`, and the draft appears in that item as a new version with the instructions that produced it. Earlier versions stay readable, and the person can pick one and ask for another, which sends `basedOn`.
 
 ### Building a deck
 

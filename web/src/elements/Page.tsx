@@ -211,7 +211,7 @@ export function Page() {
 
   const renderItem = (it: ItemDef, n: number | string) => (
         <Item key={it.id} item={it} n={n} risk={p.kind === "round"} type={typeOf(p, it)} state={data.states[it.id]} value={local[it.id] ?? {}} blockedBy={blocked[it.id]} held={held.has(it.id)}
-          handled={!!r.handled?.[it.id]} entries={itemEntries(data, it.id)} email={emailFor(it)} emailLabel={p.drafts ? (p.emails?.[it.id]?.length ? "Ask for another draft" : "Draft email") : undefined}
+          handled={!!r.handled?.[it.id]} entries={itemEntries(data, it.id)} email={emailFor(it)} emailLabel={p.drafts ? (p.emails?.[it.id]?.length ? "Generate another email" : "Generate an email") : undefined}
           actions={itemActions.map(make => make(it, data)).filter(a => a !== null)} diffs={data.diffs} build={p.build} choices={p.options?.choices} defaultChoice={p.options?.default}
           blockerLabel={sends ? "Blocker: send now" : "Blocker: copy now"}
           blockerTitle={`Something stops you testing or using it: ${sends ? "send this one item to" : "copy this one item and paste it to"} ${to} straight away`}

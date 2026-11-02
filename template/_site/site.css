@@ -317,7 +317,10 @@ body.site th { background: var(--soft-2); font-weight: 600; }
 .email-form { display: grid; gap: 8px; }
 .email-form label { display: grid; gap: 4px; font-size: 14px; font-weight: 600; }
 .email-form textarea { font: inherit; font-weight: 400; width: 100%; box-sizing: border-box; }
-.email button.email-open, .email button.email-send, .email button.email-cancel { justify-self: start; min-height: var(--tap); padding: 0 14px; font: 600 14px var(--font); border-radius: var(--radius-sm); cursor: pointer; }
+.email-tools { display: inline-flex; align-items: center; gap: 8px; }
+.email-help { margin: 6px 0 2px; font-size: 14px; }
+.email button.email-cancel { min-height: 28px; padding: 0 8px; font: 13px var(--font); background: transparent; color: var(--muted); border: 0; text-decoration: underline; cursor: pointer; }
+.email button.email-send { justify-self: start; min-height: var(--tap); padding: 0 14px; font: 600 14px var(--font); border-radius: var(--radius-sm); cursor: pointer; }
 .phase { margin: 28px 0 14px; padding: 16px 0 0; border-top: 2px solid var(--line-2); scroll-margin-top: 16px; }
 .phase-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .phase-h { margin: 0; }

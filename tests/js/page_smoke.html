@@ -266,6 +266,9 @@ const seg = (doc, id, v) => card(doc, id).querySelector('.seg button[data-v="' +
     click(menu.querySelector('[data-action="draft-email"]')); ok(menu.hidden, "picking closes it");
     const form = card(doc, "A2").querySelector(".email-form");
     ok(form.querySelector(".email-send").disabled, "it needs instructions");
+    match(card(doc, "A2").querySelector(".email-h").textContent, /^Generate an email$/);
+    match(form.querySelector(".email-help").textContent, /^Say what this email should do and how it should sound\./);
+    ok(card(doc, "A2").querySelector(".email-top .email-cancel"), "Cancel sits at the top, beside the versions");
     typeIn(form.querySelector("textarea"), "Explain why the staging matters");
     click(form.querySelector(".email-send"));
     await until(() => w().document.querySelector('[data-email="A2"] .email-wait'), "the ask to land");

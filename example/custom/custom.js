@@ -4,6 +4,6 @@
   const { html, templates, itemActions } = window.HandoffSite;
   itemActions.push(it => ({ name: "copy-title", label: "Copy this step's title", onSelect: () => navigator.clipboard.writeText(it.title) }));
   templates["draft-round"] = ({ data, item }) => html`
-    <p class="draft-intro">Each step here can have its own email. Press Draft email, say what you want, and read each version as it comes back.</p>
+    <p class="draft-intro">Each step here can have its own email. Press More, then Generate an email, say what you want, and read each version as it comes back.</p>
     ${data.page.items.map((it, i) => item(it, i + 1))}`;
 })();

@@ -151,14 +151,27 @@ def _clear_hold(rnd):
     rnd.pop("held", None)
 
 
+def _open_blocker(doc, rnd, iid):
+    """The Blocker on this item in the open round that the agent hasn't dealt with yet, if any."""
+    return next((s for s in reversed(doc["submissions"]) if s["kind"] == "blocker" and s["round"] == rnd["round"]
+                 and iid in s["items"] and s.get("state") != "failed" and not s.get("handled")), None)
+
+
 def _settle(doc, iid, at, via):
-    """A sent No or Changes the agent dealt with leaves the open answers for good, so its note can't be sent again."""
+    """A sent No or Changes, or a Blocker, the agent dealt with leaves the open answers for good, so its note
+    can't be sent again. A dealt-with Blocker also stops flagging the item."""
     rnd = doc["rounds"][-1]
     entry = rnd["answers"].get(iid)
-    if not entry or entry["answer"] not in ("no", "changes") or not _sent(doc, rnd, iid, entry):
+    blocker = _open_blocker(doc, rnd, iid)
+    if blocker is not None:
+        blocker["handled"] = at
+    carried = entry and blocker is not None and _at(entry["at"]) <= _at(blocker["at"])
+    if not entry or not carried and (entry["answer"] not in ("no", "changes") or not _sent(doc, rnd, iid, entry)):
         return
     del rnd["answers"][iid]
     kept = {k: entry[k] for k in ("answer", "note", "by", "at") if k in entry}
+    if carried:
+        kept["blocker"] = True
     rnd.setdefault("handled", {}).setdefault(iid, []).append({**kept, "handled": at, "via": via})
 
 

@@ -127,6 +127,19 @@ export function Page() {
     return <EmailDraft id={it.id} versions={versions} waiting={asked > versions.length} to={to}
       onAsk={async ask => { await postPage("/send", { kind: "email", items: [it.id], ...ask }); await redraw(); }} />;
   };
+  const deck = async () => {
+    const framing = (prompt("What are you trying to build? For example: a presentation on the network migration timeline and risks") ?? "").trim();
+    if (!framing) return;
+    if (!(await flush())) { alert("Can't send yet: the answers aren't saved. Try again once it says Saved."); return; }
+    if (!sends) {
+      const final = p.items.filter(it => DONE.includes(local[it.id]?.v ?? ""));
+      await navigator.clipboard.writeText(`Build a deck: ${framing}\n${final.map(it => `- [${it.id}] ${it.title}${local[it.id]?.n ? ` (${local[it.id]?.n})` : ""}`).join("\n")}\n`);
+      alert("Copied what the deck needs. Paste it to " + to + ".");
+      return;
+    }
+    try { await postPage("/send", { kind: "deck", framing, results: results() }); await redraw(); alert(`Sent to ${to}. The link comes back on this page.`); }
+    catch (e) { alert("Couldn't ask for the deck: " + (e as Error).message); }
+  };
   const blocker = async (it: ItemDef, note: string) => {
     const cur = local[it.id] ?? {};
     set(it.id, { ...cur, n: note, blocker: true });
@@ -210,7 +223,7 @@ export function Page() {
       )} />
       {!reference && <History rows={rows} />}
     </main>
-    {!reference && <Footer flags={flags} saved={pg.saved || ""} savedBad={pg.bad} delivery={delivery}
+    {!reference && <Footer alwaysTwo={!!p.deck} flags={flags} saved={pg.saved || ""} savedBad={pg.bad} delivery={delivery}
       status={<span className="stat"><span className="dot" aria-hidden="true" />
         <svg className="tick" width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d="M3 9.5l4 4 8-9" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" /></svg>
         <span className="bkr" hidden={!c.blockers}>{c.blockers} BLOCKER{c.blockers === 1 ? "" : "S"}</span><span className="cnt" role="status" aria-live="polite">{text}</span></span>}
@@ -227,6 +240,7 @@ export function Page() {
           <button className="clear" type="button" role="menuitem" disabled={!!sub} onClick={() => void clear()}>Clear my answers</button>
         </div></>}>
       {sends && !p.phases && <button className={"send-btn" + (c.allDone ? " ready" : "")} type="button" disabled={sendDone} onClick={() => void sendAll()}>{sendDone ? "Sent" : "Send to " + to}</button>}
+      {p.deck && <button className="deck-btn" type="button" onClick={() => void deck()}>Build a deck</button>}
       <button className="copy" type="button" onClick={() => void doCopy()}>Copy results</button>
       <button className="clear" type="button" disabled={!!sub} onClick={() => void clear()}>Clear my answers</button>
       <button className="ids" type="button" aria-haspopup="dialog" aria-expanded={popup === "ids"} onClick={e => { e.stopPropagation(); setPopup(popup === "ids" ? "" : "ids"); }}

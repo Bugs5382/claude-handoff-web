@@ -118,7 +118,8 @@
         "title": "Remove it from monitoring"
       }
     ],
-    "drafts": true
+    "drafts": true,
+    "deck": true
   },
   "steps": [
     {

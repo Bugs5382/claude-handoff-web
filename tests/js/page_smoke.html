@@ -270,6 +270,20 @@ const seg = (doc, id, v) => card(doc, id).querySelector('.seg button[data-v="' +
     const sub = ph.submissions[ph.submissions.length - 1]; eq(sub.kind, "email"); eq(sub.items[0], "A2"); eq(sub.instructions, "Explain why the staging matters");
   });
 
+  await t("deck: asks what you're building, sends only final Yes and Accept risk, and locks nothing", async () => {
+    const { win, doc, bar } = await load("/demo/sample-round-phases");
+    click(seg(doc, "A3", "no")); await saved();
+    let asked = ""; win.prompt = q => { asked = q; return "A presentation on the timeline and risks"; };
+    ok(bar.classList.contains("two"), "the button lives on the second row");
+    click(bar.querySelector(".deck-btn"));
+    await until(() => asked, "the question"); match(asked, /^What are you trying to build\?/);
+    const ph = await (async () => { for (let i = 0; i < 80; i++) { const x = await pageFile("demo/sample-round-phases"); if (x.submissions.some(s => s.kind === "deck")) return x; await tick(25); } })();
+    const sub = ph.submissions.find(s => s.kind === "deck");
+    eq(sub.framing, "A presentation on the timeline and risks");
+    ok(sub.items.includes("A1"), "a Yes goes"); ok(!sub.items.includes("A3"), "a No stays out"); ok(!sub.items.includes("B1"), "an open item stays out");
+    ok(!seg(w().document, "A2", "yes").disabled, "nothing locked");
+  });
+
   await t("round single: Accept risk on one set of items, sent from the bar", async () => {
     const { doc, bar } = await load("/demo/sample-round-single");
     ok(bar.querySelector(".send-btn")); ok(!doc.querySelector(".phase"));

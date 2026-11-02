@@ -68,6 +68,7 @@ The definition keys sit at the top level, and the server keys are managed by `pa
 | `options` | definition | a backlog's choices: `{"choices": [{"value": "start", "label": "Start"}, ...], "default": "hold"}` |
 | `items` | definition | the content, in order |
 | `phases` | definition | a round's phases: `[{"id": "A", "title": "...", "goal": "...", "dependsOn": ["A"]}]`; item ids become `A1`, `A2`, `B1` |
+| `deck` | definition | `true` adds Build a deck to the bar |
 | `drafts` | definition | `true` adds Draft email to every item |
 | `emails` | server | versions of each item's email draft, numbered from 1 |
 | `route` | operator | `{"to": "ops", "mode": "send"}`; set with `set_route`, never in a definition |
@@ -105,6 +106,10 @@ heading.
 ### Email drafts
 
 With `"drafts": true`, every item has a Draft email control, whatever its answer. The person says how to draft it and the prose they want, and that goes to the agent's inbox like a Send, as a submission of kind `email`. It locks nothing. The agent answers with `page.py email`, and the draft appears in that item as a new version with the instructions that produced it. Earlier versions stay readable, and the person can pick one and ask for another, which sends `basedOn`.
+
+### Building a deck
+
+With `"deck": true`, the bar has Build a deck, which runs only when it's pressed. It asks what the person is trying to build, and sends that as `framing` in a submission of kind `deck`. The deck's content is only the items whose final answer is Yes or Accept risk, each with its title, body and note. It locks nothing. The agent builds the deck, saves it beside the page and replies with the link, such as `page.py reply app/plan _page --from app "[The deck](/app/plan-deck.pptx)"`. On a page that only copies, the button copies the same content instead.
 
 ### Body blocks
 

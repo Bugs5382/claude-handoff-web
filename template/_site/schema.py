@@ -23,7 +23,7 @@ STATES = ("needs-you", "reference", "done")
 MODES = ("send", "copy", "both")
 ACTIONS = ("filed", "fixed", "reopen", "unblock", "wontfix", "info")
 TONES = ("info", "warn", "ok", "danger")
-SUBMISSION_KINDS = ("send", "blocker", "restart", "email")
+SUBMISSION_KINDS = ("send", "blocker", "restart", "email", "deck")
 SUBMISSION_STATES = ("sent", "taken", "failed")
 BLOCKS = ("p", "list", "olist", "code", "image", "table", "diff", "copy", "note", "html")
 BLOCK_EXTRAS = {"code": ("lang",), "image": ("alt", "caption"), "note": ("tone",)}
@@ -35,7 +35,7 @@ AGENT = re.compile(r"[a-z0-9][a-z0-9_-]{0,40}\Z")
 ID_RULE = "expected a-z, 0-9, _ and -, starting with a letter or digit, up to 41 characters"
 
 TOP = ("schema", "rev", "kind", "title", "summary", "build", "reset", "status", "route", "options", "items",
-       "rounds", "thread", "submissions", "phases", "drafts", "emails")
+       "rounds", "thread", "submissions", "phases", "drafts", "emails", "deck")
 COMMON = ("id", "type", "title", "section", "body")
 ANSWERABLE = ("answers", "skip", "dependsOn", "blockedBy")
 TYPE_FIELDS = {
@@ -135,8 +135,9 @@ def validate(doc):
     _thread(v, doc.get("thread"))
     _submissions(v, doc.get("submissions"))
     _emails(v, doc.get("emails"))
-    if "drafts" in doc and not isinstance(doc["drafts"], bool):
-        v.err("drafts", "expected true or false")
+    for k in ("drafts", "deck"):
+        if k in doc and not isinstance(doc[k], bool):
+            v.err(k, "expected true or false")
     return v.errors
 
 
@@ -519,7 +520,7 @@ def _submissions(v, subs):
             v.err(p, "expected an object")
             continue
         v.keys(s, p, ("n", "kind", "at", "to", "round", "rev", "items", "file", "state", "takenAt", "released",
-                            "instructions", "prose", "basedOn"), ("n", "kind", "at"))
+                            "instructions", "prose", "basedOn", "framing"), ("n", "kind", "at"))
         if s.get("n") != i:
             v.err(_join(p, "n"), f"expected {i}")
         v.choice(s, "kind", p, SUBMISSION_KINDS)

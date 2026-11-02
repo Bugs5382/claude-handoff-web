@@ -1,0 +1,133 @@
+{
+  "definition": {
+    "schema": "handoff.page/v1",
+    "kind": "round",
+    "title": "Sample: round phases, a network migration",
+    "summary": "Northwind moves its Harbor site to a new core. Each phase goes on its own. Phase A blocks B and C, and step A2 blocks B3.",
+    "status": {
+      "state": "needs-you",
+      "priority": 6
+    },
+    "phases": [
+      {
+        "id": "A",
+        "title": "Prepare",
+        "goal": "Everything is ready before anyone touches the network."
+      },
+      {
+        "id": "B",
+        "title": "Cut over",
+        "goal": "Traffic runs through the new core.",
+        "dependsOn": [
+          "A"
+        ]
+      },
+      {
+        "id": "C",
+        "title": "Validate",
+        "goal": "Every site reaches every service.",
+        "dependsOn": [
+          "A"
+        ]
+      },
+      {
+        "id": "D",
+        "title": "Retire",
+        "goal": "The old core is off and gone.",
+        "dependsOn": [
+          "C"
+        ]
+      }
+    ],
+    "items": [
+      {
+        "id": "A1",
+        "title": "Freeze changes from Friday 18:00",
+        "body": [
+          {
+            "p": "Nothing else changes on the core until phase C closes."
+          }
+        ]
+      },
+      {
+        "id": "A2",
+        "title": "New core staged at 198.51.100.1",
+        "body": [
+          {
+            "table": [
+              [
+                "Device",
+                "Address"
+              ],
+              [
+                "core-a",
+                "198.51.100.1"
+              ],
+              [
+                "core-b",
+                "198.51.100.2"
+              ]
+            ]
+          }
+        ]
+      },
+      {
+        "id": "A3",
+        "title": "Rollback plan signed",
+        "body": [
+          {
+            "note": "Rollback takes 25 minutes.",
+            "tone": "warn"
+          }
+        ]
+      },
+      {
+        "id": "B1",
+        "title": "Move VLAN 120 to the new core"
+      },
+      {
+        "id": "B2",
+        "title": "Move the uplinks to 203.0.113.1"
+      },
+      {
+        "id": "B3",
+        "title": "Swap the core addresses in DNS",
+        "dependsOn": [
+          "A2"
+        ],
+        "body": [
+          {
+            "p": "Can't happen until step A2 is answered, whatever else is open."
+          }
+        ]
+      },
+      {
+        "id": "C1",
+        "title": "Every branch reaches the file share"
+      },
+      {
+        "id": "C2",
+        "title": "Voice calls hold for ten minutes"
+      },
+      {
+        "id": "D1",
+        "title": "Power off the old core"
+      },
+      {
+        "id": "D2",
+        "title": "Remove it from monitoring"
+      }
+    ]
+  },
+  "steps": [
+    {
+      "answers": {
+        "A1": {
+          "answer": "yes",
+          "note": ""
+        }
+      },
+      "at": "2026-01-05T09:00:00+00:00"
+    }
+  ]
+}

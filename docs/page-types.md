@@ -282,3 +282,19 @@ python3 _site/page.py status app/design done --note "Shipped in 1.4.0"
 
 HTML pages keep working while a site moves over. `page.py convert <folder>/<page>.html` turns one into a page
 file beside it, bringing its saved answers and round history along; see `PAGE-FILE.md`.
+
+## Rounds
+
+A `round` is for answering a set of items and sending them to an agent. It has two templates of the same element. Without `phases` it's **round single**: one set of items, sent together from the bar. With `phases` it's **round phases**: lettered phases with steps `A1`, `A2`, `B1`, each with its own goal and Send, so one phase can go before the others.
+
+Every item also takes Accept risk, which needs a note on how the risk is presented. A round is done when every item is Yes or Accept risk.
+
+A phase's `dependsOn` blocks the whole phase, and an item's `dependsOn` blocks that item. Either can name a phase or a step, and Blocked by links to it.
+
+```json
+{"schema": "handoff.page/v1", "kind": "round", "title": "Move the core",
+ "phases": [{"id": "A", "title": "Prepare", "goal": "Ready to move"},
+            {"id": "B", "title": "Cut over", "dependsOn": ["A"]}],
+ "items": [{"id": "A1", "title": "Freeze changes"}, {"id": "A2", "title": "New core staged"},
+           {"id": "B1", "title": "Move the VLANs"}, {"id": "B2", "title": "Swap the addresses", "dependsOn": ["A2"]}]}
+```

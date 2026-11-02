@@ -1,13 +1,16 @@
 import type { ItemDef, Local, Locals, PageData, PageDoc, Round, Submission } from "@/lib/types";
 
 // What render.js and review.js work out from a page file, one function each.
-const TYPE_BY_KIND: Record<string, string> = { review: "section", checklist: "check", journey: "step", backlog: "choice", questions: "question", reference: "info", status: "info" };
+const TYPE_BY_KIND: Record<string, string> = { review: "section", checklist: "check", journey: "step", backlog: "choice", questions: "question", reference: "info", status: "info", round: "section" };
 export const typeOf = (p: PageDoc, it: ItemDef): string => it.type ?? TYPE_BY_KIND[p.kind];
 export const openRound = (p: PageDoc): Round => p.rounds[p.rounds.length - 1];
 
-const IN: Record<string, string> = { yes: "yes", no: "no", changes: "chg", skipped: "skip" };
-const OUT: Record<string, string> = { yes: "yes", no: "no", chg: "changes", skip: "skipped" };
+const IN: Record<string, string> = { yes: "yes", no: "no", changes: "chg", skipped: "skip", risk: "risk" };
+const OUT: Record<string, string> = { yes: "yes", no: "no", chg: "changes", skip: "skipped", risk: "risk" };
+export const DONE = ["yes", "risk"];
 export const answerIn = (a: string): string => IN[a] ?? a;
+
+export const phaseOf = (id: string): string => /^[A-Z]+/.exec(id)?.[0] ?? "";
 
 export function toLocal(data: PageData): Locals {
   const p = data.page, r = openRound(p), out: Locals = {};
@@ -17,10 +20,10 @@ export function toLocal(data: PageData): Locals {
     const t = typeOf(p, it);
     if (t === "question") out[id] = { a: a.answer ?? "" };
     else if (t === "choice") out[id] = { v: a.answer ?? "", n: a.note ?? "" };
-    else if (a.answer === "yes" && data.states[id]?.reopened) out[id] = { v: "", n: a.note ?? "" };
+    else if (DONE.includes(a.answer) && data.states[id]?.reopened) out[id] = { v: "", n: a.note ?? "" };
     else { out[id] = { v: IN[a.answer] ?? "", n: a.note ?? "" }; if (a.answer === "skipped") out[id].locked = true; }
   }
-  for (const [id, s] of Object.entries(data.states)) if (s.hidden) out[id] = { v: "yes", n: out[id]?.n ?? "" };
+  for (const [id, s] of Object.entries(data.states)) if (s.hidden) out[id] = { v: s.answer === "risk" ? "risk" : "yes", n: out[id]?.n ?? "" };
   for (const s of p.submissions) {
     if (s.kind !== "blocker" || s.round !== r.round) continue;
     for (const id of s.items) out[id] = { v: "", n: "", ...out[id], blocker: true };
@@ -44,7 +47,12 @@ export function blockers(data: PageData): Record<string, string> {
     const deps = it.dependsOn ?? (t === "step" && prev ? [prev] : []);
     if (t === "step") prev = it.id;
     if (it.blockedBy && !(data.page.thread[it.id] ?? []).some(r => r.action === "unblock")) out[it.id] = it.blockedBy;
-    else { const d = deps.find(x => (data.states[x]?.answer ?? "") !== "yes"); if (d) out[it.id] = d; }
+    else {
+      const met = (x: string) => (data.phases[x] ? data.phases[x].closed : DONE.includes(data.states[x]?.answer ?? ""));
+      const held = data.page.phases ? data.phases[phaseOf(it.id)]?.blocked : null;
+      const d = deps.find(x => !met(x)) ?? held;
+      if (d) out[it.id] = d;
+    }
   }
   return out;
 }
@@ -62,13 +70,13 @@ export function count(items: CountItem[], s: Locals, hidden: Set<string>, blocke
   const S = (id: string): Local => s[id] ?? {};
   const ync = items.filter(it => it.kind === "ync"), choice = items.filter(it => it.kind === "choice");
   const counted = ync.filter(it => !hidden.has(it.id) && !S(it.id).locked && !blocked[it.id]);
-  const unanswered = (it: CountItem) => !S(it.id).v || (S(it.id).v === "chg" && !(S(it.id).n ?? "").trim());
+  const unanswered = (it: CountItem) => !S(it.id).v || ((S(it.id).v === "chg" || S(it.id).v === "risk") && !(S(it.id).n ?? "").trim());
   const cCounted = choice.filter(it => !blocked[it.id]);
   const open = counted.filter(unanswered), cOpen = cCounted.filter(it => !S(it.id).v);
   const total = counted.length + cCounted.length, answered = total - open.length - cOpen.length;
   const hiddenN = ync.filter(it => hidden.has(it.id)).length;
   const blockedN = ync.concat(choice).filter(it => !hidden.has(it.id) && blocked[it.id]).length;
-  const yesAll = counted.every(it => S(it.id).v === "yes");
+  const yesAll = counted.every(it => DONE.includes(S(it.id).v ?? ""));
   const allHidden = total === 0 && hiddenN > 0 && !blockedN;
   const allDone = (total > 0 && answered === total) || allHidden;
   return {

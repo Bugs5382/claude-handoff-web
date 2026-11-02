@@ -613,6 +613,7 @@ class Handler(SimpleHTTPRequestHandler):
         doc = pagefile.load(path)
         route = page_route(cfg, rel.split("/")[0], doc)
         self._etag_json({"page": doc, "states": pagefile.item_states(doc), "summary": pagefile.summary(doc),
+                         "phases": pagefile.phase_states(doc),
                          "route": route, "listening": is_listening(self.root, route["to"]), "diffs": page_diffs(doc)})
 
     def _note_taken(self, path, doc):
@@ -903,6 +904,12 @@ class Handler(SimpleHTTPRequestHandler):
         if items is None:
             held, states = pagefile.held_items(doc), pagefile.item_states(doc)
             items = [i for i in doc["rounds"][-1]["answers"] if i in ids and i not in held and not states.get(i, {}).get("hidden")]
+            phase = req.get("phase")
+            if phase is not None:
+                info = pagefile.phase_states(doc).get(phase)
+                if info is None or info["blocked"]:
+                    raise ValueError("that phase can't be sent yet")
+                items = [i for i in items if i in info["items"]]
             if held and not items:
                 raise ValueError("everything answered is already sent")
         if not isinstance(items, list) or any(i not in ids for i in items):

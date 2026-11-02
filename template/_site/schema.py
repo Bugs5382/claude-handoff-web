@@ -13,12 +13,12 @@ import re
 import sys
 
 SCHEMA = "handoff.page/v1"
-KINDS = ("review", "checklist", "journey", "backlog", "questions", "reference", "status")
+KINDS = ("review", "checklist", "journey", "backlog", "questions", "reference", "status", "round")
 DEFAULT_TYPE = {"review": "section", "checklist": "check", "journey": "step", "backlog": "choice",
-                "questions": "question", "reference": "info", "status": "info"}
-ANSWERS = ("yes", "no", "changes", "skipped")
+                "questions": "question", "reference": "info", "status": "info", "round": "section"}
+ANSWERS = ("yes", "no", "changes", "skipped", "risk")
 TYPE_ANSWERS = {"section": ANSWERS[:3], "screen": ANSWERS[:3], "contract": ANSWERS[:3], "diff": ANSWERS[:3],
-                "check": ANSWERS, "step": ANSWERS}
+                "check": ANSWERS[:4], "step": ANSWERS[:4]}
 STATES = ("needs-you", "reference", "done")
 MODES = ("send", "copy", "both")
 ACTIONS = ("filed", "fixed", "reopen", "unblock", "wontfix", "info")
@@ -29,11 +29,13 @@ BLOCKS = ("p", "list", "olist", "code", "image", "table", "diff", "copy", "note"
 BLOCK_EXTRAS = {"code": ("lang",), "image": ("alt", "caption"), "note": ("tone",)}
 
 ID = re.compile(r"[a-z0-9][a-z0-9_-]{0,40}\Z")
+PHASE_ID = re.compile(r"[A-Z]{1,2}\Z")
+STEP_ID = re.compile(r"([A-Z]{1,2})[1-9][0-9]*\Z")
 AGENT = re.compile(r"[a-z0-9][a-z0-9_-]{0,40}\Z")
 ID_RULE = "expected a-z, 0-9, _ and -, starting with a letter or digit, up to 41 characters"
 
 TOP = ("schema", "rev", "kind", "title", "summary", "build", "reset", "status", "route", "options", "items",
-       "rounds", "thread", "submissions")
+       "rounds", "thread", "submissions", "phases")
 COMMON = ("id", "type", "title", "section", "body")
 ANSWERABLE = ("answers", "skip", "dependsOn", "blockedBy")
 TYPE_FIELDS = {
@@ -127,7 +129,8 @@ def validate(doc):
     _status(v, doc.get("status"))
     _route(v, doc.get("route"))
     choices = _options(v, doc, kind)
-    _items(v, doc.get("items"), kind, choices)
+    phases = _phases(v, doc.get("phases"), kind)
+    _items(v, doc.get("items"), kind, choices, phases)
     _rounds(v, doc.get("rounds"))
     _thread(v, doc.get("thread"))
     _submissions(v, doc.get("submissions"))
@@ -189,7 +192,35 @@ def _options(v, doc, kind):
     return tuple(values)
 
 
-def _items(v, items, kind, choices):
+def _phases(v, phases, kind):
+    if phases is None:
+        return ()
+    if kind != "round":
+        v.err("phases", "only a round has phases")
+        return ()
+    if not isinstance(phases, list) or not phases:
+        v.err("phases", "expected a list of phases")
+        return ()
+    ids = []
+    for i, ph in enumerate(phases, 1):
+        p = f"phases[#{i}]"
+        if not isinstance(ph, dict):
+            v.err(p, "expected an object")
+            continue
+        v.keys(ph, p, ("id", "title", "goal", "dependsOn"), ("id", "title"))
+        v.string(ph, "title", p, required=True)
+        v.string(ph, "goal", p)
+        v.strings(ph, "dependsOn", p)
+        if not (isinstance(ph.get("id"), str) and PHASE_ID.match(ph["id"])):
+            v.err(_join(p, "id"), "expected capital letters, such as A")
+        elif ph["id"] in ids:
+            v.err(_join(p, "id"), "duplicate id")
+        else:
+            ids.append(ph["id"])
+    return tuple(ids)
+
+
+def _items(v, items, kind, choices, phases=()):
     if items is None:
         return set()
     if not isinstance(items, list):
@@ -202,12 +233,13 @@ def _items(v, items, kind, choices):
             v.err(f"items[#{i}]", "expected an object")
             continue
         iid = it.get("id")
-        good = isinstance(iid, str) and bool(ID.match(iid))
+        step = STEP_ID.match(iid) if phases and isinstance(iid, str) else None
+        good = bool(step and step.group(1) in phases) or (isinstance(iid, str) and bool(ID.match(iid)) and not phases)
         p = f"items[{iid}]" if good else f"items[#{i}]"
         if "id" not in it:
             v.err(_join(p, "id"), "required")
         elif not good:
-            v.err(_join(p, "id"), ID_RULE)
+            v.err(_join(p, "id"), "expected a phase letter and a step, such as A1" if phases else ID_RULE)
         elif iid in seen:
             v.err(_join(p, "id"), "duplicate id")
         else:
@@ -221,7 +253,7 @@ def _items(v, items, kind, choices):
         for d in deps:
             if d == it.get("id"):
                 v.err(_join(p, "dependsOn"), f"{d} depends on itself")
-            elif d not in seen:
+            elif d not in seen and d not in phases:
                 v.err(_join(p, "dependsOn"), f"no item {d} on this page")
     return seen
 
@@ -246,8 +278,9 @@ def _item(v, it, p, kind, choices):
     _blocks(v, it, "howto", p)
     if "answers" in it:
         a = it["answers"]
-        if not _strlist(a) or not a or any(x not in ANSWERS for x in a):
-            v.err(_join(p, "answers"), "expected values from " + ", ".join(ANSWERS))
+        allowed_answers = ANSWERS if kind == "round" else ANSWERS[:4]
+        if not _strlist(a) or not a or any(x not in allowed_answers for x in a):
+            v.err(_join(p, "answers"), "expected values from " + ", ".join(allowed_answers))
     if "skip" in it and not isinstance(it["skip"], bool):
         v.err(_join(p, "skip"), "expected true or false")
     v.strings(it, "dependsOn", p)

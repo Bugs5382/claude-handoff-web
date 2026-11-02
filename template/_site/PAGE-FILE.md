@@ -61,12 +61,13 @@ The definition keys sit at the top level, and the server keys are managed by `pa
 | Key | Written by | Meaning |
 |---|---|---|
 | `schema` | definition | always `handoff.page/v1` |
-| `kind` | definition | `review`, `checklist`, `journey`, `backlog`, `questions`, `reference` or `status` |
+| `kind` | definition | `review`, `checklist`, `journey`, `backlog`, `questions`, `reference`, `status` or `round` |
 | `title`, `summary` | definition | the heading and the line under it |
 | `build`, `reset` | definition | the build under test and a reset counter; changing either opens a new round |
 | `status` | definition | the index card: `{"state": "needs-you", "note": "...", "chips": [...], "priority": 20}` |
 | `options` | definition | a backlog's choices: `{"choices": [{"value": "start", "label": "Start"}, ...], "default": "hold"}` |
 | `items` | definition | the content, in order |
+| `phases` | definition | a round's phases: `[{"id": "A", "title": "...", "goal": "...", "dependsOn": ["A"]}]`; item ids become `A1`, `A2`, `B1` |
 | `route` | operator | `{"to": "ops", "mode": "send"}`; set with `set_route`, never in a definition |
 | `rev` | server | 1 on create, up by 1 on every write |
 | `rounds` | server | every round of answers, numbered from 1 |

@@ -175,7 +175,7 @@ def test_top_level_shape():
     del doc["title"]
     found = errors(doc)
     assert "schema: expected handoff.page/v1" in found
-    assert "kind: expected one of review, checklist, journey, backlog, questions, reference, status" in found
+    assert "kind: expected one of review, checklist, journey, backlog, questions, reference, status, round" in found
     assert "colour: unknown key" in found
     assert "title: required" in found
 

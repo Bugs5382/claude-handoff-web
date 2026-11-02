@@ -11,6 +11,7 @@ SITE = Path(__file__).resolve().parent.parent / "template" / "_site"
 sys.path.insert(0, str(SITE))
 
 import pagefile  # noqa: E402
+import schema  # noqa: E402
 
 T0 = "2026-10-26T07:42:10-04:00"
 T1 = "2026-10-26T08:05:44-04:00"
@@ -522,3 +523,58 @@ def test_a_page_held_before_this_change_still_locks_what_its_send_carried(path):
     assert pagefile.held_items(pagefile.load(path)) == {"s1"}
     pagefile.reply(path, "_page", "ops", "Done.", now=T2)
     assert "held" not in pagefile.load(path)["rounds"][-1]
+
+
+def phased():
+    return {"schema": schema.SCHEMA, "kind": "round", "title": "Move", "phases": [
+        {"id": "A", "title": "Prepare", "goal": "Ready to move"},
+        {"id": "B", "title": "Cut over", "dependsOn": ["A"]},
+        {"id": "C", "title": "Tidy up"}],
+        "items": [{"id": "A1", "title": "One"}, {"id": "A2", "title": "Two"}, {"id": "B1", "title": "Three"},
+                  {"id": "C1", "title": "Four", "dependsOn": ["A2"]}]}
+
+
+def test_a_round_item_takes_accept_risk_with_a_required_note(path):
+    make(path, phased())
+    with pytest.raises(pagefile.PageError, match="Accept risk needs a note"):
+        pagefile.save_answers(path, {"A1": {"answer": "risk", "note": " "}}, by="me", now=T0)
+    pagefile.save_answers(path, {"A1": {"answer": "risk", "note": "We say so up front"}}, by="me", now=T0)
+    assert pagefile.item_states(pagefile.load(path))["A1"]["answer"] == "risk"
+
+
+def test_only_a_round_takes_accept_risk(path):
+    make(path)
+    with pytest.raises(pagefile.PageError):
+        pagefile.save_answers(path, {"s1": {"answer": "risk", "note": "x"}}, by="me", now=T0)
+
+
+def test_a_phase_is_blocked_until_the_one_it_depends_on_closes(path):
+    make(path, phased())
+    assert pagefile.phase_states(pagefile.load(path))["B"]["blocked"] == "A"
+    pagefile.save_answers(path, {"A1": {"answer": "yes"}, "A2": {"answer": "risk", "note": "Said so"}}, by="me", now=T0)
+    doc = pagefile.load(path)
+    phases = pagefile.phase_states(doc)
+    assert phases["A"]["closed"] is True and phases["B"]["blocked"] is None
+
+
+def test_a_step_can_block_an_item_in_a_later_phase(path):
+    make(path, phased())
+    doc = pagefile.load(path)
+    assert pagefile.summary(doc)["blocked"] == 2
+    pagefile.save_answers(path, {"A2": {"answer": "yes"}}, by="me", now=T0)
+    assert pagefile.summary(pagefile.load(path))["blocked"] == 1, "C1 is free, B1 still waits on phase A"
+
+
+def test_done_means_every_item_is_yes_or_accept_risk(path):
+    make(path, phased())
+    pagefile.save_answers(path, {"A1": {"answer": "yes"}, "A2": {"answer": "risk", "note": "Said so"},
+                                 "B1": {"answer": "yes"}, "C1": {"answer": "yes"}}, by="me", now=T0)
+    assert pagefile.summary(pagefile.load(path))["approved"] is True
+
+
+def test_a_sent_accept_risk_settles_like_a_yes(path):
+    make(path, phased())
+    pagefile.save_answers(path, {"A1": {"answer": "risk", "note": "Said so"}}, by="me", now=T0)
+    sent(path, ["A1"])
+    pagefile.reply(path, "_page", "ops", "Noted.", now=T2)
+    assert pagefile.item_states(pagefile.load(path))["A1"] == {"answer": "risk", "hidden": True, "reopened": None, "round": 1}

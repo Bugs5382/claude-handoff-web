@@ -302,6 +302,14 @@ body.site th { background: var(--soft-2); font-weight: 600; }
 .rvcard.settled > h2 { font-size: 1em; margin: 6px 0 0; }
 .rvcard.settled:not(.shown) > :not(.rvhead, h2) { display: none; }
 .settled-tg { margin-left: 8px; font: inherit; font-size: .85em; }
+.rvcard[data-answer="risk"], .rv.risk { border-color: var(--chg-edge); }
+.st.a-risk { background: var(--chg-bg); color: var(--chg); }
+.phase { margin: 28px 0 14px; padding: 16px 0 0; border-top: 2px solid var(--line-2); scroll-margin-top: 16px; }
+.phase-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.phase-h { margin: 0; }
+.phase-goal { margin: 6px 0 10px; color: var(--muted); }
+.phase-send { min-height: var(--tap); padding: 0 14px; font: 600 14px var(--font); border-radius: var(--radius-sm); cursor: pointer; }
+.phase-send:disabled { opacity: .55; cursor: default; }
 .rvcard[data-answer="skip"] { background: var(--card); }
 .rvcard.is-blocked { background: var(--soft); border-style: dashed; border-color: var(--line-dash); }
 .rvcard.is-blocked > h2 { color: var(--muted); }

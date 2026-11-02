@@ -41,6 +41,9 @@ export interface Round {
 export interface Submission { n: number; items: string[]; kind: string; at: string; to?: string; state?: string; takenAt?: string; round: number }
 export interface Reply { from: string; at: string; text: string; action?: string; reason?: string; ref?: string }
 
+export interface PhaseDef { id: string; title: string; goal?: string; dependsOn?: string[] }
+export interface PhaseState { items: string[]; closed: boolean; blocked: string | null }
+
 export interface PageDoc {
   rev: number;
   kind: string;
@@ -48,6 +51,7 @@ export interface PageDoc {
   summary?: string;
   build?: string | null;
   options?: { choices: { value: string; label: string }[]; default?: string };
+  phases?: PhaseDef[];
   items: ItemDef[];
   rounds: Round[];
   submissions: Submission[];
@@ -58,6 +62,7 @@ export interface ItemState { answer: string; hidden: boolean; reopened: string |
 
 export interface PageData {
   page: PageDoc;
+  phases: Record<string, PhaseState>;
   states: Record<string, ItemState>;
   route: { to: string; mode: string };
   listening: boolean;

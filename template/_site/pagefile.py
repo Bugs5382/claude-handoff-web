@@ -12,6 +12,7 @@ import fcntl
 import hashlib
 import json
 import os
+import re
 import tempfile
 from datetime import datetime
 
@@ -19,7 +20,8 @@ from schema import DEFAULT_TYPE, SCHEMA, TYPE_ANSWERS, validate
 
 MAX_BYTES = 2 * 1024 * 1024
 SERVER_KEYS = ("rev", "rounds", "thread", "submissions", "route")
-DEFINITION_KEYS = ("schema", "kind", "title", "summary", "build", "reset", "status", "options", "items")
+DEFINITION_KEYS = ("schema", "kind", "title", "summary", "build", "reset", "status", "options", "items", "phases")
+DONE = ("yes", "risk")
 
 
 class PageError(Exception):
@@ -61,6 +63,8 @@ def allowed_answers(doc, item):
     base = tuple(item.get("answers") or TYPE_ANSWERS[typ])
     if item.get("skip") and "skipped" not in base:
         base += ("skipped",)
+    if doc["kind"] == "round" and not item.get("answers"):
+        base += ("risk",)
     return base
 
 
@@ -216,6 +220,9 @@ def save_answers(path, answers, *, by, base=None, now=None):
                 continue
             if answer == "changes" and not note.strip():
                 errors.append(f"{iid}: Changes needs a note")
+                continue
+            if answer == "risk" and not note.strip():
+                errors.append(f"{iid}: Accept risk needs a note on how the risk is presented")
                 continue
             old = rnd["answers"].get(iid)
             if old is None and not answer and not note.strip():
@@ -394,27 +401,48 @@ def item_states(doc):
         state = {"answer": "", "hidden": False, "reopened": cur.get("reopened", {}).get(iid), "round": None}
         mine = cur["answers"].get(iid)
         if mine and mine["answer"]:
-            if mine["answer"] == "yes" and mine.get("hash") not in (None, h):
+            if mine["answer"] in DONE and mine.get("hash") not in (None, h):
                 state["reopened"] = f"changed since round {cur['round']}"
             elif state["reopened"] is None:
                 state.update(answer=mine["answer"], round=cur["round"])
-                state["hidden"] = mine["answer"] == "yes" and "awaiting" not in cur and _sent(doc, cur, iid, mine)
+                state["hidden"] = mine["answer"] in DONE and "awaiting" not in cur and _sent(doc, cur, iid, mine)
         elif state["reopened"] is None and not cur.get("restart") and iid not in cur.get("handled", {}):
             for r in reversed(rounds[:-1]):
                 if iid in r.get("handled", {}):
                     break
                 a = r["answers"].get(iid)
                 if a and a["answer"]:
-                    if a["answer"] == "yes":
+                    if a["answer"] in DONE:
                         if a.get("hash") not in (None, h):
                             state["reopened"] = f"changed since round {r['round']}"
                         else:
-                            state.update(answer="yes", hidden=True, round=r["round"])
+                            state.update(answer=a["answer"], hidden=True, round=r["round"])
                     break
                 if r.get("restart"):
                     break
         out[iid] = state
     return out
+
+
+def phase_of(iid):
+    return re.match(r"[A-Z]+", iid).group()
+
+
+def phase_states(doc):
+    """{phase id: {"items", "closed", "blocked"}}: closed once every counted item is Yes, Accept risk or Skipped."""
+    states = item_states(doc)
+    out = {}
+    for ph in doc.get("phases") or []:
+        items = [it["id"] for it in doc["items"] if phase_of(it["id"]) == ph["id"]]
+        counted = [i for i in items if i in states and item_type(doc, _items_by_id(doc)[i]) != "question"]
+        out[ph["id"]] = {"items": items, "closed": all(states[i]["answer"] in DONE + ("skipped",) for i in counted), "blocked": None}
+    for ph in doc.get("phases") or []:
+        out[ph["id"]]["blocked"] = next((d for d in ph.get("dependsOn", []) if not _met(d, states, out)), None)
+    return out
+
+
+def _met(dep, states, phases):
+    return phases[dep]["closed"] if dep in phases else states.get(dep, {}).get("answer") in DONE
 
 
 def _unblocked(doc, iid):
@@ -428,6 +456,7 @@ def summary(doc):
     it says otherwise) or while its blockedBy hasn't had an unblock reply.
     """
     states = item_states(doc)
+    phases = phase_states(doc)
     out = {"open": 0, "blocked": 0, "counted": 0, "yes": 0, "reopened": 0, "approved": False, "tally": None}
     choices = doc.get("options") or {}
     tally = {c["value"]: 0 for c in choices.get("choices", [])}
@@ -452,11 +481,12 @@ def summary(doc):
         out["counted"] += 1
         if st["reopened"]:
             out["reopened"] += 1
-        blocked = (it.get("blockedBy") and not _unblocked(doc, it["id"])) or any(
-            states.get(d, {}).get("answer") != "yes" for d in deps)
+        phase = phases.get(phase_of(it["id"])) if phases else None
+        blocked = (it.get("blockedBy") and not _unblocked(doc, it["id"])) or not all(
+            _met(d, states, phases) for d in deps) or (phase and phase["blocked"])
         if blocked:
             out["blocked"] += 1
-        elif st["answer"] == "yes":
+        elif st["answer"] in DONE:
             out["yes"] += 1
         elif st["answer"] == "skipped":
             pass

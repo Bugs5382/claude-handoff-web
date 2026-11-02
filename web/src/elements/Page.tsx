@@ -7,17 +7,18 @@ import { History } from "@/elements/History";
 import { Item } from "@/elements/Item";
 import { JumpBar, OpenIds } from "@/elements/JumpBar";
 import { Restart } from "@/elements/Restart";
+import { Round } from "@/elements/Round";
 import { Thread, itemEntries, replyEntry } from "@/elements/Thread";
 import { postPage, rel } from "@/lib/api";
 import { wireDiffs } from "@/lib/diffs";
 import { actToast, returnSoon } from "@/lib/finish";
 import { folder, folderPages, folderUrl } from "@/lib/howto";
-import { blockers, count, deliveryOf, heldBy, heldIds, openRound, typeOf, type CountItem } from "@/lib/model";
+import { DONE, blockers, count, deliveryOf, heldBy, heldIds, openRound, typeOf, type CountItem } from "@/lib/model";
 import { inline } from "@/lib/text";
 import { usePage } from "@/lib/usePage";
 import type { ItemDef, Locals, PageData } from "@/lib/types";
 
-const LOUD: Record<string, string> = { yes: "YES", no: "NO", chg: "CHANGES", skip: "SKIPPED (locked)" };
+const LOUD: Record<string, string> = { yes: "YES", no: "NO", chg: "CHANGES", skip: "SKIPPED (locked)", risk: "ACCEPT RISK" };
 
 function tally(data: PageData, items: ItemDef[], s: Locals): string {
   const opts = data.page.options?.choices ?? [], def = data.page.options?.default ?? "";
@@ -36,9 +37,9 @@ export function resultsOf(data: PageData, s: Locals, blocked: Record<string, str
     out += `- [${it.id}] ${blocked[it.id] ? `BLOCKED by ${blocked[it.id]}, ` : ""}${l.blocker ? "BLOCKER, " : ""}${ans}: ${it.title}${l.n ? `\n    Note: ${l.n.replace(/\n/g, " ")}` : ""}\n`;
   }
   const ync = answerable.filter(it => t(it) !== "question" && t(it) !== "choice");
-  const counted = ync.filter(it => !s[it.id]?.locked), yes = counted.filter(it => s[it.id]?.v === "yes").length;
+  const counted = ync.filter(it => !s[it.id]?.locked), yes = counted.filter(it => DONE.includes(s[it.id]?.v ?? "")).length;
   out += "\n";
-  if (counted.length || !choices.length) out += (yes === counted.length ? "APPROVED: every item is Yes." : `Not approved yet: ${yes} of ${counted.length} are Yes.`) + "\n";
+  if (counted.length || !choices.length) out += (yes === counted.length ? `APPROVED: every item is Yes${p.kind === "round" ? " or Accept risk" : ""}.` : `Not approved yet: ${yes} of ${counted.length} are Yes.`) + "\n";
   if (choices.length) out += tally(data, choices, s) + "\n";
   const qOpen = qs.filter(it => !(s[it.id]?.a ?? "").trim()).length;
   if (qOpen) out += `${qOpen} open question${qOpen === 1 ? "" : "s"}\n`;
@@ -59,7 +60,7 @@ export function Page() {
   live.current = local;
 
   const goTo = useCallback((id: string) => {
-    const el = document.querySelector(`[data-review-question="${CSS.escape(id)}"]`) as HTMLElement | null;
+    const el = (document.querySelector(`[data-review-question="${CSS.escape(id)}"]`) ?? document.getElementById("phase-" + id)) as HTMLElement | null;
     if (!el) return;
     if (el.classList.contains("settled") && !el.classList.contains("shown")) (el.querySelector(".settled-tg") as HTMLElement).click();
     el.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -111,6 +112,12 @@ export function Page() {
     if (!c.allDone && !confirm(`Send now? ${left} item${left === 1 ? " is" : "s are"} still open.`)) return;
     if (!(await flush())) { alert("Can't send yet: the answers aren't saved. Try again once it says Saved."); return; }
     try { await postPage("/send", { kind: "send", results: results() }); await redraw(); } catch (e) { alert(`Couldn't send: ${(e as Error).message}. Use Copy results instead.`); }
+  };
+  const sendPhase = async (id: string) => {
+    const open = data.phases[id].items.filter(x => c.openIds.includes(x)).length;
+    if (open && !confirm(`Send phase ${id} now? ${open} item${open === 1 ? " is" : "s are"} still open.`)) return;
+    if (!(await flush())) { alert("Can't send yet: the answers aren't saved. Try again once it says Saved."); return; }
+    try { await postPage("/send", { kind: "send", phase: id, results: results() }); await redraw(); } catch (e) { alert(`Couldn't send: ${(e as Error).message}. Use Copy results instead.`); }
   };
   const blocker = async (it: ItemDef, note: string) => {
     const cur = local[it.id] ?? {};
@@ -186,13 +193,13 @@ export function Page() {
       {pageReplies.length > 0 && <section className="pthread" id="replies"><h2>Replies about this page</h2><Thread entries={pageReplies} label="Replies about this page" /></section>}
       {p.kind === "journey" && <Restart data={data} onRestart={async cp => { await flush(); await postPage("/restart", { checkpoint: cp, results: results() }); await redraw(); }} />}
       {hidden.size > 0 && <div className="rvdone">{hidden.size} approved and locked. They stay in Copy results.</div>}
-      {p.items.map((it, i) => (
-        <Item key={it.id} item={it} n={i + 1} type={typeOf(p, it)} state={data.states[it.id]} value={local[it.id] ?? {}} blockedBy={blocked[it.id]} held={held.has(it.id)}
+      <Round data={data} local={local} sends={sends} held={held} goTo={goTo} sendPhase={id => void sendPhase(id)} item={(it, n) => (
+        <Item key={it.id} item={it} n={n} risk={p.kind === "round"} type={typeOf(p, it)} state={data.states[it.id]} value={local[it.id] ?? {}} blockedBy={blocked[it.id]} held={held.has(it.id)}
           handled={!!r.handled?.[it.id]} entries={itemEntries(data, it.id)} diffs={data.diffs} build={p.build} choices={p.options?.choices} defaultChoice={p.options?.default}
           blockerLabel={sends ? "Blocker: send now" : "Blocker: copy now"}
           blockerTitle={`Something stops you testing or using it: ${sends ? "send this one item to" : "copy this one item and paste it to"} ${to} straight away`}
-          isItem={id => p.items.some(x => x.id === id)} goTo={goTo} onChange={next => set(it.id, next)} onBlocker={note => void blocker(it, note)} />
-      ))}
+          isItem={id => p.items.some(x => x.id === id) || !!data.phases[id]} goTo={goTo} onChange={next => set(it.id, next)} onBlocker={note => void blocker(it, note)} />
+      )} />
       {!reference && <History rows={rows} />}
     </main>
     {!reference && <Footer flags={flags} saved={pg.saved || ""} savedBad={pg.bad} delivery={delivery}
@@ -211,7 +218,7 @@ export function Page() {
           <button className="round-close" type="button" role="menuitem" disabled={!!sub} onClick={() => void roundClose()}>Save round now</button>
           <button className="clear" type="button" role="menuitem" disabled={!!sub} onClick={() => void clear()}>Clear my answers</button>
         </div></>}>
-      {sends && <button className={"send-btn" + (c.allDone ? " ready" : "")} type="button" disabled={sendDone} onClick={() => void sendAll()}>{sendDone ? "Sent" : "Send to " + to}</button>}
+      {sends && !p.phases && <button className={"send-btn" + (c.allDone ? " ready" : "")} type="button" disabled={sendDone} onClick={() => void sendAll()}>{sendDone ? "Sent" : "Send to " + to}</button>}
       <button className="copy" type="button" onClick={() => void doCopy()}>Copy results</button>
       <button className="clear" type="button" disabled={!!sub} onClick={() => void clear()}>Clear my answers</button>
       <button className="ids" type="button" aria-haspopup="dialog" aria-expanded={popup === "ids"} onClick={e => { e.stopPropagation(); setPopup(popup === "ids" ? "" : "ids"); }}

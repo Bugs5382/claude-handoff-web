@@ -37,6 +37,8 @@ SCENARIOS = [
     "backlog: default choice, picking every item turns the bar green, saved",
     "theme toggle works on a rendered page",
     "samples: every sample page draws, and the states they show are the ones they claim",
+    "round phases: lettered ids, phase and step blocking, its own Send, and Accept risk needs a note",
+    "round single: Accept risk on one set of items, sent from the bar",
     "bar: one row when it fits, a clean split when it does not, and no control ever wraps",
     "finished page: green bar and back link; Copy results goes back to the folder",
     "copy results keeps the Copy results format",
@@ -228,6 +230,8 @@ def smoke(tmp_path_factory, request):
 
 @pytest.mark.parametrize("name", SCENARIOS)
 def test_page_smoke(smoke, name):
+    if name.startswith("round ") and smoke["_renderer"] == "old":
+        pytest.skip("rounds are drawn by the app only")
     assert smoke.get(name) == "ok", smoke.get(name, "did not run")
 
 

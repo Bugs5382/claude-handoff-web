@@ -1,0 +1,37 @@
+{
+  "definition": {
+    "schema": "handoff.page/v1",
+    "kind": "round",
+    "title": "Sample: round single",
+    "summary": "One set of items, sent together from the bar.",
+    "status": {
+      "state": "needs-you",
+      "priority": 5
+    },
+    "items": [
+      {
+        "id": "s1",
+        "title": "Move the file share on Saturday",
+        "body": [
+          {
+            "p": "The share on 192.0.2.40 moves to the new array."
+          }
+        ]
+      },
+      {
+        "id": "s2",
+        "title": "Keep the old share read-only for a week"
+      },
+      {
+        "id": "s3",
+        "title": "Skip the staging rehearsal",
+        "body": [
+          {
+            "p": "There's no staging array. Use Accept risk and say how you'd present that."
+          }
+        ]
+      }
+    ]
+  },
+  "steps": []
+}

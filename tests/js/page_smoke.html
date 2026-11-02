@@ -234,6 +234,33 @@ const seg = (doc, id, v) => card(doc, id).querySelector('.seg button[data-v="' +
     eq((await fetch("/_page/demo/sample-reference")).status, 200);
   });
 
+  await t("round phases: lettered ids, phase and step blocking, its own Send, and Accept risk needs a note", async () => {
+    const { win, doc, bar } = await load("/demo/sample-round-phases");
+    eq(doc.querySelectorAll(".phase").length, 4); eq(card(doc, "A1").querySelector(".rvhead .rid").textContent, "A1");
+    eq(card(doc, "B1").querySelector(".rvhead .st").textContent, "Blocked by A");
+    eq(card(doc, "B3").querySelector(".rvhead .st").textContent, "Blocked by A2");
+    eq(card(doc, "D1").querySelector(".rvhead .st").textContent, "Blocked by C");
+    eq(card(doc, "B3").querySelector(".rvhead .st a").getAttribute("href"), "#rv-A2");
+    eq(card(doc, "B1").querySelector(".rvhead .st a").getAttribute("href"), "#rv-A", "a phase link");
+    ok(!bar.querySelector(".send-btn"), "each phase sends itself");
+    const a = doc.getElementById("phase-A"); ok(a.querySelector(".phase-send"));
+    ok(doc.getElementById("phase-B").querySelector(".phase-send").disabled, "a blocked phase can't send");
+    click(seg(doc, "A2", "risk")); ok(card(doc, "A2").querySelector(".rv").classList.contains("empty"), "the note is required");
+    typeIn(card(doc, "A2").querySelector("textarea"), "We say so in the plan");
+    click(seg(doc, "A3", "yes")); await saved();
+    const ph = await pageFile("demo/sample-round-phases");
+    eq(ph.rounds[0].answers.A2.answer, "risk");
+  });
+
+  await t("round single: Accept risk on one set of items, sent from the bar", async () => {
+    const { doc, bar } = await load("/demo/sample-round-single");
+    ok(bar.querySelector(".send-btn")); ok(!doc.querySelector(".phase"));
+    ok(seg(doc, "s3", "risk"));
+    ["s1", "s2"].forEach(id => click(seg(doc, id, "yes")));
+    click(seg(doc, "s3", "risk")); typeIn(card(doc, "s3").querySelector("textarea"), "No staging, said up front");
+    ok(bar.classList.contains("approved"), bar.querySelector(".cnt").textContent);
+  });
+
   await t("finished page: green bar and back link; Copy results goes back to the folder", async () => {
     const { doc, bar } = await load("/demo/pf-fin-1");
     ok(doc.querySelector("header.top .crumb"), "the crumb back to the folder");

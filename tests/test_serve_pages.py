@@ -330,3 +330,16 @@ def test_a_blocker_does_not_hold_the_page(pages):
     _, base = pages
     assert post(base, "/_page/demo/design/send", {"kind": "blocker", "items": ["s1"], "results": "R"})[0] == 200
     assert "awaiting" not in json.loads(request(base + "/_page/demo/design")[1])["page"]["rounds"][-1]
+
+
+def test_a_phase_sends_only_its_own_items_and_a_blocked_one_refuses(pages):
+    root, base = pages
+    pagefile.write_definition(root / "demo" / "plan.json", {
+        "schema": "handoff.page/v1", "kind": "round", "title": "Plan",
+        "phases": [{"id": "A", "title": "One"}, {"id": "B", "title": "Two", "dependsOn": ["A"]}],
+        "items": [{"id": "A1", "title": "a"}, {"id": "A2", "title": "b"}, {"id": "B1", "title": "c"}]})
+    put_json(base, "/_page/demo/plan/answers", {"answers": {"A1": {"answer": "yes"}}})
+    assert post(base, "/_page/demo/plan/send", {"kind": "send", "phase": "B", "results": "R"})[0] == 400
+    assert post(base, "/_page/demo/plan/send", {"kind": "send", "phase": "A", "results": "R"})[0] == 200
+    doc = json.loads(request(base + "/_page/demo/plan")[1])
+    assert doc["page"]["submissions"][0]["items"] == ["A1"] and doc["phases"]["B"]["blocked"] == "A"

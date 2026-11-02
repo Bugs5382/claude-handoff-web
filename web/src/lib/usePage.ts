@@ -69,7 +69,7 @@ export function usePage(): PageState {
     const out: Record<string, { answer: string; note: string }> = {};
     for (const id of ids) {
       const a = toAnswer(d.page, id, now.current[id]);
-      if (a.answer === "changes" && !a.note.trim()) continue;
+      if ((a.answer === "changes" || a.answer === "risk") && !a.note.trim()) continue;
       out[id] = a;
     }
     if (!Object.keys(out).length) return true;

@@ -372,8 +372,24 @@ def pruner(root, save_dir):
         time.sleep(3600)
 
 
+HANDLING_GRACE = 900
+
+
+def is_handling(root, agent):
+    """True for a while after `page.py wait` handed over a delivery: the agent has it, and just isn't waiting yet."""
+    try:
+        return time.time() - os.stat(os.path.join(root, "_inbox", agent, ".handling")).st_mtime < HANDLING_GRACE
+    except OSError:
+        return False
+
+
 def is_listening(root, agent):
-    """True while _inbox/<agent>/.listening names a live process."""
+    """True while a live process holds _inbox/<agent>/.listening, or the agent is handling what `wait` gave it."""
+    return is_waiting(root, agent) or is_handling(root, agent)
+
+
+def is_waiting(root, agent):
+    """True only while _inbox/<agent>/.listening names a live process."""
     try:
         with open(os.path.join(root, "_inbox", agent, ".listening")) as f:
             pid = int(f.read().strip())

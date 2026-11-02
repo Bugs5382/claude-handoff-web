@@ -231,6 +231,12 @@ const seg = (doc, id, v) => card(doc, id).querySelector('.seg button[data-v="' +
     match(card(doc, "c").querySelector(".rvhead .st").textContent, /^Reopened: The address changed/);
     ({ doc } = await load("/demo/sample-part-sent"));
     ok(seg(doc, "a", "yes").disabled, "the sent item is locked"); ok(!seg(doc, "b", "yes").disabled, "the rest stay open");
+    for (const id of ["a", "q1"]) {
+      ok(card(doc, id).classList.contains("is-sent"), id + ": green box while it waits");
+      eq(card(doc, id).querySelector(".rvhead .st").textContent, "Sent, waiting");
+    }
+    ok(card(doc, "q1").querySelector("textarea").disabled, "a sent question is locked");
+    ok(!card(doc, "b").classList.contains("is-sent"), "an item not sent has no box");
     eq((await fetch("/_page/demo/sample-reference")).status, 200);
   });
 

@@ -5,6 +5,7 @@ import json
 import os
 import subprocess
 import sys
+import time
 import urllib.error
 import urllib.request
 from pathlib import Path
@@ -14,6 +15,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "template" / "_site"))
 
 import pagefile  # noqa: E402
+import serve  # noqa: E402
 
 from test_serve import request, site  # noqa: E402, F401
 
@@ -374,3 +376,15 @@ def test_a_deck_goes_to_the_inbox_with_only_final_items_and_needs_a_framing(page
     assert sub["kind"] == "deck" and sub["framing"] == "Timeline and risks"
     assert [i["id"] for i in sub["items"]] == ["s1"] and sub["items"][0]["note"] == "Said so"
     assert "awaiting" not in pagefile.load(root / "demo" / "plan.json")["rounds"][-1]
+
+
+def test_a_handed_over_delivery_keeps_the_agent_listening_for_a_while(pages):
+    root, _ = pages
+    d = root / "_inbox" / "app"
+    d.mkdir(parents=True, exist_ok=True)
+    assert serve.is_listening(str(root), "app") is False
+    (d / ".handling").write_text("1")
+    assert serve.is_listening(str(root), "app") is True and serve.is_waiting(str(root), "app") is False
+    old = time.time() - serve.HANDLING_GRACE - 1
+    os.utime(d / ".handling", (old, old))
+    assert serve.is_listening(str(root), "app") is False

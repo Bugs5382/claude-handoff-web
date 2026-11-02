@@ -775,3 +775,6 @@ body.site .rvrestart > h2 { font-size: 16px; margin: 0 0 4px; }
 .rv-opt-d { font-size: 14px; color: var(--muted); }
 .rv-opt-other { display: grid; gap: 4px; font-size: 14px; font-weight: 600; }
 .rv-opt-other input { font: inherit; font-weight: 400; min-height: var(--tap); box-sizing: border-box; width: 100%; padding: 0 10px; }
+
+/* Green box: sent, and waiting on the agent. A reply or a follow-up clears it. */
+.rvcard.is-sent { border-color: var(--yes-solid); box-shadow: 0 0 0 2px var(--yes-solid); }

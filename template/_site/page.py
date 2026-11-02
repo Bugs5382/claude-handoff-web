@@ -10,6 +10,7 @@
   page.py check <page|file> ...                   validate; prints errors with their JSON path, exit 1 on any
   page.py wait <agent> [--timeout S] [--poll]     block until a submission is in _inbox/<agent>/, print the files
                                                   (blockers first) and exit; exit 3 on --timeout with nothing
+  page.py listen <agent>                          stay running and print one line per new submission, for a monitor
   page.py hook <agent>                            one line when the inbox has untaken files or nothing listens
   page.py email <page> <id> --from AGENT [--request N] [--subject S] [--to T] BODY
                                                   a draft comes back: the next version on that item
@@ -20,6 +21,7 @@
 --root sets the site folder (default: the folder above _site/).
 """
 import argparse
+import contextlib
 import html
 import json
 import os
@@ -166,14 +168,31 @@ def _block(inbox, deadline, poll, interval):
         time.sleep(interval)
 
 
-def cmd_wait(a):
-    inbox = inbox_dir(a.root, a.agent)
-    os.makedirs(inbox, exist_ok=True)
+def hold_listening(inbox):
     listening = os.path.join(inbox, ".listening")
     with open(listening, "w") as f:
         f.write(str(os.getpid()))
+    with contextlib.suppress(OSError):
+        os.remove(os.path.join(inbox, ".handling"))
     signal.signal(signal.SIGTERM, lambda *_: sys.exit(143))
     signal.signal(signal.SIGHUP, lambda *_: sys.exit(129))
+    return listening
+
+
+def release_listening(listening):
+    try:
+        with open(listening) as f:
+            mine = f.read().strip() == str(os.getpid())
+        if mine:
+            os.remove(listening)
+    except OSError:
+        pass
+
+
+def cmd_wait(a):
+    inbox = inbox_dir(a.root, a.agent)
+    os.makedirs(inbox, exist_ok=True)
+    listening = hold_listening(inbox)
     deadline = None if a.timeout is None else time.monotonic() + a.timeout
     try:
         if not waiting(inbox):
@@ -181,24 +200,44 @@ def cmd_wait(a):
             # A Send and a Blocker often land together; give the second one a moment so both are listed.
             time.sleep(a.debounce)
         names = waiting(inbox)
+        if names:
+            # The agent has these now. It isn't deaf while it works on them, only if it never waits again.
+            with open(os.path.join(inbox, ".handling"), "w") as f:
+                f.write(str(os.getpid()))
     finally:
-        try:
-            with open(listening) as f:
-                mine = f.read().strip() == str(os.getpid())
-            if mine:
-                os.remove(listening)
-        except OSError:
-            pass
+        release_listening(listening)
     for n in names:
         print(os.path.join(inbox, n))
     return 0 if names else 3
 
 
+def cmd_listen(a):
+    """The always-on listener. It never exits on a delivery, so the page stays connected between them."""
+    from serve import is_waiting
+    inbox = inbox_dir(a.root, a.agent)
+    os.makedirs(inbox, exist_ok=True)
+    if is_waiting(a.root, a.agent):
+        print(f"something is already listening for {a.agent}", file=sys.stderr)
+        return 1
+    listening = hold_listening(inbox)
+    seen = set()
+    try:
+        while True:
+            names = waiting(inbox)
+            for n in names:
+                if n not in seen:
+                    print(os.path.join(inbox, n), flush=True)
+            seen = set(names)
+            time.sleep(a.interval)
+    finally:
+        release_listening(listening)
+
+
 def cmd_hook(a):
-    from serve import is_listening
+    from serve import is_waiting
     inbox = inbox_dir(a.root, a.agent)
     names = waiting(inbox)
-    live = is_listening(a.root, a.agent)
+    live = is_waiting(a.root, a.agent)
     again = f"python3 {os.path.abspath(__file__)} wait {a.agent}"
     if names:
         s = "" if len(names) == 1 else "s"
@@ -694,6 +733,10 @@ def build_parser():
     p.add_argument("--interval", type=float, default=2.0, help=argparse.SUPPRESS)
     p.add_argument("--debounce", type=float, default=0.2, help=argparse.SUPPRESS)
     p.set_defaults(fn=cmd_wait)
+    p = sub.add_parser("listen")
+    p.add_argument("agent")
+    p.add_argument("--interval", type=float, default=1.0)
+    p.set_defaults(fn=cmd_listen)
     p = sub.add_parser("hook")
     p.add_argument("agent")
     p.set_defaults(fn=cmd_hook)

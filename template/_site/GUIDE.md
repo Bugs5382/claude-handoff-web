@@ -6,7 +6,7 @@ How to use this site: what a person presses, what comes back, and what Claude do
 
 Claude writes a page with `page.py`. The person answers it in the browser, and presses Send. That drops a file in Claude's inbox. Claude acts, then answers on the page, and the page updates by itself.
 
-Keep `page.py wait <agent>` running in the background so Claude notices. To set up a page's route:
+Keep `page.py listen <agent>` running under a monitor so Claude notices each Send, or `page.py wait <agent>` in the background, started again each time it exits. To set up a page's route:
 
 ```bash
 python3 _site/page.py route ops/migration --to app --mode send

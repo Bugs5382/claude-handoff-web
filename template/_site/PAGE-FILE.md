@@ -185,7 +185,13 @@ Agents use `page.py`; it writes through `pagefile.py`, so it takes the same lock
 | `page.py samples demo --route app` | loads the sample pages into a folder as `sample-*`; run it again to reset them |
 | `page.py convert app/design.html` | turns a review.js page into a page file next to it (`--print` shows the definition only) |
 
-### Waiting for submissions
+### Listening for submissions
+
+There are two ways, and a session should use one of them all the time a page is open.
+
+**`page.py listen <agent>`** is the always-on one. It stays running, prints one line per new submission, and never exits on a delivery, so the page stays connected. Run it under whatever watches a command's output and wakes the session on each line. Starting it again after a restart lists what's still waiting. A second one for the same agent refuses to start.
+
+**`page.py wait <agent>`** exits on each delivery, which suits a background job that wakes the session when it ends:
 
 Run `page.py wait <agent>` as a background command and act when it exits:
 
@@ -194,7 +200,7 @@ Run `page.py wait <agent>` as a background command and act when it exits:
 3. Do the work and answer with `page.py reply`.
 4. Start `page.py wait <agent>` again.
 
-It exits at once when files are already waiting, and waits about 200 ms after the first file so a Send and a
+After a delivery, the page keeps showing the agent as listening for 15 minutes while it works, then says it isn't, if nothing has started waiting again. It exits at once when files are already waiting, and waits about 200 ms after the first file so a Send and a
 Blocker that land together are both listed. While it runs it keeps its pid in `_inbox/<agent>/.listening`, so
 the page can say whether the agent is listening. It uses kqueue where there is one, and otherwise checks the
 folder every 2 seconds (`--poll` forces that). `--timeout S` gives up after S seconds with exit code 3.

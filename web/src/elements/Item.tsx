@@ -80,6 +80,7 @@ export function Item(p: ItemProps) {
   if (type === "info") return <>{group}<section className="info" data-item={it.id}>{actions.length > 0 && <div className="rvhead"><span className="sp" />{more}</div>}<h2>{heading}</h2>{content}</section></>;
 
   const settled = !!state?.hidden;
+  const sent = held ? " is-sent" : "";
   const locked = !!value.locked || !!blockedBy || !!held || settled;
   const v = value.v ?? "", note = value.n ?? "";
   const blocked = blockedBy ? <span className="st blk">Blocked by {p.isItem(blockedBy)
@@ -90,8 +91,8 @@ export function Item(p: ItemProps) {
   const showBtn = settled && <button type="button" className="settled-tg" aria-expanded={shown} onClick={() => flushSync(() => setShown(!shown))}>{shown ? "Hide" : "Show"}</button>;
 
   if (type === "question") return <>{group}
-    <section data-item={it.id} data-review-question={it.id} data-title={it.title} data-review-type="question" className={"rvcard" + (blockedBy ? " is-blocked" : "") + (settled ? " settled" : "") + (shown ? " shown" : "")}>
-      <div className="rvhead">{rid}{showBtn}<span className="sp" /><span className="st2" />{blocked ?? (settled ? <Chip tone="a-yes">Answered (locked)</Chip> : state?.reopened ? <Chip tone="reo">Reopened: {state.reopened}</Chip> : <Chip>Question</Chip>)}{more}</div>
+    <section data-item={it.id} data-review-question={it.id} data-title={it.title} data-review-type="question" className={"rvcard" + sent + (blockedBy ? " is-blocked" : "") + (settled ? " settled" : "") + (shown ? " shown" : "")}>
+      <div className="rvhead">{rid}{showBtn}<span className="sp" /><span className="st2" />{blocked ?? (held ? <Chip tone="a-yes">Sent, waiting</Chip> : settled ? <Chip tone="a-yes">Answered (locked)</Chip> : state?.reopened ? <Chip tone="reo">Reopened: {state.reopened}</Chip> : <Chip>Question</Chip>)}{more}</div>
       <h2>{heading}</h2>{settled && <p className="locked-answer">{value.a}</p>}{content}
       <div className={"rv in-card question" + (blockedBy ? " blocked" : "")} id={"rv-" + it.id}>
         <div className="qrow"><span className="ask">Your answer:</span>{it.suggested && !settled ? <button type="button" className="suggest-btn" onClick={() => p.onChange({ ...value, a: it.suggested })}>Use suggestion</button> : null}</div>
@@ -103,8 +104,8 @@ export function Item(p: ItemProps) {
     const picks = (value.v ?? "").split(",").filter(Boolean);
     const named = picks.map(x => (x === "other" ? "Other" : it.choices?.find(c => c.value === x)?.label ?? x)).join(", ");
     return <>{group}
-      <section data-item={it.id} data-review-question={it.id} data-title={it.title} data-answer={picks.length ? "pick" : "default"} className={"rvcard is-choice" + (blockedBy ? " is-blocked" : "") + (settled ? " settled" : "") + (shown ? " shown" : "")}>
-        <div className="rvhead">{rid}{showBtn}<span className="sp" /><span className="st2" />{blocked ?? <Chip tone={picks.length ? "a-yes" : ""}>{settled ? "Answered (locked)" : named || "Not picked"}</Chip>}{more}</div>
+      <section data-item={it.id} data-review-question={it.id} data-title={it.title} data-answer={picks.length ? "pick" : "default"} className={"rvcard is-choice" + sent + (blockedBy ? " is-blocked" : "") + (settled ? " settled" : "") + (shown ? " shown" : "")}>
+        <div className="rvhead">{rid}{showBtn}<span className="sp" /><span className="st2" />{blocked ?? <Chip tone={picks.length ? "a-yes" : ""}>{held ? "Sent, waiting" : settled ? "Answered (locked)" : named || "Not picked"}</Chip>}{more}</div>
         <h2>{heading}</h2>{settled && <p className="locked-answer">{named}{value.o ? `: ${value.o}` : ""}</p>}{content}
         <div className={"rv in-card choice" + (blockedBy ? " blocked" : "")} id={"rv-" + it.id}>
           <Choices id={it.id} title={it.title} options={it.choices} multi={it.multi} value={value} disabled={!!blockedBy || !!held || settled} onChange={p.onChange} />
@@ -119,7 +120,7 @@ export function Item(p: ItemProps) {
     const pill = blocked ?? (state?.reopened && !v ? <Chip tone="reo">Reopened: {state.reopened}</Chip>
       : <Chip tone={v === first ? "a-yes" : ""}>{v ? label(v) : def ? `Not picked · ${label(def)} (default)` : "Not chosen"}</Chip>);
     return <>{group}
-      <section data-item={it.id} data-review-question={it.id} data-title={it.title} data-answer={v ? (v === first ? "pick-first" : "pick") : "default"} className={"rvcard is-choice" + (blockedBy ? " is-blocked" : "")}>
+      <section data-item={it.id} data-review-question={it.id} data-title={it.title} data-answer={v ? (v === first ? "pick-first" : "pick") : "default"} className={"rvcard is-choice" + sent + (blockedBy ? " is-blocked" : "")}>
         <div className="rvhead">{rid}<span className="sp" /><span className="st2" />{pill}{more}</div>
         <h2>{heading}</h2>{content}
         <div className={"rv in-card choice" + (blockedBy ? " blocked" : "")} id={"rv-" + it.id} data-choice={v || def}>
@@ -134,7 +135,7 @@ export function Item(p: ItemProps) {
   }
 
   const showNote = v === "chg" || v === "no" || v === "risk" || !!note.trim() || !!value.blocker || noteOpen || !!value.locked;
-  const pill = blocked ?? (value.locked ? <Chip tone="skp">{PILL.skip}</Chip> : settled ? <Chip tone={v === "risk" ? "a-risk" : "a-yes"}>{v === "risk" ? "Accept risk" : "Yes"} (locked)</Chip> : v ? <Chip tone={TONE[v]}>{PILL[v]}</Chip>
+  const pill = blocked ?? (value.locked ? <Chip tone="skp">{PILL.skip}</Chip> : held ? <Chip tone="a-yes">Sent, waiting</Chip> : settled ? <Chip tone={v === "risk" ? "a-risk" : "a-yes"}>{v === "risk" ? "Accept risk" : "Yes"} (locked)</Chip> : v ? <Chip tone={TONE[v]}>{PILL[v]}</Chip>
     : state?.reopened ? <Chip tone="reo">Reopened: {state.reopened}</Chip> : handled ? <Chip tone="reo">Updated: answer again</Chip> : <Chip>Open</Chip>);
   const pick = (a: string) => {
     if (a === "skip") { if (!confirm("Skip this item? Once skipped it's locked and can't be changed.")) return; p.onChange({ v: "skip", n: note, locked: true }); return; }
@@ -143,7 +144,7 @@ export function Item(p: ItemProps) {
   };
   return <>{group}
     <section data-item={it.id} data-review-question={it.id} data-title={it.title} data-answer={v}
-      className={"rvcard" + (settled ? " settled" : "") + (shown ? " shown" : "") + (blockedBy ? " is-blocked" : "") + (value.blocker ? " is-blocker" : "")}>
+      className={"rvcard" + sent + (settled ? " settled" : "") + (shown ? " shown" : "") + (blockedBy ? " is-blocked" : "") + (value.blocker ? " is-blocker" : "")}>
       <div className="rvhead">{rid}
         {showBtn}
         <span className="sp" />

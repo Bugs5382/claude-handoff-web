@@ -26,8 +26,7 @@ template's `docs/page-types.md`.
 
 ## Your inbox
 
-- Send and "Blocker: send now" write to `_inbox/<agent>/` for the page's route (set by the operator). Keep
-  `python3 _site/page.py wait <agent>` running in the background; when it exits, take each file it printed
+- Send and "Blocker: send now" write to `_inbox/<agent>/` for the page's route (set by the operator). A Send must never sit unread. While a page is open, keep `python3 _site/page.py listen <agent>` running under something that wakes you on each line. If you can't, keep `python3 _site/page.py wait <agent>` running in the background and start it again every time it exits. When a file lands, take each file it printed
   (blockers first) by moving it to `_inbox/<agent>/taken/`, act, answer on the page with `page.py reply`, and
   start the wait again.
 - `python3 _site/page.py hook <agent>` prints one line when files are waiting or nothing is listening. Run it

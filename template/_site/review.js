@@ -994,7 +994,7 @@ if (!window.siteTheme) { const t = document.createElement("script"); t.src = "/_
       });
       outer.appendChild(d);
     }
-    if (histBlock) histBlock.replaceWith(outer); else body.appendChild(outer);
+    if (histBlock) histBlock.replaceWith(outer); else (document.querySelector("main.wrap") || body).appendChild(outer);
     histBlock = outer;
     historyBtn.disabled = !n;
   }

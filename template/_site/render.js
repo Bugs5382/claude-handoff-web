@@ -452,7 +452,7 @@
       setTimeout(boot, POLL); return;
     }
     render();
-    if (!reviewLoaded) { reviewLoaded = true; loadScript("/_site/review.js?v=33"); }
+    if (!reviewLoaded) { reviewLoaded = true; loadScript("/_site/review.js?v=34"); }
     setInterval(() => { if (!document.hidden) refresh(false).catch(() => {}); }, POLL);
   })();
 })();

@@ -29,28 +29,31 @@ export function EmailDraft({ id, versions, waiting, to, asking, onClose, onAsk }
     try {
       await onAsk({ instructions: instructions.trim(), prose: prose.trim(), basedOn: shown?.n });
       setInstructions(""); setProse(""); onClose();
-    } catch (e) { alert("Couldn't ask for a draft: " + (e as Error).message); } finally { setBusy(false); }
+    } catch (e) { alert("Couldn't ask for the email: " + (e as Error).message); } finally { setBusy(false); }
   };
   if (!shown && !waiting && !asking) return null;
   return (
     <div className="email" data-email={id}>
+      <div className="email-top"><span className="email-h">{asking ? "Generate an email" : "Generated email"}</span>
+        <span className="email-tools">
+          {versions.length > 1 && <span className="seg email-vers" role="group" aria-label={"Versions of the email for " + id}>
+            {versions.map(v => <button key={v.n} type="button" aria-pressed={v.n === shown?.n} onClick={() => flushSync(() => setPicked(v.n))}>v{v.n}</button>)}</span>}
+          {asking && <button type="button" className="email-cancel" onClick={onClose}>Cancel</button>}
+        </span>
+      </div>
       {shown && <>
-        <div className="email-top"><span className="email-h">Email draft</span>
-          {versions.length > 1 && <div className="seg email-vers" role="group" aria-label={"Versions of the draft for " + id}>
-            {versions.map(v => <button key={v.n} type="button" aria-pressed={v.n === shown.n} onClick={() => flushSync(() => setPicked(v.n))}>v{v.n}</button>)}</div>}
-        </div>
         <p className="muted email-meta">Version {shown.n} from {shown.from}, {stamp(shown.at)}{shown.basedOn ? `, based on version ${shown.basedOn}` : ""}</p>
         {shown.instructions && <p className="email-ask"><strong>Asked for:</strong> {shown.instructions}{shown.prose ? ` (${shown.prose})` : ""}</p>}
         {(shown.to || shown.subject) && <p className="email-head">{shown.to && <>To: {shown.to}<br /></>}{shown.subject && <>Subject: {shown.subject}</>}</p>}
         <div className="copyblk"><pre>{shown.body}</pre>
           <button type="button" className="copy-cmd" onClick={async e => { const b = e.currentTarget; await navigator.clipboard.writeText(shown.body); b.textContent = "Copied"; setTimeout(() => { b.textContent = "Copy"; }, 1500); }}>Copy</button></div>
       </>}
-      {waiting && <p className="muted email-wait">Waiting for {to} to send the draft.</p>}
+      {waiting && <p className="muted email-wait">Waiting for {to} to send the email.</p>}
       {asking && <div className="email-form">
-        <label>How to draft it<textarea rows={3} value={instructions} placeholder="Based on this step, what should the email do?" onChange={e => setInstructions(e.target.value)} /></label>
-        <label>The prose you want<textarea rows={2} value={prose} placeholder="For example: plain, friendly, under 100 words" onChange={e => setProse(e.target.value)} /></label>
-        <button type="button" className="email-send" disabled={busy || !instructions.trim()} onClick={() => void ask()}>{shown ? `Ask for another from version ${shown.n}` : "Ask for a draft"}</button>
-        <button type="button" className="email-cancel" onClick={onClose}>Cancel</button>
+        <p className="email-help">Say what this email should do and how it should sound. {to} writes it from this step and it comes back here.</p>
+        <label>What should the email do?<textarea rows={3} value={instructions} placeholder="For example: tell the branch managers why changes stop on Friday" onChange={e => setInstructions(e.target.value)} /></label>
+        <label>How should it sound?<textarea rows={2} value={prose} placeholder="For example: plain, friendly, under 100 words" onChange={e => setProse(e.target.value)} /></label>
+        <button type="button" className="email-send" disabled={busy || !instructions.trim()} onClick={() => void ask()}>{shown ? `Generate another from version ${shown.n}` : "Generate email"}</button>
       </div>}
     </div>
   );

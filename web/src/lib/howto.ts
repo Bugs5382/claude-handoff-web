@@ -9,7 +9,7 @@ export function openHowto(source: HTMLElement, id: string, title: string, build?
   const d = w.document; d.open();
   const th = document.documentElement.getAttribute("data-theme");
   d.write(`<!doctype html><html lang="en"${th ? ` data-theme="${esc(th)}"` : ""}><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">` +
-    `<title>How to test: ${esc(id)}</title><link rel="stylesheet" href="${location.origin}/_site/site.css?v=33"></head>` +
+    `<title>How to test: ${esc(id)}</title><link rel="stylesheet" href="${location.origin}/_site/site.css?v=34"></head>` +
     `<body class="site page howto-win"><p class="muted">How to test &middot; <code>${esc(id)}</code>${build ? ` &middot; Build under test: <code>${esc(build)}</code>` : ""}</p>` +
     `<h1>${esc(title)}</h1><div class="howto-body"></div><p class="muted">Answer on the main page.</p></body></html>`);
   d.close();

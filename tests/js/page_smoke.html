@@ -39,6 +39,7 @@ const pageFile = async rel => (await (await fetch("/_page/" + rel, { cache: "no-
 const answers = async rel => { const p = await pageFile(rel); return p.rounds[p.rounds.length - 1].answers; };
 const card = (doc, id) => doc.querySelector('[data-review-question="' + id + '"]');
 // Types the way a person does, so React's own input handling sees it too.
+const win_css = doc => doc.defaultView.getComputedStyle(doc.querySelector(".draft-intro")).borderLeftWidth;
 function typeIn(el, text) {
   const win = el.ownerDocument.defaultView;
   Object.getOwnPropertyDescriptor(win[el.tagName === "INPUT" ? "HTMLInputElement" : "HTMLTextAreaElement"].prototype, "value").set.call(el, text);
@@ -282,6 +283,12 @@ const seg = (doc, id, v) => card(doc, id).querySelector('.seg button[data-v="' +
     eq(sub.framing, "A presentation on the timeline and risks");
     ok(sub.items.includes("A1"), "a Yes goes"); ok(!sub.items.includes("A3"), "a No stays out"); ok(!sub.items.includes("B1"), "an open item stays out");
     ok(!seg(w().document, "A2", "yes").disabled, "nothing locked");
+  });
+
+  await t("custom: a template from custom/ draws the page, on the same elements", async () => {
+    const { doc } = await load("/demo/sample-custom");
+    ok(doc.querySelector(".draft-intro"), "the template ran"); ok(card(doc, "s1").querySelector(".email pre"), "the same email element");
+    eq(win_css(doc), "4px", "custom.css loaded after the base");
   });
 
   await t("round single: Accept risk on one set of items, sent from the bar", async () => {

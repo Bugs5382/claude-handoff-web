@@ -1,0 +1,23 @@
+{
+  "definition": {
+    "schema": "handoff.page/v1",
+    "kind": "status",
+    "title": "Sample: a status page",
+    "status": {
+      "state": "reference",
+      "priority": 75
+    },
+    "items": [
+      {
+        "id": "n1",
+        "title": "Where the move stands",
+        "body": [
+          {
+            "p": "Phase A is closed and phase B starts Saturday."
+          }
+        ]
+      }
+    ]
+  },
+  "steps": []
+}

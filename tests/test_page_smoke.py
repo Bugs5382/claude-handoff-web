@@ -40,6 +40,7 @@ SCENARIOS = [
     "round phases: lettered ids, phase and step blocking, its own Send, and Accept risk needs a note",
     "email draft: versions keep what produced them, asking goes to the agent and locks nothing",
     "deck: asks what you're building, sends only final Yes and Accept risk, and locks nothing",
+    "custom: a template from custom/ draws the page, on the same elements",
     "round single: Accept risk on one set of items, sent from the bar",
     "bar: one row when it fits, a clean split when it does not, and no control ever wraps",
     "finished page: green bar and back link; Copy results goes back to the folder",
@@ -198,6 +199,7 @@ def smoke(tmp_path_factory, request):
     shutil.copytree(ROOT / "template", root)
     for d in ("demo", "guide"):
         shutil.copytree(ROOT / "example" / d, root / d)
+    shutil.copytree(ROOT / "example" / "custom", root / "custom", dirs_exist_ok=True)
     shutil.copy(ROOT / "example" / "site.json", root / "site.json")
     shutil.copy(HARNESS, root / "harness.html")
     write_pages(root)
@@ -232,7 +234,7 @@ def smoke(tmp_path_factory, request):
 
 @pytest.mark.parametrize("name", SCENARIOS)
 def test_page_smoke(smoke, name):
-    if name.startswith(("round ", "email ", "deck")) and smoke["_renderer"] == "old":
+    if name.startswith(("round ", "email ", "deck", "custom")) and smoke["_renderer"] == "old":
         pytest.skip("rounds are drawn by the app only")
     assert smoke.get(name) == "ok", smoke.get(name, "did not run")
 

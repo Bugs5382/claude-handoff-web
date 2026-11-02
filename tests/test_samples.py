@@ -28,7 +28,7 @@ def doc(folder, name):
 
 def test_every_page_kind_has_a_sample():
     kinds = {samples.read(n)["definition"]["kind"] for n in samples.names()}
-    assert {"review", "checklist", "journey", "backlog", "reference", "round"} <= kinds
+    assert set(schema.KINDS) <= kinds
 
 
 @pytest.mark.parametrize("name", samples.names())

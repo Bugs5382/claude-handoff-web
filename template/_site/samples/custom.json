@@ -1,0 +1,41 @@
+{
+  "definition": {
+    "schema": "handoff.page/v1",
+    "kind": "round",
+    "title": "Sample: a custom round with email drafts",
+    "summary": "Drawn by a template in custom/. Without it, this page draws as a plain round.",
+    "template": "draft-round",
+    "drafts": true,
+    "status": {
+      "state": "needs-you",
+      "priority": 7
+    },
+    "items": [
+      {
+        "id": "s1",
+        "title": "Tell the branches about the freeze",
+        "body": [
+          {
+            "p": "Press Draft email, say how to draft it and the prose you want."
+          }
+        ]
+      },
+      {
+        "id": "s2",
+        "title": "Warn the service desk about the cutover"
+      }
+    ]
+  },
+  "steps": [
+    {
+      "email": {
+        "id": "s1",
+        "instructions": "Explain the freeze to branch managers",
+        "prose": "Plain",
+        "subject": "This weekend's freeze",
+        "body": "Hello all,\n\nNothing on the network changes this weekend while we move to the new core.\n\nThanks."
+      },
+      "at": "2026-01-05T09:00:00+00:00"
+    }
+  ]
+}

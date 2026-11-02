@@ -69,6 +69,7 @@ The definition keys sit at the top level, and the server keys are managed by `pa
 | `items` | definition | the content, in order |
 | `phases` | definition | a round's phases: `[{"id": "A", "title": "...", "goal": "...", "dependsOn": ["A"]}]`; item ids become `A1`, `A2`, `B1` |
 | `deck` | definition | `true` adds Build a deck to the bar |
+| `template` | definition | a template from `custom/custom.js`, see `CUSTOM.md` |
 | `drafts` | definition | `true` adds Draft email to every item |
 | `emails` | server | versions of each item's email draft, numbered from 1 |
 | `route` | operator | `{"to": "ops", "mode": "send"}`; set with `set_route`, never in a definition |

@@ -124,7 +124,7 @@
     const out = { kind: s.kind, to };
     if (reply) {
       const t = reply.text.length > 90 ? reply.text.slice(0, 89) + "\u2026" : reply.text;
-      return Object.assign(out, { state: "replied", text: reply.from + " replied " + clock(reply.at) + ": " + t, full: reply.text });
+      return Object.assign(out, { state: "replied", text: reply.from + " replied " + clock(reply.at) + ": " + t, bar: reply.from + " replied " + clock(reply.at), full: reply.text });
     }
     if (s.state === "failed") return Object.assign(out, { state: "failed", text: label + " failed " + clock(s.at) + " · it didn't reach " + to + "." });
     if (s.state === "taken") {
@@ -452,7 +452,7 @@
       setTimeout(boot, POLL); return;
     }
     render();
-    if (!reviewLoaded) { reviewLoaded = true; loadScript("/_site/review.js?v=35"); }
+    if (!reviewLoaded) { reviewLoaded = true; loadScript("/_site/review.js?v=36"); }
     setInterval(() => { if (!document.hidden) refresh(false).catch(() => {}); }, POLL);
   })();
 })();

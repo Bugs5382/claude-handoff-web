@@ -35,7 +35,7 @@ SCENARIOS = [
     "question: Use suggestion fills the answer and saves it",
     "backlog: default choice, picking every item turns the bar green, saved",
     "theme toggle works on a rendered page",
-    "bar: one line from tablet to desktop widths, status text ellipsed; phone tap targets kept",
+    "bar: one row when it fits, a clean split when it does not, and no control ever wraps",
     "finished page: green bar and back link; Copy results goes back to the folder",
     "copy results keeps the Copy results format",
     "mark unanswered Yes fills only open items and saves them",
@@ -154,6 +154,12 @@ def write_pages(root):
     pagefile.add_submission(after, {"kind": "send", "to": "app", "items": ["r1", "r2"], "file": "y-{n}.json"}, now=T0)
     pagefile.hold(after, 1)
     pagefile.reply(after, "r2", "app", "Moved.", action="fixed", now="2026-10-26T08:00:00-04:00")
+    long = demo / "pf-bar-long.json"
+    w(long, review("pf-bar-long"), now=T0)
+    pagefile.set_route(long, "a" * 41, "send")
+    pagefile.add_submission(long, {"kind": "send", "to": "a" * 41, "file": "l-{n}.json"}, now=T0)
+    told = "Everything in this round is fixed, and here is a very long account of how. " * 6
+    pagefile.reply(long, "_page", "a" * 41, told, now="2026-10-26T08:00:00-04:00")
     reo = demo / "pf-reopened.json"
     pagefile.save_answers(reo, {"r1": {"answer": "yes", "note": ""}}, by="Sam", now=T0)
     pagefile.reply(reo, "r1", "app", "Look again.", action="reopen", reason="numbers moved", now="2026-10-26T08:00:00-04:00")

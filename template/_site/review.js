@@ -86,7 +86,7 @@ window.rvCount = function (items, state, o) {
 (function () {
   // Pages that render their own items (and their own pop-out) opt out.
   if (document.body.getAttribute("data-review-controls") === "off") return;
-  const V = "28";
+  const V = "29";
   function itemOf(el) {
     const box = el.closest("[data-review-question], .item");
     if (box) {
@@ -317,7 +317,7 @@ if (!window.siteTheme) { const t = document.createElement("script"); t.src = "/_
   }
 
   if (!document.querySelector('link[href*="/_site/site.css"]')) {
-    const l = document.createElement("link"); l.rel = "stylesheet"; l.href = "/_site/site.css?v=28"; document.head.appendChild(l);
+    const l = document.createElement("link"); l.rel = "stylesheet"; l.href = "/_site/site.css?v=29"; document.head.appendChild(l);
   }
 
   // data-review-skip="on" (test checklists): adds Skipped; a skipped item is locked.
@@ -615,8 +615,9 @@ if (!window.siteTheme) { const t = document.createElement("script"); t.src = "/_
     }, 1500);
   }
 
-  // Bottom bar: Previous, Next, the Open IDs picker (opens upward, with a filter), the status, the
-  // Saved time and More. Colour states: dark while items are open, green when every one is answered,
+  // Bottom bar: one row when everything fits, and two when it doesn't (fit() decides, and a phone is always two).
+  // First row: Previous, Next, the status, and the delivery line or the Saved time. Second: Send, Copy results,
+  // Clear my answers, the Open IDs picker (opens upward, with a filter) and More. Colour states: dark while items are open, green when every one is answered,
   // green "APPROVED" when all are Yes, a red ring for a marked blocker, amber when a save fails.
   const bar = document.createElement("div"); bar.className = "rvbar"; bar.setAttribute("role", "region"); bar.setAttribute("aria-label", "Review progress");
   bar.innerHTML = '<div class="rvbar-in">' +
@@ -631,18 +632,27 @@ if (!window.siteTheme) { const t = document.createElement("script"); t.src = "/_
     '<button class="history" type="button" role="menuitem" disabled>History</button>' +
     '<button class="round-close" type="button" role="menuitem">Save round now</button>' +
     '<button class="clear" type="button" role="menuitem">Clear my answers</button></div>' +
-    '<button class="prev" type="button" title="Previous open item (p)" aria-label="Previous open item">← <span class="lg">Previous</span><span class="sm">Prev</span></button>' +
+    '<div class="rvbar-r1"><button class="prev" type="button" title="Previous open item (p)" aria-label="Previous open item">← <span class="lg">Previous</span><span class="sm">Prev</span></button>' +
     '<button class="next" type="button" title="Next open item (n)" aria-label="Next open item">Next →</button>' +
-    '<button class="ids" type="button" aria-haspopup="dialog" aria-expanded="false"><span class="ids-l"></span> <span class="mono ids-n"></span> ▴</button>' +
     '<span class="stat"><span class="dot" aria-hidden="true"></span>' +
     '<svg class="tick" width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d="M3 9.5l4 4 8-9" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"></path></svg>' +
     '<span class="bkr" hidden></span><span class="cnt" role="status" aria-live="polite"></span></span>' +
-    '<span class="svst" aria-live="polite"></span>' +
+    (SENDS ? '<span class="dlv" role="status" aria-live="polite"></span>' : "") +
+    '<span class="svst" aria-live="polite"></span></div>' +
+    '<div class="rvbar-r2">' + (SENDS ? '<button class="send-btn" type="button"></button>' : "") +
+    '<button class="copy" type="button">Copy results</button><button class="clear" type="button">Clear my answers</button>' +
+    '<button class="ids" type="button" aria-haspopup="dialog" aria-expanded="false"><span class="ids-l"></span> <span class="mono ids-n"></span> ▴</button>' +
     '<a class="back" hidden></a>' +
-    (SENDS ? '<button class="send-btn" type="button"></button><span class="dlv" role="status" aria-live="polite"></span>' : "") +
     '<span class="more"><button class="more-btn" type="button" aria-haspopup="menu" aria-expanded="false">More ▾</button></span>' +
-    '</div>';
+    '</div></div>';
   body.appendChild(bar);
+  function fit() {
+    const inner = bar.querySelector(".rvbar-in"), cut = el => !!el && el.scrollWidth > el.clientWidth + 1;
+    bar.classList.remove("two");
+    if (matchMedia("(max-width: 480px)").matches || cut(inner) || cut(bar.querySelector(".cnt")) || cut(bar.querySelector(".dlv-t"))) bar.classList.add("two");
+  }
+  on(window, "resize", fit);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(fit);
   // The delivery state from render.js: a dot, the line, and on "isn't listening" a Copy results button.
   function setDelivery(dl) {
     const el = bar.querySelector(".dlv"); if (!el) return;
@@ -650,7 +660,7 @@ if (!window.siteTheme) { const t = document.createElement("script"); t.src = "/_
     if (!dl) { delete el.dataset.state; return; }
     el.dataset.state = dl.state;
     const dot = document.createElement("span"); dot.className = "dlv-dot"; dot.setAttribute("aria-hidden", "true");
-    const t = document.createElement(dl.state === "replied" ? "a" : "span"); t.className = "dlv-t"; t.textContent = dl.text;
+    const t = document.createElement(dl.state === "replied" ? "a" : "span"); t.className = "dlv-t"; t.textContent = dl.bar || dl.text;
     if (dl.state === "replied") { t.href = "#replies"; t.title = dl.full; }
     el.append(dot, t);
     if (dl.state === "deaf") {
@@ -658,6 +668,7 @@ if (!window.siteTheme) { const t = document.createElement("script"); t.src = "/_
       b.addEventListener("click", async () => { await copyText(results()); b.textContent = "Copied"; });
       el.appendChild(b);
     }
+    fit();
   }
   const sendBtn = bar.querySelector(".send-btn");
   if (sendBtn) {
@@ -817,6 +828,7 @@ if (!window.siteTheme) { const t = document.createElement("script"); t.src = "/_
     idsBtn.title = choicePage ? "Items you haven't picked yet" : "Find and jump to an open item";
     if (!picker.hidden) renderPicker();
     paintGroupCounts(openList());
+    fit();
   }
   // Unified pages: each group's "N open" chip and the header total count what openList() counts, so
   // they agree with the bar. Pages built before the chips were marked are matched by their text.
@@ -913,12 +925,12 @@ if (!window.siteTheme) { const t = document.createElement("script"); t.src = "/_
   async function copyText(out) {
     try { await navigator.clipboard.writeText(out); } catch (e) { const t = document.createElement("textarea"); t.value = out; body.appendChild(t); t.select(); document.execCommand("copy"); t.remove(); }
   }
-  bar.querySelector(".copy").addEventListener("click", async () => {
+  bar.querySelectorAll(".copy").forEach(b => b.addEventListener("click", async () => {
     showMenu(false);
     await copyText(results());
     alert("Copied. Paste it into the " + session + " session.");
     if (lastDone) returnSoon();
-  });
+  }));
   // Copy blockers only: every item marked as a blocker, in the "Blocker: copy now" format.
   bar.querySelector(".copy-blockers").addEventListener("click", async () => {
     showMenu(false);
@@ -956,14 +968,14 @@ if (!window.siteTheme) { const t = document.createElement("script"); t.src = "/_
   }
   bar.querySelector(".all-yes").addEventListener("click", () => markAll("yes", "Yes"));
   bar.querySelector(".all-no").addEventListener("click", () => markAll("no", "No"));
-  bar.querySelector(".clear").addEventListener("click", async () => {
+  bar.querySelectorAll(".clear").forEach(b => b.addEventListener("click", async () => {
     showMenu(false);
     if (!confirm("Clear your answers on this page? Approved and Skipped (locked) items stay.")) return;
     for (const it of items) if (!hidden.has(it.id) && !(state[it.id] || {}).locked) { delete state[it.id]; store.touched.add(it.id); }
     persist();
     if (await flushNow()) { if (PF) PF.redraw(); else location.reload(); }
     else { paint(); alert("Cleared here, but the box can't be reached yet. It keeps retrying; don't close the page until it says Saved."); }
-  });
+  }));
   // ---------- round history (/_history/<page-key>/, see SAVE-API.md) ----------
   // Collapsed everywhere: the block itself starts closed, and so does every round inside it.
   // Nothing here is ever expanded automatically, and it always sits after the page's own content,

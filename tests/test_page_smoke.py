@@ -45,6 +45,7 @@ SCENARIOS = [
     "bar: a page with a reply status always shows row two, whatever the width",
     "bar: text that gets wider after the first draw splits the bar, as a late font does",
     "links: browsing stays in this tab, and a link inside an item opens a new one",
+    "tour: started by the person, walks real controls on each page type, and remembers it's been seen",
     "bar: one row when it fits, a clean split when it does not, and no control ever wraps",
     "finished page: green bar and back link; Copy results goes back to the folder",
     "copy results keeps the Copy results format",

@@ -39,6 +39,18 @@ window.HandoffSite.itemActions.push(it => ({
 }));
 ```
 
+## A guided tour
+
+Every page has a Take the tour button, which runs a step-through over its real controls. It starts only when the person presses it, can be dismissed at any step, and offers See the tour again once it's been seen. The browser remembers that per tour.
+
+`custom.js` can give a template its own steps. A step whose control isn't on the page is left out.
+
+```js
+window.HandoffSite.tours["draft-round"] = [
+  { element: ".item-more-btn", title: "Generate an email", text: "Press More on a step." },
+];
+```
+
 ## Elements
 
 `window.HandoffSite` holds `html` (htm bound to React) and these elements. Their inputs are in `web/src/elements/` in the repo.
@@ -53,6 +65,7 @@ window.HandoffSite.itemActions.push(it => ({
 | `Answer` | the segmented answer buttons |
 | `Button` | a named button, such as `send-btn` or `copy` |
 | `Chip` | a status pill |
+| `TourButton` | starts the page's guided tour |
 | `EmailDraft` | an item's draft, with its versions |
 | `Thread` | an item's history |
 | `History` | closed rounds |

@@ -1,0 +1,88 @@
+{
+  "definition": {
+    "schema": "handoff.page/v1",
+    "kind": "review",
+    "title": "Sample: a round that came back",
+    "status": {
+      "state": "needs-you",
+      "priority": 30
+    },
+    "items": [
+      {
+        "id": "a",
+        "title": "The cutover window is Saturday 02:00",
+        "body": [
+          {
+            "p": "Sent as Yes, so it stays a locked row."
+          }
+        ]
+      },
+      {
+        "id": "b",
+        "title": "Rollback takes under ten minutes",
+        "body": [
+          {
+            "p": "Sent as Changes. The agent replied, so the box cleared and the note moved to the history."
+          }
+        ]
+      },
+      {
+        "id": "c",
+        "title": "Use the new resolver at 192.0.2.53",
+        "body": [
+          {
+            "p": "Sent as Yes, then reopened with a reason."
+          }
+        ]
+      },
+      {
+        "id": "e",
+        "title": "Nobody answered this one yet"
+      }
+    ]
+  },
+  "steps": [
+    {
+      "answers": {
+        "a": {
+          "answer": "yes",
+          "note": ""
+        },
+        "b": {
+          "answer": "changes",
+          "note": "Ten minutes is too long"
+        },
+        "c": {
+          "answer": "yes",
+          "note": ""
+        }
+      },
+      "at": "2026-01-05T09:00:00+00:00"
+    },
+    {
+      "send": [
+        "a",
+        "b",
+        "c"
+      ],
+      "at": "2026-01-05T09:30:00+00:00"
+    },
+    {
+      "reply": {
+        "id": "b",
+        "text": "Cut it to six minutes.",
+        "action": "fixed"
+      },
+      "at": "2026-01-05T10:00:00+00:00"
+    },
+    {
+      "reply": {
+        "id": "c",
+        "text": "The resolver moved, please look again.",
+        "action": "reopen",
+        "reason": "The address changed to 192.0.2.54"
+      },
+      "at": "2026-01-05T10:00:00+00:00"
+    }
+  ]
+}

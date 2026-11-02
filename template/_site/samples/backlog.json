@@ -1,0 +1,39 @@
+{
+  "definition": {
+    "schema": "handoff.page/v1",
+    "kind": "backlog",
+    "title": "Sample: a backlog",
+    "status": {
+      "state": "needs-you",
+      "priority": 60
+    },
+    "options": {
+      "choices": [
+        {
+          "value": "start",
+          "label": "Start"
+        },
+        {
+          "value": "hold",
+          "label": "Hold"
+        }
+      ],
+      "default": "hold"
+    },
+    "items": [
+      {
+        "id": "b1",
+        "title": "Export as PDF"
+      },
+      {
+        "id": "b2",
+        "title": "Dark theme"
+      },
+      {
+        "id": "b3",
+        "title": "Single sign-on"
+      }
+    ]
+  },
+  "steps": []
+}

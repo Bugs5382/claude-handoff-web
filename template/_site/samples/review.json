@@ -1,0 +1,95 @@
+{
+  "definition": {
+    "schema": "handoff.page/v1",
+    "kind": "review",
+    "title": "Sample: a plain review",
+    "summary": "Yes, No or Changes on each section, plus an open question.",
+    "status": {
+      "state": "needs-you",
+      "priority": 10
+    },
+    "items": [
+      {
+        "id": "s1",
+        "title": "Purpose",
+        "body": [
+          {
+            "p": "The **Harbor** team moves its billing service to a new cluster."
+          },
+          {
+            "list": [
+              "No downtime for customers",
+              "Same database"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "s2",
+        "title": "Table and note blocks",
+        "body": [
+          {
+            "table": [
+              [
+                "Host",
+                "Address"
+              ],
+              [
+                "bill-01",
+                "192.0.2.10"
+              ],
+              [
+                "bill-02",
+                "192.0.2.11"
+              ]
+            ]
+          },
+          {
+            "note": "The old hosts stay up for a week.",
+            "tone": "warn"
+          }
+        ]
+      },
+      {
+        "id": "s3",
+        "title": "Keep the old name",
+        "answers": [
+          "yes",
+          "no"
+        ],
+        "body": [
+          {
+            "p": "This item only takes Yes or No."
+          }
+        ]
+      },
+      {
+        "id": "d1",
+        "type": "diff",
+        "title": "A wording change",
+        "old": "The core ran at 10 Gb/s.",
+        "new": "The core ran at 20 Gb/s."
+      },
+      {
+        "id": "q1",
+        "type": "question",
+        "title": "Which timezone do the reports use?",
+        "suggested": "UTC"
+      },
+      {
+        "id": "i1",
+        "type": "info",
+        "title": "Background",
+        "body": [
+          {
+            "p": "Info items take no answer."
+          },
+          {
+            "copy": "ssh admin@203.0.113.7"
+          }
+        ]
+      }
+    ]
+  },
+  "steps": []
+}

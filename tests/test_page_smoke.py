@@ -24,6 +24,7 @@ HARNESS = ROOT / "tests" / "js" / "page_smoke.html"
 sys.path.insert(0, str(ROOT / "template" / "_site"))
 
 import pagefile  # noqa: E402
+import samples  # noqa: E402
 
 SCENARIOS = [
     "review: answers, notes, card follows answer, green then approved, saved to the page file",
@@ -35,6 +36,7 @@ SCENARIOS = [
     "question: Use suggestion fills the answer and saves it",
     "backlog: default choice, picking every item turns the bar green, saved",
     "theme toggle works on a rendered page",
+    "samples: every sample page draws, and the states they show are the ones they claim",
     "bar: one row when it fits, a clean split when it does not, and no control ever wraps",
     "finished page: green bar and back link; Copy results goes back to the folder",
     "copy results keeps the Copy results format",
@@ -163,6 +165,7 @@ def write_pages(root):
     reo = demo / "pf-reopened.json"
     pagefile.save_answers(reo, {"r1": {"answer": "yes", "note": ""}}, by="Sam", now=T0)
     pagefile.reply(reo, "r1", "app", "Look again.", action="reopen", reason="numbers moved", now="2026-10-26T08:00:00-04:00")
+    samples.load(str(demo), route="app")
     (root / "_inbox" / "app").mkdir(parents=True, exist_ok=True)
     (root / "_inbox" / "app" / ".listening").write_text(str(os.getpid()))
     for name in ("pf-dlv-taken", "pf-dlv-replied"):

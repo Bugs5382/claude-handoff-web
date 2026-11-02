@@ -1,5 +1,6 @@
 // The page file as GET /_page/<folder>/<slug> returns it. See PAGE-FILE.md.
 export type Block = Record<string, unknown>;
+export interface Field { name: string; type?: string; rule?: string }
 
 export interface ItemDef {
   id: string;
@@ -11,17 +12,34 @@ export interface ItemDef {
   answers?: string[];
   skip?: boolean;
   suggested?: string;
+  steps?: string[];
+  checkpoint?: string;
+  dependsOn?: string[];
+  blockedBy?: string;
+  images?: { src: string; alt?: string; caption?: string }[];
+  fields?: Field[];
+  forms?: { name: string; fields?: Field[] }[];
 }
 
 export interface Answer { answer: string; note?: string; at?: string; by?: string }
+export interface Handled extends Answer { handled: string; via: string }
 
 export interface Round {
   round: number;
+  build?: string | null;
+  closed?: string | null;
+  results?: string;
+  restart?: string;
   answers: Record<string, Answer>;
   reopened?: Record<string, string>;
+  handled?: Record<string, Handled[]>;
+  checkpoints?: Record<string, string>;
   awaiting?: number;
   held?: number[];
 }
+
+export interface Submission { n: number; items: string[]; kind: string; at: string; to?: string; state?: string; takenAt?: string; round: number }
+export interface Reply { from: string; at: string; text: string; action?: string; reason?: string; ref?: string }
 
 export interface PageDoc {
   rev: number;
@@ -29,10 +47,11 @@ export interface PageDoc {
   title: string;
   summary?: string;
   build?: string | null;
+  options?: { choices: { value: string; label: string }[]; default?: string };
   items: ItemDef[];
   rounds: Round[];
-  submissions: { n: number; items: string[]; kind: string; at: string; to?: string; state?: string }[];
-  thread: Record<string, { from: string; at: string; text: string; action?: string; reason?: string }[]>;
+  submissions: Submission[];
+  thread: Record<string, Reply[]>;
 }
 
 export interface ItemState { answer: string; hidden: boolean; reopened: string | null; round: number | null }
@@ -45,4 +64,6 @@ export interface PageData {
   diffs?: Record<string, string>;
 }
 
-export interface Local { answer: string; note: string }
+/** One item's answer in this tab: v is yes, no, chg, skip or a choice, n the note, a a question's answer. */
+export interface Local { v?: string; n?: string; a?: string; locked?: boolean; blocker?: boolean }
+export type Locals = Record<string, Local>;

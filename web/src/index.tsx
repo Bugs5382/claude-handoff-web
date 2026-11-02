@@ -6,14 +6,17 @@ import { Blocks } from "@/elements/Blocks";
 import { Button } from "@/elements/Button";
 import { Chip } from "@/elements/Chip";
 import { Footer } from "@/elements/Footer";
+import { History } from "@/elements/History";
 import { Item } from "@/elements/Item";
-import { JumpBar } from "@/elements/JumpBar";
+import { JumpBar, OpenIds } from "@/elements/JumpBar";
 import { Page } from "@/elements/Page";
 import { Phase } from "@/elements/Phase";
+import { Restart } from "@/elements/Restart";
+import { Thread } from "@/elements/Thread";
 
 /** htm bound to React: custom templates use this with no compile step. */
 export const html = htm.bind(createElement);
-export { Answer, Blocks, Button, Chip, Footer, Item, JumpBar, Page, Phase };
+export { Answer, Blocks, Button, Chip, Footer, History, Item, JumpBar, OpenIds, Page, Phase, Restart, Thread };
 
 const root = document.getElementById("app");
 if (root) createRoot(root).render(createElement(Page));

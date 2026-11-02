@@ -1,4 +1,4 @@
-import type { Local, PageData } from "@/lib/types";
+import type { PageData } from "@/lib/types";
 
 export const rel = decodeURIComponent(location.pathname).replace(/^\/+|\/+$/g, "");
 const API = "/_page/" + rel;
@@ -10,7 +10,7 @@ export async function fetchPage(etag: string | null): Promise<{ data: PageData; 
   return { data: (await r.json()) as PageData, etag: r.headers.get("ETag") };
 }
 
-export async function saveAnswers(base: number, answers: Record<string, Local>): Promise<void> {
+export async function saveAnswers(base: number, answers: Record<string, { answer: string; note: string }>): Promise<void> {
   const r = await fetch(API + "/answers", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ base, answers }), cache: "no-store" });
   if (r.status !== 200) throw new Error("PUT " + r.status);
 }

@@ -578,3 +578,36 @@ def test_a_sent_accept_risk_settles_like_a_yes(path):
     sent(path, ["A1"])
     pagefile.reply(path, "_page", "ops", "Noted.", now=T2)
     assert pagefile.item_states(pagefile.load(path))["A1"] == {"answer": "risk", "hidden": True, "reopened": None, "round": 1}
+
+
+def test_a_draft_comes_back_as_a_new_version_with_what_produced_it(path):
+    make(path, review(drafts=True))
+    first = pagefile.add_submission(path, {"kind": "email", "to": "ops", "items": ["s1"], "file": "e-{n}.json",
+                                           "instructions": "Explain why", "prose": "Plain"}, now=T0)
+    assert pagefile.add_email(path, "s1", "ops", "Why", "First draft", request=first["n"], now=T1) == 1
+    second = pagefile.add_submission(path, {"kind": "email", "to": "ops", "items": ["s1"], "file": "e-{n}.json",
+                                            "instructions": "Shorter", "prose": "Brief", "basedOn": 1}, now=T1)
+    assert pagefile.add_email(path, "s1", "ops", "Why", "Second", request=second["n"], now=T2) == 2
+    versions = pagefile.load(path)["emails"]["s1"]
+    assert [v["n"] for v in versions] == [1, 2] and versions[0]["body"] == "First draft"
+    assert versions[1]["instructions"] == "Shorter" and versions[1]["prose"] == "Brief" and versions[1]["basedOn"] == 1
+
+
+def test_asking_for_a_draft_locks_nothing(path):
+    make(path, review(drafts=True))
+    pagefile.add_submission(path, {"kind": "email", "to": "ops", "items": ["s1"], "file": "e-{n}.json", "instructions": "x"}, now=T0)
+    assert pagefile.held_items(pagefile.load(path)) == set()
+    pagefile.save_answers(path, {"s1": {"answer": "yes"}}, by="me", now=T1)
+
+
+def test_a_definition_cannot_write_drafts(path):
+    with pytest.raises(pagefile.PageError):
+        make(path, review(emails={}))
+
+
+def test_a_returned_draft_does_not_unlock_a_sent_item(path):
+    make(path, review(drafts=True))
+    pagefile.save_answers(path, {"s1": {"answer": "yes"}}, by="me", now=T0)
+    sent(path, ["s1"])
+    pagefile.add_email(path, "s2", "ops", "Hi", "Body", now=T2)
+    assert pagefile.held_items(pagefile.load(path)) == {"s1"}

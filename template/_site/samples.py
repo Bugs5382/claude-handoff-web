@@ -32,6 +32,12 @@ def _step(path, step, to):
     elif "send" in step:
         sub = pagefile.add_submission(path, {"kind": "send", "to": to, "items": step["send"], "file": "sample-{n}.json"}, now=at)
         pagefile.hold(path, sub["n"])
+    elif "email" in step:
+        e = step["email"]
+        asked = {"kind": "email", "to": to, "items": [e["id"]], "file": "sample-{n}.json", "instructions": e["instructions"],
+                 "prose": e.get("prose"), "basedOn": e.get("basedOn")}
+        sub = pagefile.add_submission(path, asked, now=at)
+        pagefile.add_email(path, e["id"], to, e["subject"], e["body"], request=sub["n"], now=at)
     else:
         r = step["reply"]
         pagefile.reply(path, r["id"], to, r["text"], action=r.get("action"), reason=r.get("reason"), now=at)

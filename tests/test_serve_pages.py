@@ -343,3 +343,15 @@ def test_a_phase_sends_only_its_own_items_and_a_blocked_one_refuses(pages):
     assert post(base, "/_page/demo/plan/send", {"kind": "send", "phase": "A", "results": "R"})[0] == 200
     doc = json.loads(request(base + "/_page/demo/plan")[1])
     assert doc["page"]["submissions"][0]["items"] == ["A1"] and doc["phases"]["B"]["blocked"] == "A"
+
+
+def test_a_draft_ask_lands_in_the_inbox_and_needs_instructions(pages):
+    root, base = pages
+    pagefile.write_definition(root / "demo" / "mail.json", {**DESIGN, "drafts": True})
+    assert post(base, "/_page/demo/mail/send", {"kind": "email", "items": ["s1"], "instructions": " "})[0] == 400
+    assert post(base, "/_page/demo/mail/send", {"kind": "email", "items": ["s1"], "instructions": "Say why", "prose": "Plain"})[0] == 200
+    name = next(n for n in inbox(root) if "mail" in n)
+    sub = json.loads((root / "_inbox" / "ops" / name).read_text())
+    assert sub["kind"] == "email" and sub["instructions"] == "Say why" and sub["prose"] == "Plain"
+    assert "awaiting" not in pagefile.load(root / "demo" / "mail.json")["rounds"][-1]
+    assert post(base, "/_page/demo/design/send", {"kind": "email", "items": ["s1"], "instructions": "x"})[0] == 400

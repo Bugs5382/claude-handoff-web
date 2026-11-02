@@ -23,7 +23,7 @@ STATES = ("needs-you", "reference", "done")
 MODES = ("send", "copy", "both")
 ACTIONS = ("filed", "fixed", "reopen", "unblock", "wontfix", "info")
 TONES = ("info", "warn", "ok", "danger")
-SUBMISSION_KINDS = ("send", "blocker", "restart")
+SUBMISSION_KINDS = ("send", "blocker", "restart", "email")
 SUBMISSION_STATES = ("sent", "taken", "failed")
 BLOCKS = ("p", "list", "olist", "code", "image", "table", "diff", "copy", "note", "html")
 BLOCK_EXTRAS = {"code": ("lang",), "image": ("alt", "caption"), "note": ("tone",)}
@@ -35,7 +35,7 @@ AGENT = re.compile(r"[a-z0-9][a-z0-9_-]{0,40}\Z")
 ID_RULE = "expected a-z, 0-9, _ and -, starting with a letter or digit, up to 41 characters"
 
 TOP = ("schema", "rev", "kind", "title", "summary", "build", "reset", "status", "route", "options", "items",
-       "rounds", "thread", "submissions", "phases")
+       "rounds", "thread", "submissions", "phases", "drafts", "emails")
 COMMON = ("id", "type", "title", "section", "body")
 ANSWERABLE = ("answers", "skip", "dependsOn", "blockedBy")
 TYPE_FIELDS = {
@@ -134,6 +134,9 @@ def validate(doc):
     _rounds(v, doc.get("rounds"))
     _thread(v, doc.get("thread"))
     _submissions(v, doc.get("submissions"))
+    _emails(v, doc.get("emails"))
+    if "drafts" in doc and not isinstance(doc["drafts"], bool):
+        v.err("drafts", "expected true or false")
     return v.errors
 
 
@@ -515,7 +518,8 @@ def _submissions(v, subs):
         if not isinstance(s, dict):
             v.err(p, "expected an object")
             continue
-        v.keys(s, p, ("n", "kind", "at", "to", "round", "rev", "items", "file", "state", "takenAt", "released"), ("n", "kind", "at"))
+        v.keys(s, p, ("n", "kind", "at", "to", "round", "rev", "items", "file", "state", "takenAt", "released",
+                            "instructions", "prose", "basedOn"), ("n", "kind", "at"))
         if s.get("n") != i:
             v.err(_join(p, "n"), f"expected {i}")
         v.choice(s, "kind", p, SUBMISSION_KINDS)
@@ -528,6 +532,32 @@ def _submissions(v, subs):
         v.choice(s, "state", p, SUBMISSION_STATES)
         if "released" in s and not isinstance(s["released"], bool):
             v.err(_join(p, "released"), "expected true or false")
+
+
+def _emails(v, emails):
+    if emails is None:
+        return
+    if not isinstance(emails, dict):
+        v.err("emails", "expected versions of drafts by item id")
+        return
+    for key, versions in emails.items():
+        tp = f"emails.{key}"
+        if not isinstance(versions, list):
+            v.err(tp, "expected a list of versions")
+            continue
+        for i, d in enumerate(versions, 1):
+            p = f"{tp}[#{i}]"
+            if not isinstance(d, dict):
+                v.err(p, "expected an object")
+                continue
+            v.keys(d, p, ("n", "at", "from", "to", "subject", "body", "instructions", "prose", "basedOn", "request"),
+                   ("n", "at", "from", "body"))
+            if d.get("n") != i:
+                v.err(_join(p, "n"), f"expected {i}")
+            for k in ("at", "from", "to", "subject", "body", "instructions", "prose"):
+                v.string(d, k, p)
+            v.integer(d, "basedOn", p, minimum=1)
+            v.integer(d, "request", p, minimum=1)
 
 
 def main(argv):

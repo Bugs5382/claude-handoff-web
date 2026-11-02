@@ -117,7 +117,8 @@
         "id": "D2",
         "title": "Remove it from monitoring"
       }
-    ]
+    ],
+    "drafts": true
   },
   "steps": [
     {
@@ -128,6 +129,27 @@
         }
       },
       "at": "2026-01-05T09:00:00+00:00"
+    },
+    {
+      "email": {
+        "id": "A1",
+        "instructions": "Tell the branch managers why changes stop on Friday",
+        "prose": "Plain and friendly",
+        "subject": "Why changes stop on Friday",
+        "body": "Hello all,\n\nWe're moving the Harbor site to a new core this weekend, so nothing on the network changes from Friday 18:00 until the move is checked.\n\nThanks for your patience."
+      },
+      "at": "2026-01-05T09:10:00+00:00"
+    },
+    {
+      "email": {
+        "id": "A1",
+        "instructions": "Make it shorter and say when it ends",
+        "prose": "Brief",
+        "basedOn": 1,
+        "subject": "Network freeze from Friday",
+        "body": "Hello all,\n\nNo network changes from Friday 18:00 until the new core is checked, likely Sunday.\n\nThanks."
+      },
+      "at": "2026-01-05T09:20:00+00:00"
     }
   ]
 }

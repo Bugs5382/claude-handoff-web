@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { BarDelivery } from "@/elements/Delivery";
+import { EmailDraft } from "@/elements/EmailDraft";
 import { Footer } from "@/elements/Footer";
 import { Held } from "@/elements/Held";
 import { History } from "@/elements/History";
@@ -119,6 +120,13 @@ export function Page() {
     if (!(await flush())) { alert("Can't send yet: the answers aren't saved. Try again once it says Saved."); return; }
     try { await postPage("/send", { kind: "send", phase: id, results: results() }); await redraw(); } catch (e) { alert(`Couldn't send: ${(e as Error).message}. Use Copy results instead.`); }
   };
+  const emailFor = (it: ItemDef) => {
+    const versions = p.emails?.[it.id] ?? [];
+    if (!p.drafts && !versions.length) return undefined;
+    const asked = p.submissions.filter(s => s.kind === "email" && s.items.includes(it.id) && s.state !== "failed").length;
+    return <EmailDraft id={it.id} versions={versions} waiting={asked > versions.length} to={to}
+      onAsk={async ask => { await postPage("/send", { kind: "email", items: [it.id], ...ask }); await redraw(); }} />;
+  };
   const blocker = async (it: ItemDef, note: string) => {
     const cur = local[it.id] ?? {};
     set(it.id, { ...cur, n: note, blocker: true });
@@ -175,7 +183,7 @@ export function Page() {
   const sendDone = !!sub && !unsent;
   const openItems = c.openIds.map(id => { const it = p.items.find(x => x.id === id) as ItemDef; return { id, title: it.title }; });
   const choicePage = choices.length > 0 && !model.kinds.some(k => k.kind === "ync");
-  const lastSend = [...p.submissions].reverse().find(s => s.kind !== "restart");
+  const lastSend = [...p.submissions].reverse().find(s => s.kind !== "restart" && s.kind !== "email");
   const delivery = sends ? <BarDelivery dl={lastSend ? deliveryOf(data, lastSend) : null} onCopy={copy} /> : undefined;
   const closed = p.rounds.filter(x => x.closed);
   const rows = closed.map(round => {
@@ -195,7 +203,7 @@ export function Page() {
       {hidden.size > 0 && <div className="rvdone">{hidden.size} approved and locked. They stay in Copy results.</div>}
       <Round data={data} local={local} sends={sends} held={held} goTo={goTo} sendPhase={id => void sendPhase(id)} item={(it, n) => (
         <Item key={it.id} item={it} n={n} risk={p.kind === "round"} type={typeOf(p, it)} state={data.states[it.id]} value={local[it.id] ?? {}} blockedBy={blocked[it.id]} held={held.has(it.id)}
-          handled={!!r.handled?.[it.id]} entries={itemEntries(data, it.id)} diffs={data.diffs} build={p.build} choices={p.options?.choices} defaultChoice={p.options?.default}
+          handled={!!r.handled?.[it.id]} entries={itemEntries(data, it.id)} email={emailFor(it)} diffs={data.diffs} build={p.build} choices={p.options?.choices} defaultChoice={p.options?.default}
           blockerLabel={sends ? "Blocker: send now" : "Blocker: copy now"}
           blockerTitle={`Something stops you testing or using it: ${sends ? "send this one item to" : "copy this one item and paste it to"} ${to} straight away`}
           isItem={id => p.items.some(x => x.id === id) || !!data.phases[id]} goTo={goTo} onChange={next => set(it.id, next)} onBlocker={note => void blocker(it, note)} />

@@ -252,6 +252,24 @@ const seg = (doc, id, v) => card(doc, id).querySelector('.seg button[data-v="' +
     eq(ph.rounds[0].answers.A2.answer, "risk");
   });
 
+  await t("email draft: versions keep what produced them, asking goes to the agent and locks nothing", async () => {
+    const { win, doc } = await load("/demo/sample-round-phases");
+    const box = card(doc, "A1").querySelector(".email");
+    const vers = box.querySelectorAll(".email-vers button"); eq(vers.length, 2);
+    match(box.textContent, /Asked for: Make it shorter/); match(box.querySelector("pre").textContent, /No network changes/);
+    click(vers[0]);
+    match(box.textContent, /Asked for: Tell the branch managers/); match(box.querySelector("pre").textContent, /Hello all,\n\nWe're moving/);
+    click(card(doc, "A2").querySelector(".email-open"));
+    const form = card(doc, "A2").querySelector(".email-form");
+    ok(form.querySelector(".email-send").disabled, "it needs instructions");
+    typeIn(form.querySelector("textarea"), "Explain why the staging matters");
+    click(form.querySelector(".email-send"));
+    await until(() => w().document.querySelector('[data-email="A2"] .email-wait'), "the ask to land");
+    ok(!seg(w().document, "A2", "yes").disabled, "nothing locked");
+    const ph = await pageFile("demo/sample-round-phases");
+    const sub = ph.submissions[ph.submissions.length - 1]; eq(sub.kind, "email"); eq(sub.items[0], "A2"); eq(sub.instructions, "Explain why the staging matters");
+  });
+
   await t("round single: Accept risk on one set of items, sent from the bar", async () => {
     const { doc, bar } = await load("/demo/sample-round-single");
     ok(bar.querySelector(".send-btn")); ok(!doc.querySelector(".phase"));

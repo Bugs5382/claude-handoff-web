@@ -11,6 +11,8 @@
   page.py wait <agent> [--timeout S] [--poll]     block until a submission is in _inbox/<agent>/, print the files
                                                   (blockers first) and exit; exit 3 on --timeout with nothing
   page.py hook <agent>                            one line when the inbox has untaken files or nothing listens
+  page.py email <page> <id> --from AGENT [--request N] [--subject S] [--to T] BODY
+                                                  a draft comes back: the next version on that item
   page.py samples <folder> [--route AGENT]        load the sample pages into a folder, or reset them
   page.py convert <page>.html [--print]           turn a review.js page into a page file, importing its saved
                                                   answers and round history; --print shows the definition only
@@ -534,6 +536,11 @@ def _entries(pairs, items, by, at):
             for iid, (answer, note) in pairs.items()}
 
 
+def cmd_email(a):
+    n = pagefile.add_email(page_path(a.root, a.page), a.item, a.sender, a.subject, a.body, to=a.to, request=a.request)
+    print(f"version {n}")
+
+
 def cmd_samples(a):
     import samples
     for path in samples.load(os.path.join(a.root, a.folder), route=a.route):
@@ -679,6 +686,15 @@ def build_parser():
     p = sub.add_parser("hook")
     p.add_argument("agent")
     p.set_defaults(fn=cmd_hook)
+    p = sub.add_parser("email")
+    p.add_argument("page")
+    p.add_argument("item")
+    p.add_argument("--from", dest="sender", required=True)
+    p.add_argument("--request", type=int)
+    p.add_argument("--subject")
+    p.add_argument("--to")
+    p.add_argument("body")
+    p.set_defaults(fn=cmd_email)
     p = sub.add_parser("samples")
     p.add_argument("folder")
     p.add_argument("--route")

@@ -19,8 +19,8 @@ from datetime import datetime
 from schema import DEFAULT_TYPE, SCHEMA, TYPE_ANSWERS, validate
 
 MAX_BYTES = 2 * 1024 * 1024
-SERVER_KEYS = ("rev", "rounds", "thread", "submissions", "route")
-DEFINITION_KEYS = ("schema", "kind", "title", "summary", "build", "reset", "status", "options", "items", "phases")
+SERVER_KEYS = ("rev", "rounds", "thread", "submissions", "route", "emails")
+DEFINITION_KEYS = ("schema", "kind", "title", "summary", "build", "reset", "status", "options", "items", "phases", "drafts")
 DONE = ("yes", "risk")
 
 
@@ -300,6 +300,28 @@ def reply(path, item_id, frm, text, *, action=None, reason=None, ref=None, now=N
         return entry["n"]
 
 
+def add_email(path, item_id, frm, subject, body, *, to=None, request=None, now=None):
+    """A draft came back: the next version on its item, with what produced it. Nothing locks or unlocks. Returns its number."""
+    at = now or now_iso()
+    with _locked(path) as p:
+        doc = load(p)
+        if item_id not in _items_by_id(doc):
+            raise PageError(f"{item_id}: no item {item_id} on this page")
+        versions = doc.setdefault("emails", {}).setdefault(item_id, [])
+        entry = {"n": len(versions) + 1, "at": at, "from": frm, "body": body}
+        for k, val in (("subject", subject), ("to", to), ("request", request)):
+            if val is not None:
+                entry[k] = val
+        if request is not None:
+            asked = doc["submissions"][request - 1]
+            for k in ("instructions", "prose", "basedOn"):
+                if k in asked:
+                    entry[k] = asked[k]
+        versions.append(entry)
+        _commit(p, doc)
+        return entry["n"]
+
+
 def import_rounds(path, rounds):
     """Replace a new page's empty round 1 with converted history plus the open round. Returns the rev."""
     with _locked(path) as p:
@@ -333,6 +355,9 @@ def add_submission(path, record, *, now=None):
         sub = {"n": n, "kind": record["kind"], "at": now or now_iso(), "to": record["to"],
                "round": doc["rounds"][-1]["round"], "rev": doc["rev"], "items": list(record.get("items", [])),
                "file": record["file"].replace("{n}", str(n)), "state": "sent"}
+        for k in ("instructions", "prose", "basedOn"):
+            if record.get(k):
+                sub[k] = record[k]
         doc["submissions"].append(sub)
         _commit(p, doc)
         return sub

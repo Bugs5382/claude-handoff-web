@@ -102,7 +102,7 @@ export const cpName = (cp: string): string => { const t = cp.replace(/[-_]+/g, "
 /** Where a Send, Blocker or Restart stands. */
 export function deliveryOf(data: PageData, s: Submission): Delivery {
   const to = s.to ?? data.route.to;
-  const replies = Object.values(data.page.thread).flat().filter(x => x.at > s.at).sort((a, b) => a.at.localeCompare(b.at));
+  const replies = Object.values(data.page.thread ?? {}).flat().filter(x => x.at > s.at).sort((a, b) => a.at.localeCompare(b.at));
   const reply = replies[replies.length - 1];
   const restart = data.page.rounds.find(r => r.round === s.round)?.restart ?? "";
   const label = s.kind === "restart" ? "Restarted from " + cpName(restart) : s.kind === "blocker" ? "Blocker sent" : "Sent";

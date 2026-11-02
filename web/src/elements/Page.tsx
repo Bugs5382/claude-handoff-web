@@ -18,6 +18,7 @@ import { actToast, returnSoon } from "@/lib/finish";
 import { folder, folderPages, folderUrl } from "@/lib/howto";
 import { DONE, blockers, count, deliveryOf, heldBy, heldIds, openRound, typeOf, type CountItem } from "@/lib/model";
 import { itemActions, pageActions, templates } from "@/lib/custom";
+import { momentsFor, play } from "@/lib/moments";
 import { inline } from "@/lib/text";
 import { tours } from "@/lib/tour";
 import { usePage } from "@/lib/usePage";
@@ -73,6 +74,12 @@ export function Page() {
     if (f) setTimeout(() => f.focus({ preventScroll: true }), 400);
   }, []);
 
+  const seen = useRef<PageData | null>(null);
+  useEffect(() => {
+    if (!data) return;
+    play(momentsFor(seen.current, data));
+    seen.current = data;
+  }, [data]);
   useLayoutEffect(() => {
     if (!data) return;
     document.dispatchEvent(new CustomEvent("handoff:page", { detail: { data } }));

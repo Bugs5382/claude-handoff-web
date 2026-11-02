@@ -47,6 +47,7 @@ SCENARIOS = [
     "links: browsing stays in this tab, and a link inside an item opens a new one",
     "tour: started by the person, walks real controls on each page type, and remembers it's been seen",
     "bar: the longest count stays on one line beside a picked-up status, with the full text on hover",
+    "moments: each thing that happens gets its own, and the first draw has none",
     "bar: one row when it fits, a clean split when it does not, and no control ever wraps",
     "finished page: green bar and back link; Copy results goes back to the folder",
     "copy results keeps the Copy results format",
@@ -157,7 +158,7 @@ def write_pages(root):
     pagefile.reply(t2, "r1", "app", "Ready to look at again.", action="reopen", reason="fixed in #70", now="2026-10-26T08:03:00-04:00")
     pagefile.reply(t2, "r1", "app", "The build is up.", action="unblock", now="2026-10-26T08:04:00-04:00")
     pagefile.reply(t2, "r1", "app", "The tablet layout stays as it is.", action="wontfix", now="2026-10-26T08:05:00-04:00")
-    for name in ("pf-dlv-sent", "pf-dlv-taken", "pf-dlv-replied", "pf-held", "pf-held-deaf", "pf-held-after", "pf-reopened"):
+    for name in ("pf-moment", "pf-dlv-sent", "pf-dlv-taken", "pf-dlv-replied", "pf-held", "pf-held-deaf", "pf-held-after", "pf-reopened"):
         w(demo / f"{name}.json", review(name), now=T0)
         pagefile.set_route(demo / f"{name}.json", "app", "send")
     pagefile.set_route(demo / "pf-held-deaf.json", "nobody", "send")

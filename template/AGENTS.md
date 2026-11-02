@@ -39,6 +39,32 @@ template's `docs/page-types.md`.
   deleted. Don't recreate it unless asked.
 - Before you replace a file, copy it to its folder's `_old/`. Files in `_old/` are pruned after 7 days.
 
+## Choosing a page
+
+Full walk-through with a network migration: `_site/GUIDE.md`. Pick the `kind` by what the person has to do:
+
+- `review`: approve a design, plan or text. `checklist`: sign off delivered work on a `build`. `journey`: steps run in order, with checkpoints.
+- `backlog`: pick from a list. `questions`: open questions. `reference` and `status`: reading only.
+- `round`: a set of items to answer and send, with Accept risk. Without `phases` it's round single, sent from the bar. With `phases` it's round phases: phases `A`, `B`, steps `A1`, `A2`, and a Send per phase.
+- Item types mix on a page: `section`, `check`, `step`, `screen`, `contract`, `diff`, `question`, `choice`, `info`.
+- A phase's or item's `dependsOn` can name a phase or a step. Use it to say what waits on what.
+- `"drafts": true` adds Generate an email to each item's More. `"deck": true` adds Build a deck to the bar's More.
+- Run `python3 _site/page.py check <page>` before you hand a page over.
+
+## When something lands in your inbox
+
+Each file in `_inbox/<agent>/` has a `kind`. Blockers first.
+
+- `send`: the person answered and these items are locked. Act, then reply under each item with `page.py reply`. A reply under a No or Changes clears it, and the note stays in its history. Change the item with `page.py set` if the data changed.
+- `blocker`: one item is stopping them. Deal with it now.
+- `email`: write the email from `recipient`, `ask`, `tone` and `context`, which holds the step, what changed between rounds, and the comments. For `change`, start from version `basedOn`. Answer with `page.py email <page> <id> --from <agent> --request <n> --subject "..." "body"`. This doesn't answer or lock the item.
+- `deck`: build it from `framing` and `items`, which are only the final Yes and Accept risk items. Save it beside the page and reply under `_page` with the link.
+- `restart`: reset the environment to the checkpoint.
+
+## Extending the site
+
+Everything custom goes in `custom/`, which no update touches, with `htm` templates and no build. `_site/CUSTOM.md` lists the elements (`Page`, `Round`, `Phase`, `Item`, `ItemMore`, `Answer`, `Button`, `Chip`, `EmailDraft`, `Thread`, `History`, `Restart`, `Footer`, `JumpBar`, `OpenIds`, `Blocks`, `TourButton`) and what stays stable. Never edit `_site/`: an update replaces it. Custom buttons and links go in the More menus as slots, never on the bar.
+
 ## Reviews
 
 - Each item answers its own way: Yes / No / Changes (Changes needs a note), Skipped on checks and steps, the

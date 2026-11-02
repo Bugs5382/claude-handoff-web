@@ -53,6 +53,7 @@ Then open `http://127.0.0.1:8000/` (host and port come from `site.json`).
 - 🧱 **[Page types](docs/page-types.md):** every kind of page an agent makes, with a JSON example of each.
 - 🛠️ **[Operating the site](docs/operating.md):** config, endpoints, Stale, `_old/` pruning, the no-git rule.
 - 🗂️ **[Page files](template/_site/PAGE-FILE.md):** the JSON page format, the writer, `page.py` and the renderer.
+- 📘 **[Operator guide](template/_site/GUIDE.md):** what a person presses, what comes back and what Claude does, walked through with a network migration.
 - 🧩 **[Custom pages](template/_site/CUSTOM.md):** `custom/` survives every update, and its templates use the same elements with no build.
 - 🔌 **[Page API](template/_site/PAGE-API.md):** page files over HTTP, Send and Blocker, and the agent's inbox.
 - 💾 **[Save API](template/_site/SAVE-API.md):** how HTML pages that aren't converted yet store answers.

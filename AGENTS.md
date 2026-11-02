@@ -32,6 +32,7 @@ attributes in `template/_site/README.md`, the save API in `template/_site/SAVE-A
   `gen-index.py`, and the instance `CLAUDE.md`/`AGENTS.md`
 - `web/` - the React app (Vite, TypeScript): named elements in `web/src/elements/`. `npm run build` there writes
   `template/_site/app/app.js`, which is committed, so installing needs only Python
+- `template/_site/GUIDE.md` - the operator guide; `template/CLAUDE.md` and `template/AGENTS.md` carry the rules a session reads in an instance. Keep both current when a page kind, item type, element or control changes
 - `template/custom/` - the empty folder that survives every update; `template/_site/CUSTOM.md` is its contract
 - `example/` - fake `site.json` and demo folders (a review page, a backlog, a checklist, the guide copies)
 - `docs/` - quick start, page types, operating notes

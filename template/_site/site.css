@@ -304,6 +304,12 @@ body.site th { background: var(--soft-2); font-weight: 600; }
 .settled-tg { margin-left: 8px; font: inherit; font-size: .85em; }
 .rvcard[data-answer="risk"], .rv.risk { border-color: var(--chg-edge); }
 .st.a-risk { background: var(--chg-bg); color: var(--chg); }
+.item-more { position: relative; display: inline-block; margin-left: 8px; }
+.item-more-btn { min-height: 28px; padding: 0 10px; font: 600 13px var(--font); border: 1px solid var(--line-2); border-radius: var(--radius-sm); background: var(--card); color: var(--ink); cursor: pointer; }
+.item-more-menu { position: absolute; right: 0; top: calc(100% + 4px); z-index: 10; display: flex; flex-direction: column; min-width: 200px; padding: 6px; background: var(--card); border: 1px solid var(--line-2); border-radius: 12px; box-shadow: var(--pop-shadow); }
+.item-more-menu[hidden] { display: none; }
+.item-more-menu button { min-height: var(--tap); padding: 0 14px; font: 15px var(--font); text-align: left; border: 0; border-radius: 8px; background: var(--card); color: var(--ink); cursor: pointer; }
+.item-more-menu button:hover { background: var(--soft); }
 .email { margin: 12px 0; padding: 12px 14px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--soft); }
 .email-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .email-h { font-weight: 600; }

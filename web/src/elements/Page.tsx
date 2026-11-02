@@ -15,7 +15,7 @@ import { wireDiffs } from "@/lib/diffs";
 import { actToast, returnSoon } from "@/lib/finish";
 import { folder, folderPages, folderUrl } from "@/lib/howto";
 import { DONE, blockers, count, deliveryOf, heldBy, heldIds, openRound, typeOf, type CountItem } from "@/lib/model";
-import { templates } from "@/lib/custom";
+import { itemActions, templates } from "@/lib/custom";
 import { inline } from "@/lib/text";
 import { usePage } from "@/lib/usePage";
 import type { ItemDef, Locals, PageData } from "@/lib/types";
@@ -126,7 +126,7 @@ export function Page() {
     const versions = p.emails?.[it.id] ?? [];
     if (!p.drafts && !versions.length) return undefined;
     const asked = p.submissions.filter(s => s.kind === "email" && s.items.includes(it.id) && s.state !== "failed").length;
-    return <EmailDraft id={it.id} versions={versions} waiting={asked > versions.length} to={to}
+    return (asking: boolean, close: () => void) => <EmailDraft id={it.id} versions={versions} waiting={asked > versions.length} to={to} asking={asking} onClose={close}
       onAsk={async ask => { await postPage("/send", { kind: "email", items: [it.id], ...ask }); await redraw(); }} />;
   };
   const deck = async () => {
@@ -211,7 +211,8 @@ export function Page() {
 
   const renderItem = (it: ItemDef, n: number | string) => (
         <Item key={it.id} item={it} n={n} risk={p.kind === "round"} type={typeOf(p, it)} state={data.states[it.id]} value={local[it.id] ?? {}} blockedBy={blocked[it.id]} held={held.has(it.id)}
-          handled={!!r.handled?.[it.id]} entries={itemEntries(data, it.id)} email={emailFor(it)} diffs={data.diffs} build={p.build} choices={p.options?.choices} defaultChoice={p.options?.default}
+          handled={!!r.handled?.[it.id]} entries={itemEntries(data, it.id)} email={emailFor(it)} emailLabel={p.drafts ? (p.emails?.[it.id]?.length ? "Ask for another draft" : "Draft email") : undefined}
+          actions={itemActions.map(make => make(it, data)).filter(a => a !== null)} diffs={data.diffs} build={p.build} choices={p.options?.choices} defaultChoice={p.options?.default}
           blockerLabel={sends ? "Blocker: send now" : "Blocker: copy now"}
           blockerTitle={`Something stops you testing or using it: ${sends ? "send this one item to" : "copy this one item and paste it to"} ${to} straight away`}
           isItem={id => p.items.some(x => x.id === id) || !!data.phases[id]} goTo={goTo} onChange={next => set(it.id, next)} onBlocker={note => void blocker(it, note)} />

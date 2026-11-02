@@ -9,14 +9,16 @@ export interface EmailDraftProps {
   /** How many asks the agent hasn't answered yet. */
   waiting: boolean;
   to: string;
+  /** The form is open. The item's More button opens it. */
+  asking: boolean;
+  onClose: () => void;
   /** Sends what's asked for. basedOn is the version it starts from. */
   onAsk: (ask: { instructions: string; prose: string; basedOn?: number }) => Promise<void>;
 }
 
 /** An item's email draft: every version, what produced each one, and asking for another. Answers never touch it. */
-export function EmailDraft({ id, versions, waiting, to, onAsk }: EmailDraftProps) {
+export function EmailDraft({ id, versions, waiting, to, asking, onClose, onAsk }: EmailDraftProps) {
   const [picked, setPicked] = useState<number | null>(null);
-  const [asking, setAsking] = useState(false);
   const [instructions, setInstructions] = useState("");
   const [prose, setProse] = useState("");
   const [busy, setBusy] = useState(false);
@@ -26,9 +28,10 @@ export function EmailDraft({ id, versions, waiting, to, onAsk }: EmailDraftProps
     setBusy(true);
     try {
       await onAsk({ instructions: instructions.trim(), prose: prose.trim(), basedOn: shown?.n });
-      setInstructions(""); setProse(""); setAsking(false);
+      setInstructions(""); setProse(""); onClose();
     } catch (e) { alert("Couldn't ask for a draft: " + (e as Error).message); } finally { setBusy(false); }
   };
+  if (!shown && !waiting && !asking) return null;
   return (
     <div className="email" data-email={id}>
       {shown && <>
@@ -43,12 +46,12 @@ export function EmailDraft({ id, versions, waiting, to, onAsk }: EmailDraftProps
           <button type="button" className="copy-cmd" onClick={async e => { const b = e.currentTarget; await navigator.clipboard.writeText(shown.body); b.textContent = "Copied"; setTimeout(() => { b.textContent = "Copy"; }, 1500); }}>Copy</button></div>
       </>}
       {waiting && <p className="muted email-wait">Waiting for {to} to send the draft.</p>}
-      {asking ? <div className="email-form">
+      {asking && <div className="email-form">
         <label>How to draft it<textarea rows={3} value={instructions} placeholder="Based on this step, what should the email do?" onChange={e => setInstructions(e.target.value)} /></label>
         <label>The prose you want<textarea rows={2} value={prose} placeholder="For example: plain, friendly, under 100 words" onChange={e => setProse(e.target.value)} /></label>
         <button type="button" className="email-send" disabled={busy || !instructions.trim()} onClick={() => void ask()}>{shown ? `Ask for another from version ${shown.n}` : "Ask for a draft"}</button>
-        <button type="button" className="email-cancel" onClick={() => flushSync(() => setAsking(false))}>Cancel</button>
-      </div> : <button type="button" className="email-open" onClick={() => flushSync(() => setAsking(true))}>{shown ? "Ask for another draft" : "Draft email"}</button>}
+        <button type="button" className="email-cancel" onClick={onClose}>Cancel</button>
+      </div>}
     </div>
   );
 }

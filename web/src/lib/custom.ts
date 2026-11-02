@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import type { ItemAction } from "@/elements/ItemMore";
 import type { ItemDef, Locals, PageData } from "@/lib/types";
 
 export interface TemplateProps {
@@ -8,6 +9,9 @@ export interface TemplateProps {
   sendPhase: (id: string) => void;
   goTo: (id: string) => void;
 }
+
+/** Extra per-item actions, added by custom/custom.js. Each gets the item and returns an action, or null to skip it. */
+export const itemActions: ((it: ItemDef, data: PageData) => ItemAction | null)[] = [];
 
 /** Custom templates by name, added by custom/custom.js. */
 export const templates: Record<string, (props: TemplateProps) => ReactNode> = {};

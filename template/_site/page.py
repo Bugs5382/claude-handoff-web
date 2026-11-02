@@ -491,7 +491,10 @@ def convert_html(src, name, manifest_entry, warn_out):
         if intro_blocks:
             items.insert(0, {"id": "intro", "type": "info", "title": "About this page", "body": intro_blocks})
     seen = {}
-    for it, raw in zip(items, _raw_ids(main, battrs, items), strict=True):
+    raws = _raw_ids(main, battrs, items)
+    if len(raws) != len(items):
+        raise ValueError(f"{name}: {len(items)} items but {len(raws)} ids")
+    for it, raw in zip(items, raws):
         if it["id"] in seen:
             raise CliError(f"{name}: ids {seen[it['id']]} and {raw} only differ by case")
         seen[it["id"]] = raw

@@ -538,10 +538,12 @@ def _handled(v, handled, p):
             if not isinstance(h, dict):
                 v.err(hp, "expected an object")
                 continue
-            v.keys(h, hp, ("answer", "note", "by", "at", "handled", "via"), ("answer", "at", "handled", "via"))
+            v.keys(h, hp, ("answer", "note", "by", "at", "handled", "via", "blocker"), ("answer", "at", "handled", "via"))
             for k in ("answer", "note", "by", "at", "handled"):
                 v.string(h, k, hp)
             v.choice(h, "via", hp, ("reply", "definition"))
+            if "blocker" in h and not isinstance(h["blocker"], bool):
+                v.err(_join(hp, "blocker"), "expected true or false")
 
 
 def _thread(v, thread):
@@ -581,12 +583,12 @@ def _submissions(v, subs):
             v.err(p, "expected an object")
             continue
         v.keys(s, p, ("n", "kind", "at", "to", "round", "rev", "items", "file", "state", "takenAt", "released",
-                            "recipient", "ask", "tone", "change", "basedOn", "framing"), ("n", "kind", "at"))
+                            "recipient", "ask", "tone", "change", "basedOn", "framing", "handled"), ("n", "kind", "at"))
         if s.get("n") != i:
             v.err(_join(p, "n"), f"expected {i}")
         v.choice(s, "kind", p, SUBMISSION_KINDS)
         v.string(s, "at", p, required=True)
-        for k in ("to", "file", "takenAt"):
+        for k in ("to", "file", "takenAt", "handled"):
             v.string(s, k, p)
         v.integer(s, "round", p, minimum=1)
         v.integer(s, "rev", p, minimum=0)

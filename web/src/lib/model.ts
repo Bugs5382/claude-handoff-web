@@ -34,7 +34,7 @@ export function toLocal(data: PageData): Locals {
   }
   for (const [id, s] of Object.entries(data.states)) if (s.hidden) out[id] = settledLocal(p, id, s.answer, out[id]);
   for (const s of p.submissions) {
-    if (s.kind !== "blocker" || s.round !== r.round) continue;
+    if (s.kind !== "blocker" || s.round !== r.round || s.handled) continue;
     for (const id of s.items) out[id] = { v: "", n: "", ...out[id], blocker: true };
   }
   return out;

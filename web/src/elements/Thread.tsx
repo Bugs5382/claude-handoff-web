@@ -19,8 +19,9 @@ export const replyEntry = (x: Reply): Entry => ({
 /** An item's answers from past rounds, what the agent handled, and the replies. */
 export function itemEntries(data: PageData, id: string): Entry[] {
   const out: Entry[] = [];
-  const answer = (a: { answer: string; note?: string; at?: string }, round: number): Entry => ({
-    kind: "answer", at: a.at ?? "", who: "You", round, action: a.answer, tag: ANS_LABEL[a.answer] ?? a.answer, tagClass: ANS_CLASS[a.answer] ?? "a-other", html: inline(a.note).replace(/<[^>]+>/g, "") });
+  const answer = (a: { answer: string; note?: string; at?: string; blocker?: boolean }, round: number): Entry => ({
+    kind: "answer", at: a.at ?? "", who: "You", round, action: a.blocker ? "blocker" : a.answer,
+    tag: a.blocker ? "Blocker" : ANS_LABEL[a.answer] ?? a.answer, tagClass: a.blocker ? "a-no" : ANS_CLASS[a.answer] ?? "a-other", html: inline(a.note).replace(/<[^>]+>/g, "") });
   for (const r of data.page.rounds.slice(0, -1)) { const a = r.answers[id]; if (a && (a.answer || a.note)) out.push(answer(a, r.round)); }
   for (const r of data.page.rounds) for (const h of r.handled?.[id] ?? []) {
     out.push(answer(h, r.round));

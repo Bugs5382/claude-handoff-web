@@ -275,6 +275,9 @@ raises `PageError`, whose `errors` list says which item and why.
 - A sent No or Changes clears once the agent replies under the item or changes it. It moves to the round's `handled`
   list, so an old note can't go out again, shows in the item's thread with what the agent did, and the item is open
   again marked "Updated: answer again". A reply about the whole page clears nothing.
+- A Blocker clears the same way once the agent replies under its item or changes it. The note it carried moves to
+  `handled` with `"blocker": true`, the Blocker submission gets a `handled` time, and the item is no longer
+  flagged as a blocker. A note typed after the Blocker went stays, since it was never sent.
 - An item comes back open when a reply reopens it, or when its definition changes after its last Yes
   ("changed since round N"). A reopen nobody has answered carries into the next round. A reopened Yes shows
   unanswered, and one Yes clears it.

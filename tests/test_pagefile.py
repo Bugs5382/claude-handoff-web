@@ -452,6 +452,48 @@ def test_a_reply_elsewhere_leaves_a_sent_changes_alone(path):
     assert rnd["answers"]["s2"]["answer"] == "changes" and "handled" not in rnd
 
 
+def blocked(path, iid="s2", note="Contract missing", answer=""):
+    make(path)
+    pagefile.save_answers(path, {iid: {"answer": answer, "note": note}}, by="me", now=T0)
+    return pagefile.add_submission(path, {"kind": "blocker", "to": "ops", "items": [iid], "file": "0-b.json"}, now=T1)
+
+
+def test_a_reply_under_a_blocker_clears_its_note_and_keeps_it_as_handled_history(path):
+    blocked(path)
+    pagefile.reply(path, "s2", "ops", "Added the contract.", now=T2)
+    doc = pagefile.load(path)
+    rnd = doc["rounds"][-1]
+    assert "s2" not in rnd["answers"], "the blocker note can't go out again"
+    h = rnd["handled"]["s2"][0]
+    assert h["note"] == "Contract missing" and h["via"] == "reply" and h["handled"] == T2 and h["blocker"] is True
+    assert doc["submissions"][0]["handled"] == T2, "the item stops being a blocker"
+    assert pagefile.item_states(doc)["s2"] == {"answer": "", "hidden": False, "reopened": None, "round": None}
+    assert schema.validate(doc) == []
+
+
+def test_a_reply_under_a_blocker_with_a_changes_answer_clears_both(path):
+    blocked(path, answer="changes", note="Move it")
+    pagefile.reply(path, "s2", "ops", "Moved.", now=T2)
+    rnd = pagefile.load(path)["rounds"][-1]
+    assert "s2" not in rnd["answers"] and rnd["handled"]["s2"][0]["answer"] == "changes"
+
+
+def test_a_reply_elsewhere_leaves_a_blocker_alone(path):
+    blocked(path)
+    pagefile.reply(path, "s1", "ops", "Unrelated.", now=T2)
+    doc = pagefile.load(path)
+    assert doc["rounds"][-1]["answers"]["s2"]["note"] == "Contract missing" and "handled" not in doc["submissions"][0]
+
+
+def test_a_note_typed_after_the_blocker_went_stays_but_the_blocker_is_handled(path):
+    blocked(path)
+    pagefile.save_answers(path, {"s2": {"answer": "", "note": "Also the SOW"}}, by="me", now=T2)
+    pagefile.reply(path, "s2", "ops", "Added the contract.", now="2026-10-26T08:30:00-04:00")
+    doc = pagefile.load(path)
+    assert doc["rounds"][-1]["answers"]["s2"]["note"] == "Also the SOW", "a newer note was never sent"
+    assert doc["submissions"][0]["handled"]
+
+
 def test_a_note_that_was_never_sent_is_not_handled(path):
     make(path)
     pagefile.save_answers(path, {"s2": {"answer": "changes", "note": "Move it"}}, by="me", now=T0)

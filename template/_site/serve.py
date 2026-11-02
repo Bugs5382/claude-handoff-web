@@ -905,9 +905,11 @@ class Handler(SimpleHTTPRequestHandler):
                 raise ValueError("this page doesn't take email drafts")
             if not isinstance(items, list) or len(items) != 1:
                 raise ValueError("a draft is for exactly one item")
-            if not str(req.get("instructions") or "").strip():
-                raise ValueError("say how to draft it")
-            extra = {k: req[k] for k in ("instructions", "prose", "basedOn") if req.get(k)}
+            if not str(req.get("recipient") or "").strip():
+                raise ValueError("say who it's to")
+            if not str(req.get("ask") or req.get("change") or "").strip():
+                raise ValueError("say what you need from them")
+            extra = {k: req[k] for k in ("recipient", "ask", "tone", "change", "basedOn") if req.get(k)}
         if items is None and kind != "deck":
             held, states = pagefile.held_items(doc), pagefile.item_states(doc)
             items = [i for i in doc["rounds"][-1]["answers"] if i in ids and i not in held and not states.get(i, {}).get("hidden")]
@@ -934,9 +936,10 @@ class Handler(SimpleHTTPRequestHandler):
                 raise ValueError("a deck needs at least one Yes or Accept risk item")
             items, extra = [d["id"] for d in detail], {"framing": req["framing"]}
         results = req.get("results") if isinstance(req.get("results"), str) else ""
-        return self._submit(rel, path, cfg, kind, items, results, now_local(cfg), extra, detail)
+        context = pagefile.email_context(doc, items[0]) if kind == "email" else None
+        return self._submit(rel, path, cfg, kind, items, results, now_local(cfg), extra, detail, context)
 
-    def _submit(self, rel, path, cfg, kind, items, results, when, extra=None, detail=None):
+    def _submit(self, rel, path, cfg, kind, items, results, when, extra=None, detail=None, context=None):
         """Record the submission on the page, then write it to the route's inbox atomically."""
         doc = pagefile.load(path)
         route = page_route(cfg, rel.split("/")[0], doc)
@@ -957,6 +960,8 @@ class Handler(SimpleHTTPRequestHandler):
                    "results": results, **(extra or {})}
         if detail is not None:
             payload["items"] = detail
+        if context is not None:
+            payload["context"] = context
         idir = os.path.join(self.root, "_inbox", route["to"])
         try:
             os.makedirs(idir, exist_ok=True)

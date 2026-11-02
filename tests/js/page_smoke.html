@@ -39,7 +39,7 @@ const pageFile = async rel => (await (await fetch("/_page/" + rel, { cache: "no-
 const answers = async rel => { const p = await pageFile(rel); return p.rounds[p.rounds.length - 1].answers; };
 const card = (doc, id) => doc.querySelector('[data-review-question="' + id + '"]');
 // Types the way a person does, so React's own input handling sees it too.
-const win_css = doc => doc.defaultView.getComputedStyle(doc.querySelector(".draft-intro")).borderLeftWidth;
+const win_css = doc => doc.defaultView.getComputedStyle(doc.querySelector(".custom-progress")).borderLeftWidth;
 function typeIn(el, text) {
   const win = el.ownerDocument.defaultView;
   Object.getOwnPropertyDescriptor(win[el.tagName === "INPUT" ? "HTMLInputElement" : "HTMLTextAreaElement"].prototype, "value").set.call(el, text);
@@ -253,28 +253,39 @@ const seg = (doc, id, v) => card(doc, id).querySelector('.seg button[data-v="' +
     eq(ph.rounds[0].answers.A2.answer, "risk");
   });
 
-  await t("email draft: versions keep what produced them, asking goes to the agent and locks nothing", async () => {
+  await t("email: reads as To, Subject and Body, says what to enter, carries the step, and locks nothing", async () => {
     const { win, doc } = await load("/demo/sample-round-phases");
-    const box = card(doc, "A1").querySelector(".email");
+    const box = card(doc, "A2").querySelector(".email");
     const vers = box.querySelectorAll(".email-vers button"); eq(vers.length, 2);
-    match(box.textContent, /Asked for: Make it shorter/); match(box.querySelector("pre").textContent, /No network changes/);
+    eq(Array.from(box.querySelectorAll(".email-label")).map(x => x.textContent).join(","), "To,Subject,Body");
+    eq(box.querySelectorAll(".email-part .copy-cmd").length, 3, "a copy button on each");
+    match(box.textContent, /Switch inventory changed: check by Friday/);
     click(vers[0]);
-    match(box.textContent, /Asked for: Tell the branch managers/); match(box.querySelector("pre").textContent, /Hello all,\n\nWe're moving/);
-    ok(!card(doc, "A2").querySelector(".email"), "no draft control until it's asked for");
-    const more = card(doc, "A2").querySelector(".item-more-btn"), menu = card(doc, "A2").querySelector(".item-more-menu");
+    match(box.textContent, /sw-harbor-2 is at 192\.0\.2\.14, not 192\.0\.2\.12/);
+    ok(!card(doc, "A4").querySelector(".email"), "no email control until it's asked for");
+    const more = card(doc, "A4").querySelector(".item-more-btn"), menu = card(doc, "A4").querySelector(".item-more-menu");
     ok(menu.hidden, "the menu starts closed"); click(more); ok(!menu.hidden, "More pops it up");
+    eq(menu.querySelector('[data-action="draft-email"]').textContent, "Generate an email");
     click(menu.querySelector('[data-action="draft-email"]')); ok(menu.hidden, "picking closes it");
-    const form = card(doc, "A2").querySelector(".email-form");
-    ok(form.querySelector(".email-send").disabled, "it needs instructions");
-    match(card(doc, "A2").querySelector(".email-h").textContent, /^Generate an email$/);
-    match(form.querySelector(".email-help").textContent, /^Say what this email should do and how it should sound\./);
-    ok(card(doc, "A2").querySelector(".email-top .email-cancel"), "Cancel sits at the top, beside the versions");
-    typeIn(form.querySelector("textarea"), "Explain why the staging matters");
+    const form = card(doc, "A4").querySelector(".email-form");
+    match(form.querySelector(".email-help").textContent, /already has this step, what changed and the comments/);
+    ok(card(doc, "A4").querySelector(".email-top .email-cancel"), "Cancel sits at the top, beside the versions");
+    ok(form.querySelector(".email-send").disabled, "it needs who and what");
+    typeIn(form.querySelector("input"), "Whoever runs the Quay switches");
+    typeIn(form.querySelector("textarea"), "Grant access to the three devices");
     click(form.querySelector(".email-send"));
-    await until(() => w().document.querySelector('[data-email="A2"] .email-wait'), "the ask to land");
-    ok(!seg(w().document, "A2", "yes").disabled, "nothing locked");
+    await until(() => w().document.querySelector('[data-email="A4"] .email-wait'), "the ask to land");
+    ok(!seg(w().document, "A4", "yes").disabled, "nothing locked");
+    eq(card(w().document, "A4").querySelector(".rvhead .st").textContent, "Open", "it doesn't answer the item");
     const ph = await pageFile("demo/sample-round-phases");
-    const sub = ph.submissions[ph.submissions.length - 1]; eq(sub.kind, "email"); eq(sub.items[0], "A2"); eq(sub.instructions, "Explain why the staging matters");
+    const sub = ph.submissions[ph.submissions.length - 1]; eq(sub.kind, "email"); eq(sub.items[0], "A4"); eq(sub.recipient, "Whoever runs the Quay switches");
+    const box2 = card(w().document, "A2").querySelector(".email");
+    click(box2.querySelector(".email-change"));
+    typeIn(box2.querySelector(".email-form textarea"), "Name the freeze date");
+    click(box2.querySelector(".email-form .email-send"));
+    await tick(200);
+    const last = (await pageFile("demo/sample-round-phases")).submissions.pop();
+    eq(last.change, "Name the freeze date"); eq(last.basedOn, 1, "from the version picked");
   });
 
   await t("deck: asks what you're building, sends only final Yes and Accept risk, and locks nothing", async () => {
@@ -293,13 +304,13 @@ const seg = (doc, id, v) => card(doc, id).querySelector('.seg button[data-v="' +
 
   await t("custom: a template from custom/ draws the page, on the same elements", async () => {
     const { doc } = await load("/demo/sample-custom");
-    ok(doc.querySelector(".draft-intro"), "the template ran"); ok(card(doc, "s1").querySelector(".email pre"), "the same email element");
+    match(doc.querySelector(".custom-progress").textContent, /^0 of 2 done/, "the template ran"); ok(card(doc, "s1").querySelector(".seg"), "on the same elements");
     eq(win_css(doc), "4px", "custom.css loaded after the base");
     const menu = card(doc, "s2").querySelector(".item-more-menu");
     ok(menu.querySelector('[data-action="copy-title"]'), "a custom action joins the same menu");
     click(card(doc, "s2").querySelector(".item-more-btn"));
     click(menu.querySelector('[data-action="copy-title"]')); await tick(30);
-    eq(doc.defaultView.__clip, "Warn the service desk about the cutover");
+    eq(doc.defaultView.__clip, "Book the change window");
   });
 
   await t("round single: Accept risk on one set of items, sent from the bar", async () => {

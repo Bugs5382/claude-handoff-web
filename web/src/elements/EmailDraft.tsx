@@ -3,35 +3,43 @@ import { flushSync } from "react-dom";
 import { stamp } from "@/lib/model";
 import type { EmailVersion } from "@/lib/types";
 
+export interface EmailAsk { recipient?: string; ask?: string; tone?: string; change?: string; basedOn?: number }
+
 export interface EmailDraftProps {
   id: string;
   versions: EmailVersion[];
-  /** How many asks the agent hasn't answered yet. */
+  /** An ask the agent hasn't answered yet. */
   waiting: boolean;
   to: string;
   /** The form is open. The item's More button opens it. */
   asking: boolean;
   onClose: () => void;
-  /** Sends what's asked for. basedOn is the version it starts from. */
-  onAsk: (ask: { instructions: string; prose: string; basedOn?: number }) => Promise<void>;
+  /** Sends what's asked for. The agent gets the step's data along with it. */
+  onAsk: (ask: EmailAsk) => Promise<void>;
 }
 
-/** An item's email draft: every version, what produced each one, and asking for another. Answers never touch it. */
+function Part({ label, text }: { label: string; text: string }) {
+  return <div className="email-part"><span className="email-label">{label}</span>
+    <div className="copyblk"><pre>{text}</pre>
+      <button type="button" className="copy-cmd" aria-label={"Copy " + label} onClick={async e => { const b = e.currentTarget; await navigator.clipboard.writeText(text); b.textContent = "Copied"; setTimeout(() => { b.textContent = "Copy"; }, 1500); }}>Copy</button></div></div>;
+}
+
+/** An item's generated email: every version as To, Subject and Body, and asking for one. It never touches the answer. */
 export function EmailDraft({ id, versions, waiting, to, asking, onClose, onAsk }: EmailDraftProps) {
   const [picked, setPicked] = useState<number | null>(null);
-  const [instructions, setInstructions] = useState("");
-  const [prose, setProse] = useState("");
+  const [recipient, setRecipient] = useState("");
+  const [need, setNeed] = useState("");
+  const [tone, setTone] = useState("");
+  const [changing, setChanging] = useState(false);
+  const [change, setChange] = useState("");
   const [busy, setBusy] = useState(false);
   const latest = versions[versions.length - 1];
   const shown = versions.find(v => v.n === picked) ?? latest;
-  const ask = async () => {
-    setBusy(true);
-    try {
-      await onAsk({ instructions: instructions.trim(), prose: prose.trim(), basedOn: shown?.n });
-      setInstructions(""); setProse(""); onClose();
-    } catch (e) { alert("Couldn't ask for the email: " + (e as Error).message); } finally { setBusy(false); }
-  };
   if (!shown && !waiting && !asking) return null;
+  const send = async (ask: EmailAsk, done: () => void) => {
+    setBusy(true);
+    try { await onAsk(ask); done(); } catch (e) { alert("Couldn't ask for the email: " + (e as Error).message); } finally { setBusy(false); }
+  };
   return (
     <div className="email" data-email={id}>
       <div className="email-top"><span className="email-h">{asking ? "Generate an email" : "Generated email"}</span>
@@ -41,20 +49,26 @@ export function EmailDraft({ id, versions, waiting, to, asking, onClose, onAsk }
           {asking && <button type="button" className="email-cancel" onClick={onClose}>Cancel</button>}
         </span>
       </div>
+      {asking && <div className="email-form">
+        <p className="email-help">Say who it's to and what you need from them. {to} already has this step, what changed and the comments, so don't retype them.</p>
+        <label>Who is it to?<input value={recipient} placeholder="For example: the network team" onChange={e => setRecipient(e.target.value)} /></label>
+        <label>What do you need from them?<textarea rows={2} value={need} placeholder="For example: confirm the updated switch list by Friday, or grant access to the three devices we couldn't reach" onChange={e => setNeed(e.target.value)} /></label>
+        <label>Tone<input value={tone} placeholder="For example: plain and friendly" onChange={e => setTone(e.target.value)} /></label>
+        <button type="button" className="email-send" disabled={busy || !recipient.trim() || !need.trim()} onClick={() => void send({ recipient: recipient.trim(), ask: need.trim(), tone: tone.trim() }, () => { setRecipient(""); setNeed(""); setTone(""); onClose(); })}>Generate email</button>
+      </div>}
       {shown && <>
         <p className="muted email-meta">Version {shown.n} from {shown.from}, {stamp(shown.at)}{shown.basedOn ? `, based on version ${shown.basedOn}` : ""}</p>
-        {shown.instructions && <p className="email-ask"><strong>Asked for:</strong> {shown.instructions}{shown.prose ? ` (${shown.prose})` : ""}</p>}
-        {(shown.to || shown.subject) && <p className="email-head">{shown.to && <>To: {shown.to}<br /></>}{shown.subject && <>Subject: {shown.subject}</>}</p>}
-        <div className="copyblk"><pre>{shown.body}</pre>
-          <button type="button" className="copy-cmd" onClick={async e => { const b = e.currentTarget; await navigator.clipboard.writeText(shown.body); b.textContent = "Copied"; setTimeout(() => { b.textContent = "Copy"; }, 1500); }}>Copy</button></div>
+        {(shown.ask || shown.change) && <p className="email-ask"><strong>Asked for:</strong> {shown.change ?? shown.ask}{shown.tone ? ` (${shown.tone})` : ""}</p>}
+        {shown.to && <Part label="To" text={shown.to} />}
+        {shown.subject && <Part label="Subject" text={shown.subject} />}
+        <Part label="Body" text={shown.body} />
+        {changing ? <div className="email-form">
+          <label>What should change?<textarea rows={2} value={change} placeholder="For example: shorter, and name the two new switches" onChange={e => setChange(e.target.value)} /></label>
+          <span className="email-tools"><button type="button" className="email-send" disabled={busy || !change.trim()} onClick={() => void send({ recipient: shown.to ?? "them", change: change.trim(), basedOn: shown.n }, () => { setChange(""); setChanging(false); })}>Generate a new version</button>
+            <button type="button" className="email-cancel" onClick={() => flushSync(() => setChanging(false))}>Cancel</button></span>
+        </div> : <button type="button" className="email-change" onClick={() => flushSync(() => setChanging(true))}>Change this</button>}
       </>}
       {waiting && <p className="muted email-wait">Waiting for {to} to send the email.</p>}
-      {asking && <div className="email-form">
-        <p className="email-help">Say what this email should do and how it should sound. {to} writes it from this step and it comes back here.</p>
-        <label>What should the email do?<textarea rows={3} value={instructions} placeholder="For example: tell the branch managers why changes stop on Friday" onChange={e => setInstructions(e.target.value)} /></label>
-        <label>How should it sound?<textarea rows={2} value={prose} placeholder="For example: plain, friendly, under 100 words" onChange={e => setProse(e.target.value)} /></label>
-        <button type="button" className="email-send" disabled={busy || !instructions.trim()} onClick={() => void ask()}>{shown ? `Generate another from version ${shown.n}` : "Generate email"}</button>
-      </div>}
     </div>
   );
 }

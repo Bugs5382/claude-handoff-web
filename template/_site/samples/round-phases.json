@@ -51,21 +51,29 @@
       },
       {
         "id": "A2",
-        "title": "New core staged at 198.51.100.1",
+        "title": "Access switch inventory is right",
         "body": [
           {
             "table": [
               [
-                "Device",
-                "Address"
+                "Switch",
+                "Address",
+                "Site"
               ],
               [
-                "core-a",
-                "198.51.100.1"
+                "sw-harbor-1",
+                "192.0.2.11",
+                "Harbor"
               ],
               [
-                "core-b",
-                "198.51.100.2"
+                "sw-harbor-2",
+                "192.0.2.12",
+                "Harbor"
+              ],
+              [
+                "sw-quay-1",
+                "192.0.2.21",
+                "Quay"
               ]
             ]
           }
@@ -78,6 +86,15 @@
           {
             "note": "Rollback takes 25 minutes.",
             "tone": "warn"
+          }
+        ]
+      },
+      {
+        "id": "A4",
+        "title": "Log in to every core device",
+        "body": [
+          {
+            "p": "Three devices at Quay refused the login: 198.51.100.31, .32 and .33. Generate an email to whoever can grant access."
           }
         ]
       },
@@ -127,30 +144,87 @@
         "A1": {
           "answer": "yes",
           "note": ""
+        },
+        "A2": {
+          "answer": "changes",
+          "note": "sw-harbor-2 looks wrong, and Quay is missing a switch"
         }
       },
       "at": "2026-01-05T09:00:00+00:00"
     },
     {
-      "email": {
-        "id": "A1",
-        "instructions": "Tell the branch managers why changes stop on Friday",
-        "prose": "Plain and friendly",
-        "subject": "Why changes stop on Friday",
-        "body": "Hello all,\n\nWe're moving the Harbor site to a new core this weekend, so nothing on the network changes from Friday 18:00 until the move is checked.\n\nThanks for your patience."
+      "send": [
+        "A1",
+        "A2"
+      ],
+      "at": "2026-01-05T09:30:00+00:00"
+    },
+    {
+      "reply": {
+        "id": "A2",
+        "text": "Re-verified against the live switches. sw-harbor-2 moved to 192.0.2.14 and sw-quay-2 was missing.",
+        "action": "fixed"
       },
-      "at": "2026-01-05T09:10:00+00:00"
+      "at": "2026-01-05T10:00:00+00:00"
+    },
+    {
+      "change": {
+        "id": "A2",
+        "body": [
+          {
+            "table": [
+              [
+                "Switch",
+                "Address",
+                "Site"
+              ],
+              [
+                "sw-harbor-1",
+                "192.0.2.11",
+                "Harbor"
+              ],
+              [
+                "sw-harbor-2",
+                "192.0.2.14",
+                "Harbor"
+              ],
+              [
+                "sw-quay-1",
+                "192.0.2.21",
+                "Quay"
+              ],
+              [
+                "sw-quay-2",
+                "192.0.2.22",
+                "Quay"
+              ]
+            ]
+          }
+        ]
+      },
+      "at": "2026-01-05T10:00:00+00:00"
     },
     {
       "email": {
-        "id": "A1",
-        "instructions": "Make it shorter and say when it ends",
-        "prose": "Brief",
-        "basedOn": 1,
-        "subject": "Network freeze from Friday",
-        "body": "Hello all,\n\nNo network changes from Friday 18:00 until the new core is checked, likely Sunday.\n\nThanks."
+        "id": "A2",
+        "recipient": "The network team",
+        "ask": "Check the updated switch list before Friday's freeze",
+        "tone": "Plain and friendly",
+        "subject": "Access switch inventory changed: please check by Friday",
+        "body": "Hi all,\n\nWe re-verified the access switch inventory for the Harbor move against the live switches, and two things changed:\n\n- sw-harbor-2 is at 192.0.2.14, not 192.0.2.12\n- sw-quay-2 at 192.0.2.22 was missing, and is now on the list\n\nCould you check the updated list before Friday's freeze?\n\nThanks."
       },
-      "at": "2026-01-05T09:20:00+00:00"
+      "at": "2026-01-05T10:10:00+00:00"
+    },
+    {
+      "email": {
+        "id": "A2",
+        "recipient": "The network team",
+        "change": "Shorter",
+        "basedOn": 1,
+        "subject": "Switch inventory changed: check by Friday",
+        "body": "Hi all,\n\nRe-verifying the inventory changed two things: sw-harbor-2 is now 192.0.2.14, and sw-quay-2 (192.0.2.22) was added. Please check the list before Friday's freeze.\n\nThanks."
+      },
+      "at": "2026-01-05T10:20:00+00:00"
     }
   ]
 }

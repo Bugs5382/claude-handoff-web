@@ -348,13 +348,16 @@ def test_a_phase_sends_only_its_own_items_and_a_blocked_one_refuses(pages):
 def test_a_draft_ask_lands_in_the_inbox_and_needs_instructions(pages):
     root, base = pages
     pagefile.write_definition(root / "demo" / "mail.json", {**DESIGN, "drafts": True})
-    assert post(base, "/_page/demo/mail/send", {"kind": "email", "items": ["s1"], "instructions": " "})[0] == 400
-    assert post(base, "/_page/demo/mail/send", {"kind": "email", "items": ["s1"], "instructions": "Say why", "prose": "Plain"})[0] == 200
+    assert post(base, "/_page/demo/mail/send", {"kind": "email", "items": ["s1"], "recipient": "Ops", "ask": " "})[0] == 400
+    assert post(base, "/_page/demo/mail/send", {"kind": "email", "items": ["s1"], "ask": "Confirm it"})[0] == 400
+    ask = {"kind": "email", "items": ["s1"], "recipient": "The network team", "ask": "Confirm it", "tone": "Plain"}
+    assert post(base, "/_page/demo/mail/send", ask)[0] == 200
     name = next(n for n in inbox(root) if "mail" in n)
     sub = json.loads((root / "_inbox" / "ops" / name).read_text())
-    assert sub["kind"] == "email" and sub["instructions"] == "Say why" and sub["prose"] == "Plain"
+    assert sub["kind"] == "email" and sub["recipient"] == "The network team" and sub["ask"] == "Confirm it" and sub["tone"] == "Plain"
+    assert sub["context"]["title"] == "Purpose" and "changed" in sub["context"] and "comments" in sub["context"]
     assert "awaiting" not in pagefile.load(root / "demo" / "mail.json")["rounds"][-1]
-    assert post(base, "/_page/demo/design/send", {"kind": "email", "items": ["s1"], "instructions": "x"})[0] == 400
+    assert post(base, "/_page/demo/design/send", {"kind": "email", "items": ["s1"], "recipient": "x", "ask": "x"})[0] == 400
 
 
 def test_a_deck_goes_to_the_inbox_with_only_final_items_and_needs_a_framing(pages):

@@ -15,7 +15,7 @@ Page files can also live in `custom/pages/`, and show at `/custom/pages/<slug>`.
 
 ```js
 const { html, templates } = window.HandoffSite;
-templates["draft-round"] = ({ data, item }) => html`
+templates["progress-round"] = ({ data, item }) => html`
   <p>A line of my own.</p>
   ${data.page.items.map((it, i) => item(it, i + 1))}`;
 ```
@@ -30,7 +30,7 @@ A template gets `{ data, local, item, sendPhase, goTo }` and returns what goes i
 
 ## Per-item actions
 
-Each item has a More button that pops up its actions, such as Draft email. `custom.js` can add its own. An entry gets the item and the page, and returns `{ name, label, onSelect, disabled }`, or `null` to skip that item.
+Each item has a More button that pops up its actions, such as Generate an email. `custom.js` can add its own. An entry gets the item and the page, and returns `{ name, label, onSelect, disabled }`, or `null` to skip that item.
 
 ```js
 window.HandoffSite.itemActions.push(it => ({
@@ -46,8 +46,8 @@ Every page has a Take the tour button, which runs a step-through over its real c
 `custom.js` can give a template its own steps. A step whose control isn't on the page is left out.
 
 ```js
-window.HandoffSite.tours["draft-round"] = [
-  { element: ".item-more-btn", title: "Generate an email", text: "Press More on a step." },
+window.HandoffSite.tours["progress-round"] = [
+  { element: ".custom-progress", title: "A custom page", text: "This line comes from custom/." },
 ];
 ```
 
@@ -66,7 +66,7 @@ window.HandoffSite.tours["draft-round"] = [
 | `Button` | a named button, such as `send-btn` or `copy` |
 | `Chip` | a status pill |
 | `TourButton` | starts the page's guided tour |
-| `EmailDraft` | an item's draft, with its versions |
+| `EmailDraft` | an item's generated email, with its versions |
 | `Thread` | an item's history |
 | `History` | closed rounds |
 | `Restart` | a journey's restart |

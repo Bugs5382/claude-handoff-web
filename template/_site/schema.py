@@ -35,7 +35,7 @@ AGENT = re.compile(r"[a-z0-9][a-z0-9_-]{0,40}\Z")
 ID_RULE = "expected a-z, 0-9, _ and -, starting with a letter or digit, up to 41 characters"
 
 TOP = ("schema", "rev", "kind", "title", "summary", "build", "reset", "status", "route", "options", "items",
-       "rounds", "thread", "submissions", "phases", "drafts", "emails", "deck", "template")
+       "rounds", "thread", "submissions", "phases", "drafts", "emails", "deck", "template", "revisions")
 COMMON = ("id", "type", "title", "section", "body")
 ANSWERABLE = ("answers", "skip", "dependsOn", "blockedBy")
 TYPE_FIELDS = {
@@ -521,7 +521,7 @@ def _submissions(v, subs):
             v.err(p, "expected an object")
             continue
         v.keys(s, p, ("n", "kind", "at", "to", "round", "rev", "items", "file", "state", "takenAt", "released",
-                            "instructions", "prose", "basedOn", "framing"), ("n", "kind", "at"))
+                            "recipient", "ask", "tone", "change", "basedOn", "framing"), ("n", "kind", "at"))
         if s.get("n") != i:
             v.err(_join(p, "n"), f"expected {i}")
         v.choice(s, "kind", p, SUBMISSION_KINDS)
@@ -552,11 +552,11 @@ def _emails(v, emails):
             if not isinstance(d, dict):
                 v.err(p, "expected an object")
                 continue
-            v.keys(d, p, ("n", "at", "from", "to", "subject", "body", "instructions", "prose", "basedOn", "request"),
+            v.keys(d, p, ("n", "at", "from", "to", "subject", "body", "ask", "tone", "change", "basedOn", "request"),
                    ("n", "at", "from", "body"))
             if d.get("n") != i:
                 v.err(_join(p, "n"), f"expected {i}")
-            for k in ("at", "from", "to", "subject", "body", "instructions", "prose"):
+            for k in ("at", "from", "to", "subject", "body", "ask", "tone", "change"):
                 v.string(d, k, p)
             v.integer(d, "basedOn", p, minimum=1)
             v.integer(d, "request", p, minimum=1)

@@ -71,7 +71,8 @@ The definition keys sit at the top level, and the server keys are managed by `pa
 | `deck` | definition | `true` adds Build a deck to the bar |
 | `template` | definition | a template from `custom/custom.js`, see `CUSTOM.md` |
 | `drafts` | definition | `true` adds Draft email to every item |
-| `emails` | server | versions of each item's email draft, numbered from 1 |
+| `emails` | server | versions of each item's email, numbered from 1 |
+| `revisions` | server | each item's earlier definitions: `{"at", "round", "before", "after"}` |
 | `route` | operator | `{"to": "ops", "mode": "send"}`; set with `set_route`, never in a definition |
 | `rev` | server | 1 on create, up by 1 on every write |
 | `rounds` | server | every round of answers, numbered from 1 |
@@ -104,9 +105,13 @@ Answerable items also take `answers` (their own set, such as `["yes", "no"]`), `
 `dependsOn` (ids on the same page) and `blockedBy` (free text), and any item can take `section`, a group
 heading.
 
-### Email drafts
+### Generating an email
 
-With `"drafts": true`, every item has Generate an email in its More button, whatever its answer. The person says how to draft it and the prose they want, and that goes to the agent's inbox like a Send, as a submission of kind `email`. It locks nothing. The agent answers with `page.py email`, and the draft appears in that item as a new version with the instructions that produced it. Earlier versions stay readable, and the person can pick one and ask for another, which sends `basedOn`.
+Use this when someone outside the page needs telling: an inventory step was re-verified and the data changed, so the network team needs to know what's different, or some devices couldn't be reached, so a note goes to whoever can grant access.
+
+With `"drafts": true`, every item has Generate an email in its More button, whatever its answer. The person says who it's to, what they need from them, and the tone. That goes to the agent's inbox the same way as a Send, as a submission of kind `email`, with a `context` holding the step: its title and body, what changed between rounds, and the comments and replies, so the person doesn't retype any of it. It doesn't answer the item or lock it.
+
+The agent answers with `page.py email`. The email appears in the step as To, Subject and Body, each with a copy button, as a new version. Earlier versions stay readable. Change this asks for another version, sending `change` and `basedOn`.
 
 ### Building a deck
 
@@ -164,7 +169,7 @@ Agents use `page.py`; it writes through `pagefile.py`, so it takes the same lock
 | `page.py check app/design` | validates a page or a `.json` file; errors give the JSON path, exit 1 on any |
 | `page.py wait app` | blocks until a submission is in `_inbox/app/`, prints the files (blockers first) and exits |
 | `page.py hook app` | prints one line when the inbox has untaken files or nothing is listening |
-| `page.py email app/design s1 --from app --request 4 --subject "Why" "Dear team,..."` | a draft comes back as the next version on that item; `--request` is the submission that asked, so the version keeps its instructions |
+| `page.py email app/design s1 --from app --request 4 --subject "Why" "Dear team,..."` | an email comes back as the next version on that item; `--request` is the submission that asked, so the version keeps who it's to and what was asked |
 | `page.py samples demo --route app` | loads the sample pages into a folder as `sample-*`; run it again to reset them |
 | `page.py convert app/design.html` | turns a review.js page into a page file next to it (`--print` shows the definition only) |
 

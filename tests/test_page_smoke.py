@@ -38,7 +38,7 @@ SCENARIOS = [
     "theme toggle works on a rendered page",
     "samples: every sample page draws, and the states they show are the ones they claim",
     "round phases: lettered ids, phase and step blocking, its own Send, and Accept risk needs a note",
-    "email draft: versions keep what produced them, asking goes to the agent and locks nothing",
+    "email: reads as To, Subject and Body, says what to enter, carries the step, and locks nothing",
     "deck: asks what you're building, sends only final Yes and Accept risk, and locks nothing",
     "custom: a template from custom/ draws the page, on the same elements",
     "round single: Accept risk on one set of items, sent from the bar",

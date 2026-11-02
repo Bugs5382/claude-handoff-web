@@ -11,7 +11,7 @@ listening. 🔌 **Python standard library only:** no build step, no framework, n
 ## ✨ Highlights
 
 - 🧭 **One place to look:** folder indexes and a root "Needs you now" list, built from the page files on every request.
-- ✅ **Reviews that stick:** Yes / No / Changes per section, approved items hidden, reopened ones marked with the reason, and More, Mark unanswered Yes (or No) to fill in the rest at once.
+- ✅ **Reviews that stick:** Yes / No / Changes per section, approved items locked or hidden, reopened ones marked with the reason, and More, Mark unanswered Yes (or No) to fill in the rest at once.
 - 🎛️ **Your own choices:** a page can swap Yes / No / Changes for its own answers and a default, such as a backlog of Start or Hold.
 - 🧪 **Sign-off checklists:** ordered tests, How to test pop-outs with Copy buttons, dependencies, blockers, Skipped.
 - 🪟 **Links open in a new window:** a link to another page never replaces the one you're reviewing; `#` anchors stay on the page.

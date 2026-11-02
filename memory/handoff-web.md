@@ -10,7 +10,7 @@ type: reference
 - Kinds: `review` (Yes / No / Changes), `checklist` (adds Skipped, needs a `build`), `journey` (ordered steps, checkpoints, Restart from), `backlog` (the page's own `options`, such as Start / Hold), `questions` (free text), `reference` and `status` (no answers). Any item can set its own `type`, so one page can mix sections, questions, choices, steps and info items.
 - Changes needs a note. Free-text questions never block approval. Choices count as their default until picked.
 - Answers are saved in the page file as the owner goes. Send and "Blocker: send now" land in `_inbox/<agent>/`; keep `python3 _site/page.py wait <agent>` running in the background, take each file (move it to `taken/`), act, then answer on the page with `page.py reply <page> <id> --from <agent> "..."`.
-- Reopen an item with `page.py reply ... --reopen "reason"`; clear a `blockedBy` with `--action unblock`. An earlier Yes stays hidden unless the item's content changes.
+- Reopen an item with `page.py reply ... --reopen "reason"`; clear a `blockedBy` with `--action unblock`. An earlier Yes stays locked unless the item's content changes.
 - A new `build` or `reset` opens a new round; rounds stay in the file and show under History and `/<folder>/history/`.
 - Pictures are files next to the page (`img/x.png`), never embedded. A rewrite to review is a `diff` item or block (`old`, `new`).
 - Never ask twice: if a checklist answered it, close the review item from that answer.

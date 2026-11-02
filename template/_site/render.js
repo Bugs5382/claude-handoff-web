@@ -106,6 +106,12 @@
       entries.push({ kind: "answer", at: a.at, who: "You", round: r.round, action: a.answer, tag: ANS_LABEL[a.answer] || a.answer,
         tagClass: ANS_CLASS[a.answer] || "a-other", text: esc(a.note) });
     }
+    // A sent No or Changes the agent dealt with, and what it did about it.
+    for (const r of data.page.rounds) for (const h of (r.handled || {})[id] || []) {
+      entries.push({ kind: "answer", at: h.at, who: "You", round: r.round, action: h.answer, tag: ANS_LABEL[h.answer] || h.answer,
+        tagClass: ANS_CLASS[h.answer] || "a-other", text: esc(h.note) });
+      if (h.via === "definition") entries.push({ kind: "reply", at: h.handled, who: data.route.to, action: "info", tag: "", tagClass: "t-info", text: "Changed this item.", rawText: "", reason: "", ref: "" });
+    }
     for (const x of (data.page.thread || {})[id] || []) entries.push(replyEntry(x));
     return threadList(entries, "History of " + id);
   }
@@ -118,7 +124,7 @@
     const out = { kind: s.kind, to };
     if (reply) {
       const t = reply.text.length > 90 ? reply.text.slice(0, 89) + "\u2026" : reply.text;
-      return Object.assign(out, { state: "replied", text: reply.from + " replied " + clock(reply.at) + ": " + t, full: reply.text });
+      return Object.assign(out, { state: "replied", text: reply.from + " replied " + clock(reply.at) + ": " + t, bar: reply.from + " replied " + clock(reply.at), full: reply.text });
     }
     if (s.state === "failed") return Object.assign(out, { state: "failed", text: label + " failed " + clock(s.at) + " · it didn't reach " + to + "." });
     if (s.state === "taken") {
@@ -129,13 +135,18 @@
   }
   // The page stays locked from a Send until the agent's next update; this says where the Send stands.
   const heldBy = () => { const n = data.page.rounds[data.page.rounds.length - 1].awaiting; return n ? data.page.submissions[n - 1] : null; };
+  function heldIds() {
+    const r = data.page.rounds[data.page.rounds.length - 1], nums = r.held || (r.awaiting ? [r.awaiting] : []);
+    return [...new Set(nums.flatMap(n => data.page.submissions[n - 1].items || []))];
+  }
   function heldHtml(s) {
     const dl = deliveryOf(s), to = dl.to;
     const said = dl.state === "taken" ? to + " picked this up at " + clock(s.takenAt) + "." :
       dl.state === "deaf" ? "Saved to " + to + "'s inbox at " + clock(s.at) + ", but " + to + " isn't listening right now, so it may not be seen yet." :
       "Sent to " + to + " at " + clock(s.at) + ". It's in " + to + "'s inbox, waiting to be picked up.";
+    const n = heldIds().length, what = n === 1 ? "The item you sent is" : "The " + n + " items you sent are";
     return '<section class="sentlock" data-state="' + dl.state + '" role="status"><span class="dlv-dot" aria-hidden="true"></span>' +
-      '<p><strong>' + esc(said) + "</strong> Every item is locked until " + esc(to) + " updates this page.</p>" +
+      '<p><strong>' + esc(said) + "</strong> " + what + " locked until " + esc(to) + " updates this page. Everything else stays open.</p>" +
       '<button type="button" class="unlock">Unlock to change an answer</button></section>';
   }
   const restartOf = s => (data.page.rounds.find(r => r.round === s.round) || {}).restart || "";
@@ -221,8 +232,11 @@
     const bl = blockers();
     set("data-review-blocked", Object.entries(bl).map(([k, v]) => k + "=" + v).join("|"));
     set("data-review-approved", Object.entries(data.states).filter(([, s]) => s.hidden).map(([k]) => k).join(","));
+    set("data-review-settled", "on");
+    set("data-review-handled", Object.keys(p.rounds[p.rounds.length - 1].handled || {}).join(","));
     const held = heldBy();
-    set("data-review-locked", held ? "on" : "");
+    set("data-review-sending", held ? "on" : "");
+    set("data-review-held", held ? heldIds().join(",") : "");
     set("data-review-reopen", Object.entries(data.states).filter(([, s]) => s.reopened).map(([k, s]) => k + "=" + s.reopened).join("|"));
     let top = body.querySelector("header.top");
     if (!top) { top = document.createElement("header"); top.className = "top"; body.prepend(top); }
@@ -438,7 +452,7 @@
       setTimeout(boot, POLL); return;
     }
     render();
-    if (!reviewLoaded) { reviewLoaded = true; loadScript("/_site/review.js?v=31"); }
+    if (!reviewLoaded) { reviewLoaded = true; loadScript("/_site/review.js?v=36"); }
     setInterval(() => { if (!document.hidden) refresh(false).catch(() => {}); }, POLL);
   })();
 })();

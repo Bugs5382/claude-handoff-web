@@ -348,7 +348,7 @@ def test_a_sent_yes_stays_hidden_after_the_agent_updates_the_page_in_the_same_ro
     states = pagefile.item_states(doc)
     assert len(doc["rounds"]) == 1
     assert states["s1"] == {"answer": "yes", "hidden": True, "reopened": None, "round": 1}
-    assert states["s2"]["hidden"] is False and states["s2"]["answer"] == "changes"
+    assert states["s2"]["hidden"] is False and states["s2"]["answer"] == ""
     assert pagefile.summary(doc)["yes"] == 1
 
 
@@ -391,7 +391,7 @@ def test_yes_clears_a_content_change_on_an_item_already_yes_in_the_open_round(pa
 
 def test_a_held_page_refuses_answers_until_the_agent_updates_it_or_the_owner_unlocks(path):
     make(path)
-    sub = sent(path, [])
+    sub = sent(path, ["s1"])
     assert pagefile.load(path)["rounds"][-1]["awaiting"] == sub["n"]
     with pytest.raises(pagefile.PageError):
         pagefile.save_answers(path, {"s1": {"answer": "yes"}}, by="me", now=T1)
@@ -412,3 +412,113 @@ def test_a_new_round_is_never_held(path):
     sent(path, [])
     pagefile.new_round(path, now=T2)
     assert "awaiting" not in pagefile.load(path)["rounds"][-1]
+
+
+def answered(path):
+    make(path)
+    pagefile.save_answers(path, {"s1": {"answer": "yes"}, "s2": {"answer": "changes", "note": "Move it"}}, by="me", now=T0)
+    sent(path, ["s1", "s2"])
+
+
+def test_a_reply_under_a_sent_changes_clears_it_and_keeps_it_as_handled_history(path):
+    answered(path)
+    pagefile.reply(path, "s2", "ops", "Moved.", now=T2)
+    doc = pagefile.load(path)
+    rnd = doc["rounds"][-1]
+    assert "s2" not in rnd["answers"], "an old note can't go out with the next Send"
+    assert rnd["handled"]["s2"][0]["answer"] == "changes" and rnd["handled"]["s2"][0]["note"] == "Move it"
+    assert rnd["handled"]["s2"][0]["handled"] == T2 and rnd["handled"]["s2"][0]["via"] == "reply"
+    assert pagefile.item_states(doc)["s2"] == {"answer": "", "hidden": False, "reopened": None, "round": None}
+    assert pagefile.summary(doc)["open"] >= 1
+
+
+def test_a_changed_item_clears_a_sent_no_and_an_unchanged_one_keeps_it(path):
+    make(path)
+    pagefile.save_answers(path, {"s1": {"answer": "no", "note": "Wrong"}, "s2": {"answer": "changes", "note": "Move it"}}, by="me", now=T0)
+    sent(path, ["s1", "s2"])
+    changed = review()
+    changed["items"][0]["body"] = [{"p": "New."}]
+    pagefile.write_definition(path, changed, now=T2)
+    rnd = pagefile.load(path)["rounds"][-1]
+    assert rnd["handled"]["s1"][0]["via"] == "definition" and "s1" not in rnd["answers"]
+    assert rnd["answers"]["s2"]["note"] == "Move it", "nobody touched this one yet"
+
+
+def test_a_reply_elsewhere_leaves_a_sent_changes_alone(path):
+    answered(path)
+    pagefile.reply(path, "_page", "ops", "Looking at it.", now=T2)
+    rnd = pagefile.load(path)["rounds"][-1]
+    assert rnd["answers"]["s2"]["answer"] == "changes" and "handled" not in rnd
+
+
+def test_a_note_that_was_never_sent_is_not_handled(path):
+    make(path)
+    pagefile.save_answers(path, {"s2": {"answer": "changes", "note": "Move it"}}, by="me", now=T0)
+    pagefile.reply(path, "s2", "ops", "Saw it.", now=T2)
+    assert pagefile.load(path)["rounds"][-1]["answers"]["s2"]["note"] == "Move it"
+
+
+def test_a_handled_no_does_not_bring_back_an_older_yes(path):
+    make(path)
+    pagefile.save_answers(path, {"s1": {"answer": "yes"}}, by="me", now=T0)
+    pagefile.write_definition(path, review(build="2"), now=T1)
+    pagefile.reply(path, "s1", "ops", "Look again", action="reopen", reason="Numbers moved", now=T1)
+    pagefile.save_answers(path, {"s1": {"answer": "no", "note": "Still wrong"}}, by="me", now=T1)
+    sent(path, ["s1"], at=T1)
+    pagefile.reply(path, "s1", "ops", "Fixed.", now=T2)
+    assert pagefile.item_states(pagefile.load(path))["s1"]["answer"] == ""
+    pagefile.write_definition(path, review(build="3"), now=T2)
+    assert pagefile.item_states(pagefile.load(path))["s1"] == {"answer": "", "hidden": False, "reopened": None, "round": None}
+
+
+def test_unlock_keeps_a_sent_yes_changeable(path):
+    make(path)
+    pagefile.save_answers(path, {"s1": {"answer": "yes"}}, by="me", now=T0)
+    sent(path, ["s1"])
+    pagefile.release(path)
+    assert pagefile.item_states(pagefile.load(path))["s1"]["hidden"] is False, "Unlock is there to change an answer"
+    pagefile.reply(path, "_page", "ops", "Updated.", now=T2)
+    assert pagefile.item_states(pagefile.load(path))["s1"]["hidden"] is False, "that Send was taken back"
+
+
+def test_a_settled_yes_stays_after_an_item_reply_and_reopens_only_with_a_reason(path):
+    answered(path)
+    pagefile.reply(path, "s1", "ops", "Noted.", now=T2)
+    assert pagefile.item_states(pagefile.load(path))["s1"]["hidden"] is True
+    pagefile.reply(path, "s1", "ops", "Look again", action="reopen", reason="Conflicts with s2", now=T2)
+    assert pagefile.item_states(pagefile.load(path))["s1"]["reopened"] == "Conflicts with s2"
+
+
+def test_a_send_locks_only_what_it_carried(path):
+    make(path)
+    pagefile.save_answers(path, {"s1": {"answer": "yes"}}, by="me", now=T0)
+    sent(path, ["s1"])
+    pagefile.save_answers(path, {"s2": {"answer": "no", "note": "Not this"}}, by="me", now=T2)
+    with pytest.raises(pagefile.PageError, match="s1"):
+        pagefile.save_answers(path, {"s1": {"answer": "no"}}, by="me", now=T2)
+    assert pagefile.held_items(pagefile.load(path)) == {"s1"}
+
+
+def test_a_second_send_adds_to_what_is_held_and_unlock_takes_back_both(path):
+    make(path)
+    pagefile.save_answers(path, {"s1": {"answer": "yes"}}, by="me", now=T0)
+    sent(path, ["s1"])
+    pagefile.save_answers(path, {"s2": {"answer": "yes"}}, by="me", now=T1)
+    sent(path, ["s2"], at=T2)
+    assert pagefile.held_items(pagefile.load(path)) == {"s1", "s2"}
+    pagefile.release(path)
+    doc = pagefile.load(path)
+    assert pagefile.held_items(doc) == set() and all(s["released"] for s in doc["submissions"])
+
+
+def test_a_page_held_before_this_change_still_locks_what_its_send_carried(path):
+    make(path)
+    pagefile.save_answers(path, {"s1": {"answer": "yes"}}, by="me", now=T0)
+    sub = pagefile.add_submission(path, {"kind": "send", "to": "ops", "items": ["s1"], "file": "f-{n}.json"}, now=T1)
+    doc = pagefile.load(path)
+    doc["rounds"][-1]["awaiting"] = sub["n"]
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(doc, f)
+    assert pagefile.held_items(pagefile.load(path)) == {"s1"}
+    pagefile.reply(path, "_page", "ops", "Done.", now=T2)
+    assert "held" not in pagefile.load(path)["rounds"][-1]

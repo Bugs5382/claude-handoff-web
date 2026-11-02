@@ -31,11 +31,11 @@ SCENARIOS = [
     "copy route: Blocker: copy now copies, and there is no Send button",
     "jump bar: Next and the n key walk open items; the picker filters and Enter jumps",
     "saved answers load from the page file; a failed save shows amber",
-    "checklist: skip locks, earlier Yes hidden, blocked by a dependency, reopened with its reason, question",
+    "checklist: skip locks, earlier Yes locked, blocked by a dependency, reopened with its reason, question",
     "question: Use suggestion fills the answer and saves it",
     "backlog: default choice, picking every item turns the bar green, saved",
     "theme toggle works on a rendered page",
-    "bar: one line from tablet to desktop widths, status text ellipsed; phone tap targets kept",
+    "bar: one row when it fits, a clean split when it does not, and no control ever wraps",
     "finished page: green bar and back link; Copy results goes back to the folder",
     "copy results keeps the Copy results format",
     "mark unanswered Yes fills only open items and saves them",
@@ -47,9 +47,9 @@ SCENARIOS = [
     "thread: earlier answers and replies show under the item",
     "thread: filed, reopen, unblock and won't fix read at a glance; a long thread folds its oldest entries",
     "delivery: sent to a listening agent, picked up, then the agent's reply, in the bar",
-    "sent: a banner says it reached the inbox, every item locks, and an update unlocks it live",
+    "sent: a banner says it reached the inbox, only what was sent locks, and an update unlocks it live",
     "sent: nobody listening says so on the page, and Unlock opens it again",
-    "sent: a Yes it carried is hidden after the update and stays in Copy results",
+    "sent: a Yes it carried stays locked after the update, a handled Changes clears, and both stay on record",
     "reopened Yes: shows unanswered, and one Yes clears it",
     "restart: Restart from a checkpoint asks first, opens a new round and carries the steps",
     "restart: the restart shows its own delivery state",
@@ -154,6 +154,12 @@ def write_pages(root):
     pagefile.add_submission(after, {"kind": "send", "to": "app", "items": ["r1", "r2"], "file": "y-{n}.json"}, now=T0)
     pagefile.hold(after, 1)
     pagefile.reply(after, "r2", "app", "Moved.", action="fixed", now="2026-10-26T08:00:00-04:00")
+    long = demo / "pf-bar-long.json"
+    w(long, review("pf-bar-long"), now=T0)
+    pagefile.set_route(long, "a" * 41, "send")
+    pagefile.add_submission(long, {"kind": "send", "to": "a" * 41, "file": "l-{n}.json"}, now=T0)
+    told = "Everything in this round is fixed, and here is a very long account of how. " * 6
+    pagefile.reply(long, "_page", "a" * 41, told, now="2026-10-26T08:00:00-04:00")
     reo = demo / "pf-reopened.json"
     pagefile.save_answers(reo, {"r1": {"answer": "yes", "note": ""}}, by="Sam", now=T0)
     pagefile.reply(reo, "r1", "app", "Look again.", action="reopen", reason="numbers moved", now="2026-10-26T08:00:00-04:00")

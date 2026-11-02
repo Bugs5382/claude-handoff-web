@@ -1,6 +1,7 @@
 """Tests for install.sh: the example folders land as folders, and options apply on top of the example site.json."""
 
 import json
+import os
 import subprocess
 from pathlib import Path
 
@@ -9,7 +10,8 @@ ROOT = Path(__file__).resolve().parent.parent
 
 def install(target, *args):
     r = subprocess.run(["bash", str(ROOT / "install.sh"), str(target), *args], stdin=subprocess.DEVNULL,
-                       capture_output=True, text=True, timeout=120)
+                       capture_output=True, text=True, timeout=120,
+                       env={k: v for k, v in os.environ.items() if not k.startswith("GIT_")})
     assert r.returncode == 0, r.stdout + r.stderr
     return json.loads((target / "site.json").read_text())
 

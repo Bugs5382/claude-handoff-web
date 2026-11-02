@@ -305,6 +305,7 @@ def test_get_page_renders_diff_items_and_blocks_on_the_server(pages):
 
 def test_a_send_holds_the_page_only_once_the_inbox_has_the_file(pages):
     root, base = pages
+    put_json(base, "/_page/demo/design/answers", {"answers": {"s1": {"answer": "no"}}})
     assert post(base, "/_page/demo/design/send", {"kind": "send", "results": "R"})[0] == 200
     doc = json.loads(request(base + "/_page/demo/design")[1])
     assert doc["page"]["rounds"][-1]["awaiting"] == 1 and len(inbox(root)) == 1

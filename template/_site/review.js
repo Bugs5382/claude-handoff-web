@@ -8,6 +8,10 @@
 // Body attributes:
 //   data-review-page      storage page id (default: the path)
 //   data-review-approved  "s1,s3": answered Yes in a pasted result; hidden, count as Yes
+//   data-review-settled   "on" (page files): approved items stay as a collapsed, locked row instead of hidden
+//   data-review-sending   "on" (page files): a Send waits on the agent; Clear and Save round wait with it
+//   data-review-held      "s1,s3": the items that Send carried; they're locked, every other item stays open
+//   data-review-handled   "s2,s5": a sent No or Changes the agent dealt with; the item is open again, marked so
 //   data-review-reopen    "s4=reason|s11=reason": brings an answered item back, with a reason
 //   data-review-stale     "a.html|b/": pages marked Stale recently; listed as "STALE: <page>" in Copy results
 //   data-review-reset     "v2:s1,s2" clears those answers (and reopened ones) once per version;
@@ -82,7 +86,7 @@ window.rvCount = function (items, state, o) {
 (function () {
   // Pages that render their own items (and their own pop-out) opt out.
   if (document.body.getAttribute("data-review-controls") === "off") return;
-  const V = "25";
+  const V = "29";
   function itemOf(el) {
     const box = el.closest("[data-review-question], .item");
     if (box) {
@@ -282,6 +286,10 @@ if (!window.siteTheme) { const t = document.createElement("script"); t.src = "/_
   for (const part of (body.getAttribute("data-review-reopen") || "").split("|")) {
     const i = part.indexOf("="); if (i > 0) reopen[part.slice(0, i).trim()] = part.slice(i + 1).trim();
   }
+  const sending = body.getAttribute("data-review-sending") === "on";
+  const heldIds = new Set((body.getAttribute("data-review-held") || "").split(",").filter(Boolean));
+  const SETTLED = body.getAttribute("data-review-settled") === "on";
+  const handled = new Set((body.getAttribute("data-review-handled") || "").split(",").filter(Boolean));
   const blocked = {};
   for (const part of (body.getAttribute("data-review-blocked") || "").split("|")) {
     const i = part.indexOf("="); if (i > 0) blocked[part.slice(0, i).trim()] = part.slice(i + 1).trim();
@@ -309,7 +317,7 @@ if (!window.siteTheme) { const t = document.createElement("script"); t.src = "/_
   }
 
   if (!document.querySelector('link[href*="/_site/site.css"]')) {
-    const l = document.createElement("link"); l.rel = "stylesheet"; l.href = "/_site/site.css?v=26"; document.head.appendChild(l);
+    const l = document.createElement("link"); l.rel = "stylesheet"; l.href = "/_site/site.css?v=29"; document.head.appendChild(l);
   }
 
   // data-review-skip="on" (test checklists): adds Skipped; a skipped item is locked.
@@ -408,10 +416,25 @@ if (!window.siteTheme) { const t = document.createElement("script"); t.src = "/_
       const head = box.querySelector(".rvhead"); if (head) it.card.prepend(head);
     }
   }
+  // Go to an item from its id, or from a Blocked by pill, opening a locked row on the way.
+  function jump(it) {
+    const tg = it.card && !it.card.classList.contains("shown") && it.card.querySelector(".settled-tg");
+    if (tg) tg.click();
+    go(it);
+  }
+  function blockedPill(pill, who) {
+    setPill(pill, "Blocked by ", "blk");
+    const it = items.find(x => x.id === who);
+    if (!it) { pill.textContent = "Blocked by " + who; return; }
+    const a = document.createElement("a"); a.className = "rid"; a.href = "#rv-" + encodeURIComponent(who); a.textContent = who; a.title = "Go to " + who;
+    a.addEventListener("click", e => { e.preventDefault(); jump(it); });
+    pill.appendChild(a);
+  }
   function headEl(it) {
     const h = document.createElement("div"); h.className = "rvhead";
-    h.innerHTML = '<span class="rid"></span><span class="sp"></span><span class="st2" data-pill="2"></span><span class="st" data-pill="1" role="status"></span>';
-    h.querySelector(".rid").textContent = it.id;
+    h.innerHTML = '<a class="rid" href="#rv-' + encodeURIComponent(it.id) + '"></a><span class="sp"></span><span class="st2" data-pill="2"></span><span class="st" data-pill="1" role="status"></span>';
+    const rid = h.querySelector(".rid"); rid.textContent = it.id; rid.title = "Go to " + it.id;
+    rid.addEventListener("click", e => { e.preventDefault(); jump(it); });
     return h;
   }
   function segEl(it, opts) {
@@ -434,7 +457,7 @@ if (!window.siteTheme) { const t = document.createElement("script"); t.src = "/_
     const st = head.querySelector("[data-pill='1']");
     if (isQ(it)) {
       box.classList.add("question");
-      if (blocked[it.id]) { st.classList.add("blk"); st.textContent = "Blocked by " + blocked[it.id]; }
+      if (blocked[it.id]) blockedPill(st, blocked[it.id]);
       else if (reopen[it.id]) { st.classList.add("reo"); st.textContent = "Reopened: " + reopen[it.id]; } else st.textContent = "Question";
       const qrow = document.createElement("div"); qrow.className = "qrow";
       qrow.innerHTML = '<span class="ask">Your answer:</span>' + (it.suggested ? '<button type="button" class="suggest-btn">Use suggestion</button>' : "");
@@ -531,11 +554,21 @@ if (!window.siteTheme) { const t = document.createElement("script"); t.src = "/_
     place(it, box);
     if (s.locked || blocked[it.id]) lock(it);
     if (blocked[it.id]) { box.classList.add("blocked"); if (it.card) it.card.classList.add("is-blocked"); }
-    if (hidden.has(it.id)) { for (const el of [box].concat(it.nodes)) el.style.setProperty("display", "none", "important"); }
+    if (hidden.has(it.id) && SETTLED) settle(it);
+    else if (hidden.has(it.id)) { for (const el of [box].concat(it.nodes)) el.style.setProperty("display", "none", "important"); }
+  }
+  // An approved item on a page file: its Yes stays pressed and can't change. The row opens to show the item.
+  function settle(it) {
+    it.box.querySelectorAll("button, textarea").forEach(x => { x.disabled = true; });
+    it.box.classList.add("locked"); it.card.classList.add("settled");
+    const b = document.createElement("button"); b.type = "button"; b.className = "settled-tg"; b.textContent = "Show"; b.setAttribute("aria-expanded", "false");
+    b.addEventListener("click", () => { const on = it.card.classList.toggle("shown"); b.textContent = on ? "Hide" : "Show"; b.setAttribute("aria-expanded", String(on)); });
+    it.card.querySelector(":scope > .rvhead .rid").after(b);
+    it.card.querySelector(":scope > .rvhead").after(it.card.querySelector(":scope > h2"));
   }
   if (hidden.size) {
     const note = document.createElement("div"); note.className = "rvdone";
-    note.textContent = hidden.size + " approved and hidden. They stay in Copy results.";
+    note.textContent = hidden.size + (SETTLED ? " approved and locked." : " approved and hidden.") + " They stay in Copy results.";
     const first = document.querySelector("h2, [data-review-question]");
     if (first) first.insertAdjacentElement("beforebegin", note); else body.appendChild(note);
   }
@@ -582,8 +615,9 @@ if (!window.siteTheme) { const t = document.createElement("script"); t.src = "/_
     }, 1500);
   }
 
-  // Bottom bar: Previous, Next, the Open IDs picker (opens upward, with a filter), the status, the
-  // Saved time and More. Colour states: dark while items are open, green when every one is answered,
+  // Bottom bar: one row when everything fits, and two when it doesn't (fit() decides, and a phone is always two).
+  // First row: Previous, Next, the status, and the delivery line or the Saved time. Second: Send, Copy results,
+  // Clear my answers, the Open IDs picker (opens upward, with a filter) and More. Colour states: dark while items are open, green when every one is answered,
   // green "APPROVED" when all are Yes, a red ring for a marked blocker, amber when a save fails.
   const bar = document.createElement("div"); bar.className = "rvbar"; bar.setAttribute("role", "region"); bar.setAttribute("aria-label", "Review progress");
   bar.innerHTML = '<div class="rvbar-in">' +
@@ -598,18 +632,27 @@ if (!window.siteTheme) { const t = document.createElement("script"); t.src = "/_
     '<button class="history" type="button" role="menuitem" disabled>History</button>' +
     '<button class="round-close" type="button" role="menuitem">Save round now</button>' +
     '<button class="clear" type="button" role="menuitem">Clear my answers</button></div>' +
-    '<button class="prev" type="button" title="Previous open item (p)" aria-label="Previous open item">← <span class="lg">Previous</span><span class="sm">Prev</span></button>' +
+    '<div class="rvbar-r1"><button class="prev" type="button" title="Previous open item (p)" aria-label="Previous open item">← <span class="lg">Previous</span><span class="sm">Prev</span></button>' +
     '<button class="next" type="button" title="Next open item (n)" aria-label="Next open item">Next →</button>' +
-    '<button class="ids" type="button" aria-haspopup="dialog" aria-expanded="false"><span class="ids-l"></span> <span class="mono ids-n"></span> ▴</button>' +
     '<span class="stat"><span class="dot" aria-hidden="true"></span>' +
     '<svg class="tick" width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d="M3 9.5l4 4 8-9" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"></path></svg>' +
     '<span class="bkr" hidden></span><span class="cnt" role="status" aria-live="polite"></span></span>' +
-    '<span class="svst" aria-live="polite"></span>' +
+    (SENDS ? '<span class="dlv" role="status" aria-live="polite"></span>' : "") +
+    '<span class="svst" aria-live="polite"></span></div>' +
+    '<div class="rvbar-r2">' + (SENDS ? '<button class="send-btn" type="button"></button>' : "") +
+    '<button class="copy" type="button">Copy results</button><button class="clear" type="button">Clear my answers</button>' +
+    '<button class="ids" type="button" aria-haspopup="dialog" aria-expanded="false"><span class="ids-l"></span> <span class="mono ids-n"></span> ▴</button>' +
     '<a class="back" hidden></a>' +
-    (SENDS ? '<button class="send-btn" type="button"></button><span class="dlv" role="status" aria-live="polite"></span>' : "") +
     '<span class="more"><button class="more-btn" type="button" aria-haspopup="menu" aria-expanded="false">More ▾</button></span>' +
-    '</div>';
+    '</div></div>';
   body.appendChild(bar);
+  function fit() {
+    const inner = bar.querySelector(".rvbar-in"), cut = el => !!el && el.scrollWidth > el.clientWidth + 1;
+    bar.classList.remove("two");
+    if (matchMedia("(max-width: 480px)").matches || cut(inner) || cut(bar.querySelector(".cnt")) || cut(bar.querySelector(".dlv-t"))) bar.classList.add("two");
+  }
+  on(window, "resize", fit);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(fit);
   // The delivery state from render.js: a dot, the line, and on "isn't listening" a Copy results button.
   function setDelivery(dl) {
     const el = bar.querySelector(".dlv"); if (!el) return;
@@ -617,7 +660,7 @@ if (!window.siteTheme) { const t = document.createElement("script"); t.src = "/_
     if (!dl) { delete el.dataset.state; return; }
     el.dataset.state = dl.state;
     const dot = document.createElement("span"); dot.className = "dlv-dot"; dot.setAttribute("aria-hidden", "true");
-    const t = document.createElement(dl.state === "replied" ? "a" : "span"); t.className = "dlv-t"; t.textContent = dl.text;
+    const t = document.createElement(dl.state === "replied" ? "a" : "span"); t.className = "dlv-t"; t.textContent = dl.bar || dl.text;
     if (dl.state === "replied") { t.href = "#replies"; t.title = dl.full; }
     el.append(dot, t);
     if (dl.state === "deaf") {
@@ -625,6 +668,7 @@ if (!window.siteTheme) { const t = document.createElement("script"); t.src = "/_
       b.addEventListener("click", async () => { await copyText(results()); b.textContent = "Copied"; });
       el.appendChild(b);
     }
+    fit();
   }
   const sendBtn = bar.querySelector(".send-btn");
   if (sendBtn) {
@@ -685,8 +729,8 @@ if (!window.siteTheme) { const t = document.createElement("script"); t.src = "/_
       e.preventDefault(); const it = pickShown[pickActive]; if (it) { showIds(false); go(it); }
     }
   });
-  // A sent page: render.js shows why and how to unlock, and the server refuses answers until then.
-  const heldPage = body.getAttribute("data-review-locked") === "on";
+  // Answers a Send could still carry: anything answered that isn't held or settled.
+  const unsent = () => items.some(it => { const s = state[it.id] || {}; return !heldIds.has(it.id) && !hidden.has(it.id) && (s.v || (s.a || "").trim()); });
   if (store.msg) setStatus(store.msg, store.bad);
   else if (store.loadPending) setStatus("Not saved · retrying", true);
   else if (store.lastMod) setStatus("Saved " + hhmm(store.lastMod));
@@ -724,7 +768,7 @@ if (!window.siteTheme) { const t = document.createElement("script"); t.src = "/_
         });
         const first = it.ch.opts[0][0];
         if (it.card) it.card.dataset.answer = v ? (v === first ? "pick-first" : "pick") : "default";
-        if (blocked[it.id]) setPill(pill, "Blocked by " + blocked[it.id], "blk");
+        if (blocked[it.id]) blockedPill(pill, blocked[it.id]);
         else if (reopen[it.id] && !v) setPill(pill, "Reopened: " + reopen[it.id], "reo");
         else setPill(pill, v ? labelOf(it, v) : it.ch.def ? "Not picked · " + labelOf(it, it.ch.def) + " (default)" : "Not chosen", v ? (v === first ? "a-yes" : "") : "");
         continue;
@@ -737,10 +781,12 @@ if (!window.siteTheme) { const t = document.createElement("script"); t.src = "/_
       if (noNote) it.box.classList.add("empty");
       if (it.card) { it.card.dataset.answer = v; it.card.classList.toggle("is-blocker", !!s.blocker); }
       if (!s.locked) setPressed(it, v);
-      if (blocked[it.id]) setPill(pill, "Blocked by " + blocked[it.id], "blk");
+      if (blocked[it.id]) blockedPill(pill, blocked[it.id]);
       else if (s.locked) setPill(pill, "Skipped (locked)", "skp");
+      else if (SETTLED && hidden.has(it.id)) setPill(pill, "Yes (locked)", "a-yes");
       else if (v) setPill(pill, ANS[v] || v, "a-" + v);
       else if (reopen[it.id]) setPill(pill, "Reopened: " + reopen[it.id], "reo");
+      else if (handled.has(it.id)) setPill(pill, "Updated: answer again", "reo");
       else setPill(pill, "Open", "");
       if (reopen[it.id] && v && !blocked[it.id]) setPill(pill2, "Reopened: " + reopen[it.id], "reo"); else { pill2.className = "st2"; pill2.textContent = ""; }
       if (s.blocker) { pill2.className = "st bkr"; pill2.textContent = "Blocker"; }
@@ -752,19 +798,24 @@ if (!window.siteTheme) { const t = document.createElement("script"); t.src = "/_
     const c = rvCount(kinds(), state, { hidden, blocked });
     const chosen = items.filter(isC);
     const tl = chosen.length ? tally(chosen) : "";
+    const hiddenWord = SETTLED ? " approved and locked" : " approved and hidden";
     const qTail = c.qOpen ? " · " + c.qOpen + " question" + (c.qOpen === 1 ? "" : "s") + " unanswered" : "";
     const tails = (c.blocked ? " · " + c.blocked + " blocked" : "") + (c.skipped ? " · " + c.skipped + " skipped" : "") +
-      (c.hidden ? " · " + c.hidden + " approved and hidden" : "") + (tl && !c.choiceOnly ? " · " + tl : "") + qTail;
+      (c.hidden ? " · " + c.hidden + hiddenWord : "") + (tl && !c.choiceOnly ? " · " + tl : "") + qTail;
     let text;
     if (c.choiceOnly) text = (c.allDone ? "All " + c.total + " picked" : c.answered + " of " + c.total + " picked") + (tl ? " · " + tl : "") + qTail;
-    else if (c.approved) text = "APPROVED · all " + (c.yncTotal || c.hidden) + " Yes" + (c.yncTotal && c.hidden ? " · " + c.hidden + " approved and hidden" : "") + (tl ? " · " + tl : "") + qTail;
+    else if (c.approved) text = "APPROVED · all " + (c.yncTotal || c.hidden) + " Yes" + (c.yncTotal && c.hidden ? " · " + c.hidden + hiddenWord : "") + (tl ? " · " + tl : "") + qTail;
     else if (c.allDone) text = "All " + c.total + " answered · ready to copy" + tails;
     else text = c.answered + " of " + c.total + " answered" + tails;
     bar.querySelector(".cnt").textContent = text;
     bar.classList.toggle("all-done", c.allDone);
     bar.classList.toggle("approved", c.approved);
     bar.classList.toggle("has-blocker", c.blockers > 0);
-    if (sendBtn) sendBtn.classList.toggle("ready", c.allDone);
+    if (sendBtn) {
+      sendBtn.classList.toggle("ready", c.allDone);
+      const done = sending && !unsent();
+      sendBtn.disabled = done; sendBtn.textContent = done ? "Sent" : "Send to " + PF.route.to;
+    }
     const back = bar.querySelector(".back");
     back.hidden = !(c.allDone && folder); back.href = FOLDER_URL; back.textContent = "\u2190 Back to " + FOLDER_PAGES;
     if (wasDone === false && c.allDone && folder) actToast((c.approved ? "Approved." : "Every item answered.") + " Copy results from More, then", "back to " + FOLDER_PAGES);
@@ -777,6 +828,7 @@ if (!window.siteTheme) { const t = document.createElement("script"); t.src = "/_
     idsBtn.title = choicePage ? "Items you haven't picked yet" : "Find and jump to an open item";
     if (!picker.hidden) renderPicker();
     paintGroupCounts(openList());
+    fit();
   }
   // Unified pages: each group's "N open" chip and the header total count what openList() counts, so
   // they agree with the bar. Pages built before the chips were marked are matched by their text.
@@ -873,12 +925,12 @@ if (!window.siteTheme) { const t = document.createElement("script"); t.src = "/_
   async function copyText(out) {
     try { await navigator.clipboard.writeText(out); } catch (e) { const t = document.createElement("textarea"); t.value = out; body.appendChild(t); t.select(); document.execCommand("copy"); t.remove(); }
   }
-  bar.querySelector(".copy").addEventListener("click", async () => {
+  bar.querySelectorAll(".copy").forEach(b => b.addEventListener("click", async () => {
     showMenu(false);
     await copyText(results());
     alert("Copied. Paste it into the " + session + " session.");
     if (lastDone) returnSoon();
-  });
+  }));
   // Copy blockers only: every item marked as a blocker, in the "Blocker: copy now" format.
   bar.querySelector(".copy-blockers").addEventListener("click", async () => {
     showMenu(false);
@@ -916,14 +968,14 @@ if (!window.siteTheme) { const t = document.createElement("script"); t.src = "/_
   }
   bar.querySelector(".all-yes").addEventListener("click", () => markAll("yes", "Yes"));
   bar.querySelector(".all-no").addEventListener("click", () => markAll("no", "No"));
-  bar.querySelector(".clear").addEventListener("click", async () => {
+  bar.querySelectorAll(".clear").forEach(b => b.addEventListener("click", async () => {
     showMenu(false);
     if (!confirm("Clear your answers on this page? Approved and Skipped (locked) items stay.")) return;
     for (const it of items) if (!hidden.has(it.id) && !(state[it.id] || {}).locked) { delete state[it.id]; store.touched.add(it.id); }
     persist();
     if (await flushNow()) { if (PF) PF.redraw(); else location.reload(); }
     else { paint(); alert("Cleared here, but the box can't be reached yet. It keeps retrying; don't close the page until it says Saved."); }
-  });
+  }));
   // ---------- round history (/_history/<page-key>/, see SAVE-API.md) ----------
   // Collapsed everywhere: the block itself starts closed, and so does every round inside it.
   // Nothing here is ever expanded automatically, and it always sits after the page's own content,
@@ -963,7 +1015,7 @@ if (!window.siteTheme) { const t = document.createElement("script"); t.src = "/_
       });
       outer.appendChild(d);
     }
-    if (histBlock) histBlock.replaceWith(outer); else body.appendChild(outer);
+    if (histBlock) histBlock.replaceWith(outer); else (document.querySelector("main.wrap") || body).appendChild(outer);
     histBlock = outer;
     historyBtn.disabled = !n;
   }
@@ -1002,10 +1054,10 @@ if (!window.siteTheme) { const t = document.createElement("script"); t.src = "/_
     } catch (e) { alert("Couldn't save the round: " + e.message); }
   });
 
-  if (heldPage) {
-    for (const it of items) { lock(it); it.box.querySelectorAll("button, textarea, input").forEach(x => x.disabled = true); }
+  // render.js shows why and how to unlock, and the server refuses a held item's answer until then.
+  if (sending) {
+    for (const it of items) if (heldIds.has(it.id)) { lock(it); it.box.querySelectorAll("button, textarea, input").forEach(x => x.disabled = true); }
     bar.querySelectorAll(".clear, .round-close").forEach(x => x.disabled = true);
-    if (sendBtn) { sendBtn.disabled = true; sendBtn.textContent = "Sent"; }
   }
   if (sendBtn) sendBtn.addEventListener("click", async () => {
     const c = rvCount(kinds(), state, { hidden, blocked });

@@ -298,6 +298,10 @@ body.site th { background: var(--soft-2); font-weight: 600; }
 .rvcard[data-answer="yes"], .rv.yes { border-color: var(--yes-edge); }
 .rvcard[data-answer="chg"], .rv.chg { border-color: var(--chg-edge); }
 .rvcard[data-answer="no"], .rv.no { border-color: var(--no-edge); }
+.rvcard.settled { padding: 10px 22px; background: var(--soft); }
+.rvcard.settled > h2 { font-size: 1em; margin: 6px 0 0; }
+.rvcard.settled:not(.shown) > :not(.rvhead, h2) { display: none; }
+.settled-tg { margin-left: 8px; font: inherit; font-size: .85em; }
 .rvcard[data-answer="skip"] { background: var(--card); }
 .rvcard.is-blocked { background: var(--soft); border-style: dashed; border-color: var(--line-dash); }
 .rvcard.is-blocked > h2 { color: var(--muted); }
@@ -307,7 +311,10 @@ body.site th { background: var(--soft-2); font-weight: 600; }
 .rvcard.is-choice[data-answer="pick"] { border-color: var(--line-2); }
 .rvcard > .rv { margin: 14px 0 0; padding: 0; border: 0; box-shadow: none; background: transparent; }
 .rvhead { display: flex; align-items: center; gap: 10px; margin: 0 0 6px; }
-.rvhead .rid { font: 13px var(--mono); color: var(--muted); }
+.rvhead .rid { font: 500 13px var(--mono); color: var(--link); text-decoration: none; }
+.rvhead .rid:hover { color: var(--link-hover); text-decoration: underline; }
+:root[data-theme="dark"] .rvhead .rid { font-weight: 700; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .rvhead .rid { font-weight: 700; } }
 .rvhead .sp { flex-grow: 1; }
 .rv { margin: 14px 0 24px; padding: 16px 18px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--card); box-shadow: var(--shadow); font: 15px/1.5 var(--font); color: var(--ink); scroll-margin-top: 16px; }
 .rv .st { display: inline-block; font-size: 13px; font-weight: 600; line-height: 1.4; padding: 3px 10px; border-radius: 999px; color: var(--ink-2); background: var(--soft); }
@@ -355,6 +362,23 @@ body.site th { background: var(--soft-2); font-weight: 600; }
 .rvbar.approved:not(.has-blocker) { box-shadow: inset 0 0 0 2px var(--dot-done), var(--bar-done-shadow); }
 .rvbar-in { position: relative; max-width: 920px; margin: 0 auto; padding: var(--bar-pad-y) 24px; box-sizing: border-box; display: flex; flex-wrap: nowrap; align-items: center; gap: var(--bar-gap); }
 .rvbar button { flex: 0 0 auto; font: 600 var(--bar-btn-font) var(--font); min-height: var(--bar-btn-h); padding: 0 var(--bar-btn-pad); border-radius: var(--radius-sm); cursor: pointer; white-space: nowrap; }
+.rvbar-r1, .rvbar-r2 { display: contents; }
+.rvbar .prev { order: 1; } .rvbar .next { order: 2; } .rvbar .ids { order: 3; } .rvbar .stat { order: 4; } .rvbar .svst { order: 5; }
+.rvbar .back { order: 6; } .rvbar .send-btn { order: 7; } .rvbar .dlv { order: 8; } .rvbar .more { order: 9; }
+.rvbar:not(.two) .rvbar-r2 > .copy, .rvbar:not(.two) .rvbar-r2 > .clear, .rvbar.two .menu .copy, .rvbar.two .menu .clear { display: none; }
+.rvbar.two .rvbar-in { flex-direction: column; align-items: stretch; gap: 6px; }
+.rvbar.two .rvbar-r1, .rvbar.two .rvbar-r2 { display: flex; align-items: center; gap: var(--bar-gap); min-width: 0; }
+.rvbar.two .rvbar-r2 { flex-wrap: wrap; }
+.rvbar.two .rvbar-r1 > *, .rvbar.two .rvbar-r2 > * { order: 0; }
+.rvbar.two .stat, .rvbar.two .dlv { flex: 1 1 40%; min-width: 0; }
+.rvbar.two .cnt, .rvbar.two .dlv-t { white-space: normal; overflow: visible; overflow-wrap: anywhere; max-width: none; }
+.rvbar.two .svst { margin-left: auto; }
+.rvbar.two .dlv:not(:empty) + .svst:not(.bad), .rvbar.two .dlv-copy { display: none; }
+.rvbar.two .more { margin-left: auto; }
+.rvbar .send-btn { min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+.rvbar-r2 > .copy, .rvbar-r2 > .clear { background: transparent; color: var(--on-bar); border: 1px solid var(--bar-line); }
+.rvbar-r2 > .copy:hover, .rvbar-r2 > .clear:hover:not(:disabled) { background: var(--bar-hover); }
+.rvbar-r2 > .clear:disabled { opacity: .6; cursor: default; }
 .rvbar .prev, .rvbar .next { background: transparent; color: var(--on-bar); border: 1px solid var(--bar-line); }
 .rvbar .ids { display: inline-flex; align-items: center; gap: 6px; background: var(--bar-fill); color: var(--on-bar); border: 1px solid var(--bar-line); }
 .rvbar .ids .mono, .rvbar .mono { font-family: var(--mono); }
@@ -402,26 +426,26 @@ body.site th { background: var(--soft-2); font-weight: 600; }
 .rvids-list .nomatch, .rvids-list .more-n { font-size: 13px; color: var(--muted); padding: 8px 12px; }
 .rvids-keys { display: flex; flex-wrap: wrap; gap: 4px 14px; padding: 6px 8px 2px; font: 12px var(--mono); color: var(--muted); }
 body:has(.rvbar) { padding-bottom: 6rem; }
+body:has(.rvbar.two) { padding-bottom: 8.5rem; }
 
 @media (max-width: 480px) {
-  .rvbar-in { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px 6px; padding: 10px 12px 18px; }
-  .rvbar .stat { grid-column: 1 / 4; order: -2; margin: 0; }
-  .rvbar .svst { grid-column: 4; order: -1; justify-self: end; }
-  .rvbar .svst:empty { display: block; }
-  .rvbar .svst.bad { grid-column: 1 / 5; justify-self: stretch; text-align: center; }
-  .rvbar button, .rvbar .more-btn { min-height: 48px; padding: 0 6px; width: 100%; justify-content: center; font-size: 15px; }
+  .rvbar.two .rvbar-in { gap: 8px; padding: 10px 12px 18px; }
+  .rvbar.two .rvbar-r1, .rvbar.two .rvbar-r2 { gap: 6px; }
+  .rvbar .stat { margin: 0; }
+  .rvbar.two .rvbar-r2 > button, .rvbar.two .more { flex: 1 1 auto; margin-left: 0; }
+  .rvbar button, .rvbar .more-btn { min-height: 48px; padding: 0 10px; justify-content: center; font-size: 15px; }
+  .rvbar .more-btn { width: 100%; }
   .rvbar .ids { font-size: 14px; }
   .rvbar .more { display: block; }
   .rvbar .lg { display: none; }
   .rvbar .sm { display: inline; }
   .rvbar .menu { right: 12px; left: 12px; min-width: 0; }
   .rvids { left: 12px; right: 12px; width: auto; }
-  body:has(.rvbar) { padding-bottom: 9rem; }
+  body:has(.rvbar), body:has(.rvbar.two) { padding-bottom: 15rem; }
 }
-/* Between a phone and a laptop the bar stays on one line with the short labels and no saved time (a failed save still shows). */
+/* Between a phone and a laptop the short labels save room. */
 @media (min-width: 481px) and (max-width: 760px) {
   .rvbar-in { padding: var(--bar-pad-y) 12px; }
-  .rvbar .svst:not(.bad) { display: none; }
   .rvbar .lg { display: none; }
   .rvbar .sm { display: inline; }
 }
@@ -557,7 +581,7 @@ body.site header.top p.note { font-size: 14px; }
 .rvbar .back[hidden] { display: none; }
 .site-toast.act { pointer-events: auto; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; max-width: calc(100vw - 32px); box-sizing: border-box; border-radius: 12px; }
 .site-toast.act a { color: inherit; font-weight: 700; text-decoration: underline; text-underline-offset: 2px; }
-@media (max-width: 480px) { .rvbar .back { grid-column: 1 / 5; justify-content: center; min-height: 48px; } }
+@media (max-width: 480px) { .rvbar .back { flex: 1 1 100%; justify-content: center; min-height: 48px; } }
 
 /* Word diff block: <div class="rvdiff"> with <ins>/<del> runs, one <p> per sentence group. Colour plus underline / strikethrough. */
 .site .rvdiff { margin: 10px 0; padding: 10px 14px; background: var(--soft-2); border: 1px solid var(--line); border-radius: var(--radius-sm); line-height: 1.6; overflow-wrap: anywhere; }
@@ -637,10 +661,7 @@ body.site .pthread > h2 { font-size: 16px; margin: 0 0 4px; }
 .rvbar .dlv-copy { min-height: 28px; padding: 0 10px; font-size: 13px; background: var(--bar-fill); color: var(--on-bar); border: 1px solid var(--bar-line); }
 .rvbar .dlv-copy:hover { background: var(--bar-hover); }
 @media (max-width: 480px) {
-  .rvbar .send-btn { grid-column: 1 / 3; }
-  .rvbar .dlv { grid-column: 1 / 5; order: 5; }
-  .rvbar .dlv-t { max-width: none; white-space: normal; }
-  .rvbar .dlv-copy { width: auto; min-height: 40px; }
+  .rvbar .dlv-t { max-width: none; }
 }
 
 .rvrestart { background: var(--card); border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: var(--radius); padding: 16px 22px; margin: 0 0 16px; }

@@ -128,7 +128,11 @@ section becomes the item card (id and status pill on top, border and pill follow
 are a segmented group of real buttons (44 px; pressing the chosen one again clears it). The note box opens
 for Changes (required) and No (optional), or with "Add a note".
 
-The bar, left to right: Previous, Next, "Open IDs (n) ▴", the status dot and text, the Saved time, More.
+The bar is one row when everything fits: Previous, Next, "Open IDs (n) ▴", the status dot and text, the Saved
+time, Send to <agent>, the delivery state, More. When anything would be cut, it splits into two rows. The first:
+Previous, Next, the status, and the delivery state or the Saved time. The second: Send, Copy results, Clear my
+answers, Open IDs, More. On a phone it's always two rows and the second may wrap between controls. No control
+wraps inside itself: long text ends in an ellipsis.
 Open IDs opens upward: a filter box (an ID or title words), "N open · showing M", the list (up to 200 rows),
 ↑↓ / Enter / Esc. The n and p keys still jump between open items. More holds Mark unanswered Yes, Mark
 unanswered No, Copy results, Copy blockers only (every item marked with "Blocker: copy now", in that
@@ -136,11 +140,7 @@ format), History, Save round now and Clear my answers. The two Mark items fill i
 items with no answer yet (never hidden, blocked or Skipped (locked) ones, open questions or a page's own
 choices), after a confirm that gives the count, and never change an answer or note already given. States: dark while items are open; green "All N answered · ready to copy" when every one is
 answered; green "APPROVED · all N Yes" when all are Yes; a red ring and "N BLOCKER" while a blocker is
-marked; an amber "Not saved · retrying" pill when a save fails. Above 480 px the bar is one line: it never
-wraps, the buttons keep their size, and the status and delivery text shorten with an ellipsis instead. Its
-sizes are the `--bar-*` knobs at the top of the bar's rules in site.css. Up to 760 px it uses the short
-labels and drops the Saved time (a failed save still shows). At 480 px and below it is two rows: the
-status, then Prev / Next / IDs / More as equal buttons, each at least 48 px tall. A finished page (the bar is green) shows "← Back to <Folder> pages" in the bar and a
+marked; an amber "Not saved · retrying" pill when a save fails. Its sizes are the `--bar-*` knobs at the top of the bar's rules in site.css. Up to 760 px it uses the short labels. A finished page (the bar is green) shows "← Back to <Folder> pages" in the bar and a
 toast with that link; after Copy results there it returns to the folder index in 1.5 s unless they move,
 scrolls or types (never while typing, and only once the answers are saved). The counting is `window.rvCount` in review.js.
 
@@ -193,7 +193,7 @@ page files, inside same-origin frames and inside the How to test pop-out. Same-p
   chosen label, or `<label> (default)`.
 - Buttons: Copy results, Copy (one unified-page group), Mark unanswered Yes, Mark unanswered No, Clear my answers (never clears approved or locked items), Blocker: copy now,
   Stale: remove this page.
-- Progress: `<n> of <m> answered`, plus ` · <b> blocked`, ` · <s> skipped`, ` · <k> approved and hidden`
+- Progress: `<n> of <m> answered`, plus ` · <b> blocked`, ` · <s> skipped`, ` · <k> approved and hidden` (`approved and locked` on a page file); each item's id links to the item, and so does a Blocked by pill that names one
   when above 0, plus ` · <j> questions unanswered` when j > 0 (open questions never count toward `<n>` or
   `<m>`). Choice items count toward `<n>` and `<m>` and add ` · <n> <label> · <n> <label>`; a page with only
   choice items shows `<n> of <m> picked · <counts>`.

@@ -118,13 +118,17 @@ const seg = (doc, id, v) => card(doc, id).querySelector('.seg button[data-v="' +
     eq(win.siteReview.unsaved(), true);
   });
 
-  await t("checklist: skip locks, earlier Yes hidden, blocked by a dependency, reopened with its reason, question", async () => {
+  await t("checklist: skip locks, earlier Yes locked, blocked by a dependency, reopened with its reason, question", async () => {
     const { win, doc, bar } = await load("/demo/pf-check");
-    ok(doc.querySelector(".rvdone"), "approved and hidden note");
-    eq(win.getComputedStyle(card(doc, "c1")).display, "none", "c1 hidden");
+    ok(doc.querySelector(".rvdone"), "approved and locked note");
+    ok(card(doc, "c1").classList.contains("settled"), "c1 is a locked row");
+    eq(seg(doc, "c1", "yes").getAttribute("aria-pressed"), "true"); ok(seg(doc, "c1", "yes").disabled);
+    eq(card(doc, "c1").querySelector(".rvhead .st").textContent, "Yes (locked)");
+    eq(doc.querySelector(".rvhist").offsetWidth, card(doc, "c2").offsetWidth, "History is as wide as the items");
     eq(card(doc, "c4").querySelector(".rvhead .st").textContent, "Blocked by c2");
+    eq(card(doc, "c4").querySelector(".rvhead .st a").getAttribute("href"), "#rv-c2");
     eq(card(doc, "c5").querySelector(".rvhead .st").textContent, "Reopened: fixed in #70");
-    match(bar.querySelector(".cnt").textContent, /^0 of 3 answered · 1 blocked · 1 approved and hidden · 1 question unanswered/);
+    match(bar.querySelector(".cnt").textContent, /^0 of 3 answered · 1 blocked · 1 approved and locked · 1 question unanswered/);
     click(seg(doc, "c3", "skip"));
     eq(card(doc, "c3").querySelector(".rvhead .st").textContent, "Skipped (locked)");
     ok(seg(doc, "c3", "yes").disabled);
@@ -173,29 +177,37 @@ const seg = (doc, id, v) => card(doc, id).querySelector('.seg button[data-v="' +
     ok(!doc.documentElement.hasAttribute("data-theme"));
   });
 
-  await t("bar: one line from tablet to desktop widths, status text ellipsed; phone tap targets kept", async () => {
+  await t("bar: one row when it fits, a clean split when it does not, and no control ever wraps", async () => {
     const { win, doc, bar } = await load("/demo/pf-bar");
-    click(seg(doc, "r1", "yes")); await saved();
-    const chip = bar.querySelector(".bkr"); chip.hidden = false; chip.textContent = "1 blocker";
-    const inner = bar.querySelector(".rvbar-in");
-    const shown = () => Array.from(inner.children).filter(el => !el.classList.contains("rvpop") && el.getClientRects().length);
-    for (const px of [1440, 1280, 1024, 800, 600]) {
-      f.style.width = px + "px"; await tick(80);
-      const box = inner.getBoundingClientRect();
-      const mids = shown().map(el => { const r = el.getBoundingClientRect(); return { c: el.className, mid: r.top + r.height / 2, right: r.right }; });
-      ok(mids.length >= 7, px + ": the full bar " + mids.map(m => m.c).join(","));
-      const spread = Math.max(...mids.map(m => m.mid)) - Math.min(...mids.map(m => m.mid));
-      ok(spread < 4, px + ": one row, spread " + spread + " " + JSON.stringify(mids));
-      ok(mids.every(m => m.right <= box.right + 1), px + ": nothing past the edge " + JSON.stringify(mids));
-      ok(bar.getBoundingClientRect().height <= 60, px + ": bar height " + bar.getBoundingClientRect().height);
-      eq(win.getComputedStyle(inner).flexWrap, "nowrap", px + ": no wrap");
-      const t = bar.querySelector(".dlv-t");
-      eq(win.getComputedStyle(t).textOverflow, "ellipsis", px + ": the delivery line ellipses");
+    const r1 = () => w().document.querySelector(".rvbar-r1"), r2 = () => w().document.querySelector(".rvbar-r2"), b = () => w().document.querySelector(".rvbar");
+    const shown = row => Array.from(row.children).filter(el => el.getClientRects().length);
+    const spread = row => { const m = shown(row).map(el => { const r = el.getBoundingClientRect(); return r.top + r.height / 2; }); return Math.max(...m) - Math.min(...m); };
+    f.style.width = "1000px"; await tick(80);
+    ok(!bar.classList.contains("two"), "a short bar stays one row: " + JSON.stringify(["inner", ".cnt", ".dlv-t"].map(q => { const el = q === "inner" ? bar.querySelector(".rvbar-in") : bar.querySelector(q); return el ? [q, el.scrollWidth, el.clientWidth] : q; })));
+    ok(bar.getBoundingClientRect().height <= 60, "one row height");
+    const controls = () => Array.from(b().querySelectorAll(".rvbar-r1 button, .rvbar-r2 button, .rvbar-r2 a, .dlv-t, .cnt")).filter(el => el.getClientRects().length);
+    await load("/demo/pf-bar-long");
+    for (const px of [1440, 1024, 800, 600, 390]) {
+      f.style.width = px + "px"; await tick(120);
+      ok(b().classList.contains("two"), px + ": the longest name and status split the bar");
+      ok(spread(r1()) < 6, px + ": the first row is one line");
+      ok(r1().getBoundingClientRect().bottom <= r2().getBoundingClientRect().top, px + ": the rows stack");
+      eq(shown(r1()).map(el => el.className.split(" ")[0]).join(","), "prev,next,stat,dlv");
+      eq(shown(r2())[0].className.split(" ")[0], "send-btn");
+      const box = b().querySelector(".rvbar-in").getBoundingClientRect();
+      for (const el of controls()) {
+        ok(el.getBoundingClientRect().right <= box.right + 1, px + ": inside the bar " + el.className);
+        if (el.classList.contains("cnt") || el.classList.contains("dlv-t")) ok(el.scrollWidth <= el.clientWidth + 1, px + ": nothing clipped " + el.className);
+        else {
+          eq(el.getClientRects().length, 1, px + ": one box " + el.className);
+          ok(el.classList.contains("send-btn") && px < 481 || el.scrollWidth <= el.clientWidth + 1, px + ": nothing clipped " + el.className);
+          ok(el.getBoundingClientRect().height <= 52, px + ": one line " + el.className);
+        }
+      }
+      eq(w().getComputedStyle(b()).position, "fixed", px + ": always visible");
     }
-    f.style.width = "390px"; await tick(80);
-    const small = Array.from(bar.querySelectorAll(".rvbar-in > button, .rvbar .more-btn")).filter(el => el.getClientRects().length);
-    ok(small.length >= 4, "phone buttons");
-    small.forEach(el => ok(el.getBoundingClientRect().height >= 44, "phone tap target " + el.className + " " + el.getBoundingClientRect().height));
+    Array.from(b().querySelectorAll(".rvbar-r1 button, .rvbar-r2 button")).filter(el => el.getClientRects().length)
+      .forEach(el => ok(el.getBoundingClientRect().height >= 44, "phone tap target " + el.className));
     f.style.width = "1000px"; await tick(30);
   });
 
@@ -362,12 +374,12 @@ const seg = (doc, id, v) => card(doc, id).querySelector('.seg button[data-v="' +
     eq(dlv.dataset.state, "taken"); eq(dlv.querySelector(".dlv-t").textContent, "Picked up by app 07:43");
     r = await load("/demo/pf-dlv-replied");
     dlv = r.bar.querySelector(".dlv");
-    eq(dlv.dataset.state, "replied"); eq(dlv.querySelector(".dlv-t").textContent, "app replied 07:50: All fixed, round 2 is ready.");
+    eq(dlv.dataset.state, "replied"); eq(dlv.querySelector(".dlv-t").textContent, "app replied 07:50");
     const go = dlv.querySelector("a.dlv-t"); ok(go, "the reply links to the page thread"); eq(go.getAttribute("href"), "#replies");
     ok(r.doc.getElementById("replies"), "the page thread is the target");
   });
 
-  await t("sent: a banner says it reached the inbox, every item locks, and an update unlocks it live", async () => {
+  await t("sent: a banner says it reached the inbox, only what was sent locks, and an update unlocks it live", async () => {
     const { win, doc, bar } = await load("/demo/pf-held");
     win.__alive = true;
     ok(!doc.querySelector(".sentlock"), "no banner before a Send");
@@ -377,13 +389,16 @@ const seg = (doc, id, v) => card(doc, id).querySelector('.seg button[data-v="' +
     const d2 = w().document, box = d2.querySelector(".sentlock");
     eq(box.dataset.state, "sent");
     match(box.textContent, /Sent to app at \d\d:\d\d\. It's in app's inbox, waiting to be picked up\./);
-    match(box.textContent, /Every item is locked until app updates this page\./);
-    ok(seg(d2, "r2", "yes").disabled, "an open item is locked"); ok(seg(d2, "r1", "yes").disabled, "a Yes is locked");
-    ok(card(d2, "r2").querySelector(".blocker-btn").disabled, "Blocker is locked");
-    const send = d2.querySelector(".rvbar .send-btn"); ok(send.disabled, "Send is locked"); eq(send.textContent, "Sent");
+    match(box.textContent, /The item you sent is locked until app updates this page\. Everything else stays open\./);
+    ok(seg(d2, "r1", "yes").disabled, "the sent Yes is locked"); ok(card(d2, "r1").querySelector(".blocker-btn").disabled, "so is its Blocker");
+    ok(!seg(d2, "r2", "yes").disabled, "an item not sent stays open"); ok(!card(d2, "r2").querySelector(".blocker-btn").disabled);
+    const send = d2.querySelector(".rvbar .send-btn"); ok(send.disabled, "nothing new to send"); eq(send.textContent, "Sent");
+    click(seg(d2, "r2", "yes"));
+    ok(!send.disabled, "a new answer can go"); match(send.textContent, /^Send to /);
+    await saved();
     const put = await fetch("/_page/demo/pf-held/answers", { method: "PUT", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ answers: { r2: { answer: "yes", note: "" } } }) });
-    eq(put.status, 400, "the server refuses too");
+      body: JSON.stringify({ answers: { r1: { answer: "no", note: "" } } }) });
+    eq(put.status, 400, "the server refuses a sent item");
     await fetch("/_page/demo/pf-held/unlock", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
     await until(() => !w().document.querySelector(".sentlock"), "the live unlock", 15000);
     eq(w().__alive, true, "no reload"); ok(!seg(w().document, "r2", "yes").disabled, "open again");
@@ -401,11 +416,18 @@ const seg = (doc, id, v) => card(doc, id).querySelector('.seg button[data-v="' +
     ok(!seg(w().document, "r2", "yes").disabled, "open again");
   });
 
-  await t("sent: a Yes it carried is hidden after the update and stays in Copy results", async () => {
+  await t("sent: a Yes it carried stays locked after the update, a handled Changes clears, and both stay on record", async () => {
     const { win, doc, bar } = await load("/demo/pf-held-after");
     ok(!doc.querySelector(".sentlock"), "the reply unlocked it");
-    ok(card(doc, "r1").hidden || card(doc, "r1").offsetParent === null, "the Yes is hidden");
-    ok(card(doc, "r2").offsetParent !== null, "the Changes item stays");
+    const row = card(doc, "r1"), tg = row.querySelector(".settled-tg");
+    ok(row.classList.contains("settled"), "the Yes is a locked row"); eq(seg(doc, "r1", "yes").getAttribute("aria-pressed"), "true"); ok(seg(doc, "r1", "yes").disabled);
+    eq(row.querySelector(".rv").offsetParent, null, "collapsed"); click(tg); ok(row.querySelector(".rv").offsetParent !== null, "opens");
+    click(tg); click(row.querySelector("a.rid")); ok(row.querySelector(".rv").offsetParent !== null, "the id link opens a locked row");
+    const ch = card(doc, "r2");
+    eq(ch.querySelector("a.rid").getAttribute("href"), "#rv-r2");
+    eq(seg(doc, "r2", "chg").getAttribute("aria-pressed"), "false"); eq(ch.querySelector(".rv textarea").value, "");
+    eq(ch.querySelector(".rvhead .st").textContent, "Updated: answer again");
+    match(ch.querySelector(".thread").textContent, /Changes/);
     click(bar.querySelector(".more-btn")); click(bar.querySelector(".copy")); await tick(50);
     match(win.__clip, /r1/);
   });

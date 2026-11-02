@@ -118,6 +118,32 @@ def _items_by_id(doc):
     return {it["id"]: it for it in doc["items"]}
 
 
+def _held_sends(rnd):
+    return rnd.get("held") or ([rnd["awaiting"]] if "awaiting" in rnd else [])
+
+
+def held_items(doc):
+    """The items Sends carried that wait on the agent. Every other item stays open to answer."""
+    subs = doc["submissions"]
+    return {iid for n in _held_sends(doc["rounds"][-1]) for iid in subs[n - 1]["items"]}
+
+
+def _clear_hold(rnd):
+    rnd.pop("awaiting", None)
+    rnd.pop("held", None)
+
+
+def _settle(doc, iid, at, via):
+    """A sent No or Changes the agent dealt with leaves the open answers for good, so its note can't be sent again."""
+    rnd = doc["rounds"][-1]
+    entry = rnd["answers"].get(iid)
+    if not entry or entry["answer"] not in ("no", "changes") or not _sent(doc, rnd, iid, entry):
+        return
+    del rnd["answers"][iid]
+    kept = {k: entry[k] for k in ("answer", "note", "by", "at") if k in entry}
+    rnd.setdefault("handled", {}).setdefault(iid, []).append({**kept, "handled": at, "via": via})
+
+
 def write_definition(path, definition, *, now=None):
     """Create the page, or replace its definition. A build or reset change opens a new round. Returns the rev."""
     refused = [f"{k}: written by the server, not the definition" for k in SERVER_KEYS if k in definition]
@@ -128,10 +154,14 @@ def write_definition(path, definition, *, now=None):
         if os.path.exists(p):
             doc = load(p)
             old_build, old_reset = doc.get("build"), doc.get("reset")
+            old_hashes = {it["id"]: item_hash(it) for it in doc["items"]}
             for k in DEFINITION_KEYS:
                 doc.pop(k, None)
             doc.update(definition)
-            doc["rounds"][-1].pop("awaiting", None)
+            _clear_hold(doc["rounds"][-1])
+            for it in doc["items"]:
+                if old_hashes.get(it["id"], item_hash(it)) != item_hash(it):
+                    _settle(doc, it["id"], at, "definition")
             if doc.get("build") != old_build:
                 _open_next(doc, at, "build changed")
             elif doc.get("reset") != old_reset:
@@ -165,14 +195,16 @@ def save_answers(path, answers, *, by, base=None, now=None):
         doc = load(p)
         items = _items_by_id(doc)
         rnd = doc["rounds"][-1]
-        if "awaiting" in rnd:
-            raise PageError("this page was sent; unlock it, or wait for the update, to change an answer")
+        held = held_items(doc)
         errors = []
         changed = False
         for iid, new in answers.items():
             item = items.get(iid)
             if item is None:
                 errors.append(f"{iid}: no item {iid} on this page")
+                continue
+            if iid in held:
+                errors.append(f"{iid}: this was sent; unlock it, or wait for the update, to change the answer")
                 continue
             answer, note = str(new.get("answer", "")), str(new.get("note", ""))
             ok = allowed_answers(doc, item)
@@ -246,13 +278,15 @@ def reply(path, item_id, frm, text, *, action=None, reason=None, ref=None, now=N
         if item_id != "_page" and item_id not in _items_by_id(doc):
             raise PageError(f"{item_id}: no item {item_id} on this page")
         rnd = doc["rounds"][-1]
-        rnd.pop("awaiting", None)
+        _clear_hold(rnd)
         replies = doc["thread"].setdefault(item_id, [])
         entry = {"n": len(replies) + 1, "from": frm, "at": at, "round": rnd["round"], "text": text}
         for k, val in (("action", action), ("reason", reason), ("ref", ref)):
             if val is not None:
                 entry[k] = val
         replies.append(entry)
+        if item_id != "_page":
+            _settle(doc, item_id, at, "reply")
         if action == "reopen" and item_id != "_page":
             rnd.setdefault("reopened", {})[item_id] = reason or text
         _commit(p, doc)
@@ -298,18 +332,23 @@ def add_submission(path, record, *, now=None):
 
 
 def hold(path, n):
-    """Submission n reached the inbox: lock the page until the agent's next update or an unlock. Returns the rev."""
+    """Submission n reached the inbox: lock its items until the agent's next update or an unlock. Returns the rev."""
     with _locked(path) as p:
         doc = load(p)
-        doc["rounds"][-1]["awaiting"] = n
+        rnd = doc["rounds"][-1]
+        rnd["held"] = _held_sends(rnd) + [n]
+        rnd["awaiting"] = n
         return _commit(p, doc)
 
 
 def release(path):
-    """Unlock a held page without waiting for the agent. Returns the rev."""
+    """Unlock a held page without waiting for the agent: that Send no longer settles anything. Returns the rev."""
     with _locked(path) as p:
         doc = load(p)
-        doc["rounds"][-1].pop("awaiting", None)
+        rnd = doc["rounds"][-1]
+        for n in _held_sends(rnd):
+            doc["submissions"][n - 1]["released"] = True
+        _clear_hold(rnd)
         return _commit(p, doc)
 
 
@@ -335,8 +374,8 @@ def mark_taken(path, n, *, at=None):
 
 def _sent(doc, cur, iid, answer):
     """Did a Send in the open round carry this answer?"""
-    return any(s["kind"] == "send" and s["round"] == cur["round"] and s.get("state") != "failed" and iid in s["items"]
-               and _at(answer["at"]) <= _at(s["at"]) for s in doc["submissions"])
+    return any(s["kind"] == "send" and s["round"] == cur["round"] and s.get("state") != "failed" and not s.get("released")
+               and iid in s["items"] and _at(answer["at"]) <= _at(s["at"]) for s in doc["submissions"])
 
 
 def item_states(doc):
@@ -360,8 +399,10 @@ def item_states(doc):
             elif state["reopened"] is None:
                 state.update(answer=mine["answer"], round=cur["round"])
                 state["hidden"] = mine["answer"] == "yes" and "awaiting" not in cur and _sent(doc, cur, iid, mine)
-        elif state["reopened"] is None and not cur.get("restart"):
+        elif state["reopened"] is None and not cur.get("restart") and iid not in cur.get("handled", {}):
             for r in reversed(rounds[:-1]):
+                if iid in r.get("handled", {}):
+                    break
                 a = r["answers"].get(iid)
                 if a and a["answer"]:
                     if a["answer"] == "yes":

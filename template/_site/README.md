@@ -179,11 +179,11 @@ A subfolder with no `.html` file in it is never a page, so the index leaves it o
 
 ## Links (new window)
 
-`live.js` makes every link to another page open in a new window (`target="_blank"`, `rel="noopener"`), set
-as the click happens, so cards and threads drawn later are covered too. It runs on index pages, review pages,
-page files, inside same-origin frames and inside the How to test pop-out. Same-page `#` anchors, picture links
-(the pop-out above), `download` links, `mailto:` and other non-web links, and any link that sets its own
-`target` keep their behaviour. Writing `target="_blank"` into a page by hand is never needed.
+`live.js` makes a link inside a step or item open in a new window (`target="_blank"`, `rel="noopener"`), set
+as the click happens, so cards and threads drawn later are covered too. That covers item cards, threads, the
+How to test pop-out and the main column of an HTML review page. Browsing the site stays in the same tab: index
+cards, folder links, the header and the bar. Same-page `#` anchors, picture links (the pop-out above), `download`
+links, `mailto:` and other non-web links, and any link that sets its own `target` keep their behaviour. Writing `target="_blank"` into a page by hand is never needed.
 
 ## Wording
 

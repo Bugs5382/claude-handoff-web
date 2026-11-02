@@ -60,13 +60,26 @@ def allowed_answers(doc, item):
     if typ == "info":
         return ()
     if typ == "choice":
-        return tuple(c["value"] for c in doc["options"]["choices"])
+        return tuple(c["value"] for c in item.get("choices") or doc["options"]["choices"])
     base = tuple(item.get("answers") or TYPE_ANSWERS[typ])
     if item.get("skip") and "skipped" not in base:
         base += ("skipped",)
     if doc["kind"] == "round" and not item.get("answers"):
         base += ("risk",)
     return base
+
+
+def _choice_problem(item, values, answer, other):
+    """Why an answer doesn't fit an item's own choices: other is the built-in Other, a pick list is comma-joined."""
+    picks = [p for p in answer.split(",") if p]
+    bad = [p for p in picks if p not in values and p != "other"]
+    if bad:
+        return "expected one of " + ", ".join(values) + " or other"
+    if len(picks) > 1 and not item.get("multi"):
+        return "this takes one pick"
+    if "other" in picks and not other.strip():
+        return "Other needs its text"
+    return None
 
 
 @contextlib.contextmanager
@@ -214,8 +227,14 @@ def save_answers(path, answers, *, by, base=None, now=None):
             if iid in held:
                 errors.append(f"{iid}: this was sent; unlock it, or wait for the update, to change the answer")
                 continue
-            answer, note = str(new.get("answer", "")), str(new.get("note", ""))
+            answer, note, other = str(new.get("answer", "")), str(new.get("note", "")), str(new.get("other", ""))
             ok = allowed_answers(doc, item)
+            if item.get("choices"):
+                problem = _choice_problem(item, ok, answer, other)
+                if problem:
+                    errors.append(f"{iid}: {problem}")
+                    continue
+                ok = None
             if ok == ():
                 errors.append(f"{iid}: this item takes no answer")
                 continue
@@ -233,9 +252,11 @@ def save_answers(path, answers, *, by, base=None, now=None):
                 continue
             # The same Yes again is still news on a reopened or changed item: it clears the reopen.
             current = iid not in rnd.get("reopened", {}) and (old or {}).get("hash") in (None, item_hash(item))
-            if current and old is not None and old["answer"] == answer and old.get("note", "") == note:
+            if current and old is not None and old["answer"] == answer and old.get("note", "") == note and old.get("other", "") == other:
                 continue
             entry = {"answer": answer, "note": note, "by": by, "at": at, "hash": item_hash(item)}
+            if other:
+                entry["other"] = other
             if old is not None:
                 entry["was"] = old.get("was", []) + [{k: old[k] for k in ("answer", "note", "by", "at") if k in old}]
             rnd["answers"][iid] = entry
@@ -413,6 +434,11 @@ def _sent(doc, cur, iid, answer):
                and iid in s["items"] and _at(answer["at"]) <= _at(s["at"]) for s in doc["submissions"])
 
 
+def _settles(item, typ, answer):
+    """An answer that locks once it's gone back: a Yes or Accept risk, any answered question, an item's own pick."""
+    return bool(answer) and (answer in DONE and typ != "question" or typ == "question" or bool(item.get("choices")))
+
+
 def item_states(doc):
     """Where each answerable item stands in the open round.
 
@@ -425,22 +451,22 @@ def item_states(doc):
     cur = rounds[-1]
     out = {}
     for it in items:
-        iid, h = it["id"], item_hash(it)
+        iid, h, typ = it["id"], item_hash(it), item_type(doc, it)
         state = {"answer": "", "hidden": False, "reopened": cur.get("reopened", {}).get(iid), "round": None}
         mine = cur["answers"].get(iid)
         if mine and mine["answer"]:
-            if mine["answer"] in DONE and mine.get("hash") not in (None, h):
+            if _settles(it, typ, mine["answer"]) and mine.get("hash") not in (None, h):
                 state["reopened"] = f"changed since round {cur['round']}"
             elif state["reopened"] is None:
                 state.update(answer=mine["answer"], round=cur["round"])
-                state["hidden"] = mine["answer"] in DONE and "awaiting" not in cur and _sent(doc, cur, iid, mine)
+                state["hidden"] = _settles(it, typ, mine["answer"]) and "awaiting" not in cur and _sent(doc, cur, iid, mine)
         elif state["reopened"] is None and not cur.get("restart") and iid not in cur.get("handled", {}):
             for r in reversed(rounds[:-1]):
                 if iid in r.get("handled", {}):
                     break
                 a = r["answers"].get(iid)
                 if a and a["answer"]:
-                    if a["answer"] in DONE:
+                    if _settles(it, typ, a["answer"]):
                         if a.get("hash") not in (None, h):
                             state["reopened"] = f"changed since round {r['round']}"
                         else:
@@ -488,8 +514,10 @@ def phase_states(doc):
     out = {}
     for ph in doc.get("phases") or []:
         items = [it["id"] for it in doc["items"] if phase_of(it["id"]) == ph["id"]]
-        counted = [i for i in items if i in states and item_type(doc, _items_by_id(doc)[i]) != "question"]
-        out[ph["id"]] = {"items": items, "closed": all(states[i]["answer"] in DONE + ("skipped",) for i in counted), "blocked": None}
+        by_id = _items_by_id(doc)
+        counted = [i for i in items if i in states and item_type(doc, by_id[i]) != "question"]
+        settled = [i for i in counted if states[i]["answer"] in DONE + ("skipped",) or (by_id[i].get("choices") and states[i]["answer"])]
+        out[ph["id"]] = {"items": items, "closed": len(settled) == len(counted), "blocked": None}
     for ph in doc.get("phases") or []:
         out[ph["id"]]["blocked"] = next((d for d in ph.get("dependsOn", []) if not _met(d, states, out)), None)
     return out
@@ -520,6 +548,10 @@ def summary(doc):
         if typ == "info":
             continue
         st = states[it["id"]]
+        if typ == "choice" and it.get("choices"):
+            out["counted"] += 1
+            out["yes" if st["answer"] else "open"] += 1
+            continue
         if typ == "choice":
             pick = st["answer"] or choices.get("default", "")
             if pick in tally:

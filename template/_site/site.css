@@ -300,7 +300,8 @@ body.site th { background: var(--soft-2); font-weight: 600; }
 .rvcard[data-answer="no"], .rv.no { border-color: var(--no-edge); }
 .rvcard.settled { padding: 10px 22px; background: var(--soft); }
 .rvcard.settled > h2 { font-size: 1em; margin: 6px 0 0; }
-.rvcard.settled:not(.shown) > :not(.rvhead, h2) { display: none; }
+.rvcard.settled:not(.shown) > :not(.rvhead, h2, .locked-answer) { display: none; }
+.locked-answer { margin: 6px 0 2px; white-space: pre-wrap; overflow-wrap: anywhere; }
 .rvcard[data-answer="risk"], .rv.risk { border-color: var(--chg-edge); }
 .st.a-risk { background: var(--chg-bg); color: var(--chg); }
 .item-more { position: relative; display: inline-block; margin-left: 8px; }
@@ -760,3 +761,20 @@ body.site .rvrestart > h2 { font-size: 16px; margin: 0 0 4px; }
 .email-vers button:first-child { border-radius: var(--radius-sm) 0 0 var(--radius-sm); margin-left: 0; }
 .email-vers button:last-child { border-radius: 0 var(--radius-sm) var(--radius-sm) 0; }
 .email-vers button[aria-pressed="true"] { background: var(--link); border-color: var(--link); color: var(--card); }
+
+/* An item's own question: one option per line, the label, then a short description. */
+.rv-opts { margin: 8px 0; padding: 0; border: 0; display: grid; gap: 6px; }
+.rv-opts legend { padding: 0; margin-bottom: 6px; }
+.rv-opt { display: flex; align-items: flex-start; gap: 10px; min-height: var(--tap); box-sizing: border-box; padding: 10px 12px; border: 1px solid var(--line-2); border-radius: var(--radius-sm); background: var(--card); cursor: pointer; }
+.rv-opt:hover { background: var(--soft-2); }
+.rv-opt:has(input:checked) { border-color: var(--link); background: var(--soft); }
+.rv-opt:has(input:disabled) { opacity: .7; cursor: not-allowed; }
+.rv-opt input { margin: 3px 0 0; flex: 0 0 auto; accent-color: var(--link); }
+.rv-opt-t { display: grid; gap: 2px; }
+.rv-opt-l { font-weight: 600; }
+.rv-opt-d { font-size: 14px; color: var(--muted); }
+.rv-opt-other { display: grid; gap: 4px; font-size: 14px; font-weight: 600; }
+.rv-opt-other input { font: inherit; font-weight: 400; min-height: var(--tap); box-sizing: border-box; width: 100%; padding: 0 10px; }
+
+/* Green box: sent, and waiting on the agent. A reply or a follow-up clears it. */
+.rvcard.is-sent { border-color: var(--yes-solid); box-shadow: 0 0 0 2px var(--yes-solid); }

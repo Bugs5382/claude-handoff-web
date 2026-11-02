@@ -1,0 +1,55 @@
+{
+  "definition": {
+    "schema": "handoff.page/v1",
+    "kind": "questions",
+    "title": "Sample: answered questions lock",
+    "summary": "Answers that went back are locked and still readable. Only the follow-up is open.",
+    "status": {
+      "state": "needs-you",
+      "priority": 9
+    },
+    "items": [
+      {
+        "id": "q1",
+        "title": "Which weekend suits the Harbor team?"
+      },
+      {
+        "id": "q2",
+        "title": "Do we need the vendor on the call?"
+      },
+      {
+        "id": "f1",
+        "title": "Follow-up to q1: who covers the Saturday night shift?"
+      }
+    ]
+  },
+  "steps": [
+    {
+      "answers": {
+        "q1": {
+          "answer": "The second weekend of the month",
+          "note": ""
+        },
+        "q2": {
+          "answer": "yes",
+          "note": ""
+        }
+      },
+      "at": "2026-01-05T09:00:00+00:00"
+    },
+    {
+      "send": [
+        "q1",
+        "q2"
+      ],
+      "at": "2026-01-05T09:30:00+00:00"
+    },
+    {
+      "reply": {
+        "id": "_page",
+        "text": "Taken, thanks. One follow-up below."
+      },
+      "at": "2026-01-05T10:00:00+00:00"
+    }
+  ]
+}

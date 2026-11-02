@@ -6,7 +6,7 @@ How to use this site: what a person presses, what comes back, and what Claude do
 
 Claude writes a page with `page.py`. The person answers it in the browser, and presses Send. That drops a file in Claude's inbox. Claude acts, then answers on the page, and the page updates by itself.
 
-Keep `page.py wait <agent>` running in the background so Claude notices. To set up a page's route:
+Keep `page.py listen <agent>` running under a monitor so Claude notices each Send, or `page.py wait <agent>` in the background, started again each time it exits. To set up a page's route:
 
 ```bash
 python3 _site/page.py route ops/migration --to app --mode send
@@ -89,7 +89,7 @@ Any page can mix them with `type`.
 | `contract` | fields and forms | Yes, No or Changes |
 | `diff` | a change, with Diff and Final | Yes, No or Changes |
 | `question` | a question | free text |
-| `choice` | the page's own `options` | a pick |
+| `choice` | the page's `options`, or its own question with labelled options | a pick, or Other with text, plus a note |
 | `info` | text | nothing |
 
 ## What each control does

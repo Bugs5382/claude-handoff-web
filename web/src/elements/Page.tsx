@@ -26,8 +26,9 @@ import type { ItemDef, Locals, PageData } from "@/lib/types";
 
 const LOUD: Record<string, string> = { yes: "YES", no: "NO", chg: "CHANGES", skip: "SKIPPED (locked)", risk: "ACCEPT RISK" };
 
-function tally(data: PageData, items: ItemDef[], s: Locals): string {
+function tally(data: PageData, list: ItemDef[], s: Locals): string {
   const opts = data.page.options?.choices ?? [], def = data.page.options?.default ?? "";
+  const items = list.filter(it => !it.choices);
   return opts.map(o => `${items.filter(it => (s[it.id]?.v || def) === o.value).length} ${o.label.toLowerCase()}`).join(" · ");
 }
 
@@ -39,14 +40,16 @@ export function resultsOf(data: PageData, s: Locals, blocked: Record<string, str
   let out = `Review: ${p.title} (/${rel})\n`;
   for (const it of answerable.filter(x => t(x) !== "question")) {
     const l = s[it.id] ?? {}, pick = l.v || p.options?.default || "";
-    const ans = t(it) === "choice" ? (pick ? label(pick).toUpperCase() : "NOT ANSWERED") : (LOUD[l.v ?? ""] ?? "NOT ANSWERED");
+    const own = (x: string) => (x === "other" ? `OTHER (${(l.o ?? "").replace(/\n/g, " ")})` : (it.choices?.find(c => c.value === x)?.label ?? x).toUpperCase());
+    const ans = it.choices ? (l.v ? l.v.split(",").map(own).join(", ") : "NOT ANSWERED") : t(it) === "choice" ? (pick ? label(pick).toUpperCase() : "NOT ANSWERED") : (LOUD[l.v ?? ""] ?? "NOT ANSWERED");
     out += `- [${it.id}] ${blocked[it.id] ? `BLOCKED by ${blocked[it.id]}, ` : ""}${l.blocker ? "BLOCKER, " : ""}${ans}: ${it.title}${l.n ? `\n    Note: ${l.n.replace(/\n/g, " ")}` : ""}\n`;
   }
   const ync = answerable.filter(it => t(it) !== "question" && t(it) !== "choice");
   const counted = ync.filter(it => !s[it.id]?.locked), yes = counted.filter(it => DONE.includes(s[it.id]?.v ?? "")).length;
   out += "\n";
   if (counted.length || !choices.length) out += (yes === counted.length ? `APPROVED: every item is Yes${p.kind === "round" ? " or Accept risk" : ""}.` : `Not approved yet: ${yes} of ${counted.length} are Yes.`) + "\n";
-  if (choices.length) out += tally(data, choices, s) + "\n";
+  const picks = tally(data, choices, s);
+  if (picks) out += picks + "\n";
   const qOpen = qs.filter(it => !(s[it.id]?.a ?? "").trim()).length;
   if (qOpen) out += `${qOpen} open question${qOpen === 1 ? "" : "s"}\n`;
   if (qs.length) { out += "\n"; for (const it of qs) out += `Q ${it.id}: ${(s[it.id]?.a ?? "").trim().replace(/\n/g, " ") || "(no answer)"}\n`; }
@@ -98,8 +101,8 @@ export function Page() {
     if (!data) return null;
     const p = data.page, r = openRound(p);
     const blocked = blockers(data);
-    const hidden = new Set(p.items.filter(it => data.states[it.id]?.hidden && typeOf(p, it) !== "choice").map(it => it.id));
-    const kinds: CountItem[] = p.items.filter(it => typeOf(p, it) !== "info").map(it => { const t = typeOf(p, it); return { id: it.id, kind: t === "question" ? "question" : t === "choice" ? "choice" : "ync" }; });
+    const hidden = new Set(p.items.filter(it => data.states[it.id]?.hidden && (typeOf(p, it) !== "choice" || it.choices)).map(it => it.id));
+    const kinds: CountItem[] = p.items.filter(it => typeOf(p, it) !== "info").map(it => { const t = typeOf(p, it); return { id: it.id, kind: t === "question" ? "question" : t === "choice" ? "choice" : "ync", own: !!it.choices }; });
     return { p, r, blocked, hidden, kinds, held: new Set(heldIds(p)), sub: heldBy(p) };
   }, [data]);
 
@@ -264,7 +267,7 @@ export function Page() {
       {sub && <Held data={data} sub={sub} onUnlock={async () => { await postPage("/unlock", {}); await redraw(); }} />}
       {pageReplies.length > 0 && <section className="pthread" id="replies"><h2>Replies about this page</h2><Thread entries={pageReplies} label="Replies about this page" /></section>}
       {p.kind === "journey" && <Restart data={data} onRestart={async cp => { await flush(); await postPage("/restart", { checkpoint: cp, results: results() }); await redraw(); }} />}
-      {hidden.size > 0 && <div className="rvdone">{hidden.size} approved and locked. They stay in Copy results.</div>}
+      {hidden.size > 0 && <div className="rvdone">{[c.hidden ? `${c.hidden} approved` : "", hidden.size > c.hidden ? `${hidden.size - c.hidden} answered` : ""].filter(Boolean).join(", ")} and locked. They stay in Copy results.</div>}
       {body(renderItem)}
       {!reference && <History rows={rows} />}
     </main>

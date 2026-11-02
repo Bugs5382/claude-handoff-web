@@ -644,3 +644,117 @@ def test_a_deck_keeps_a_yes_from_an_earlier_round_and_drops_a_reopened_one(path)
     pagefile.new_round(path, now=T1)
     pagefile.reply(path, "A2", "ops", "Look again", action="reopen", reason="Moved", now=T2)
     assert [(i["id"], i["note"]) for i in pagefile.deck_items(pagefile.load(path))] == [("A1", "Said so")]
+
+
+TWO = [{"value": "now", "label": "Restart now", "description": "Ten minutes", "recommended": True}, {"value": "wait", "label": "Wait"}]
+
+
+def own_choices(**extra):
+    return {"schema": schema.SCHEMA, "kind": "review", "title": "Pick", "items": [
+        {"id": "s1", "title": "Plain"},
+        {"id": "c1", "type": "choice", "title": "Which way?", "choices": TWO, **extra}]}
+
+
+def test_an_item_can_carry_its_own_choices_with_a_note(path):
+    make(path, own_choices())
+    picked = {"answer": "wait", "note": "After the backup"}
+    pagefile.save_answers(path, {"c1": picked}, by="me", now=T0)
+    a = pagefile.load(path)["rounds"][-1]["answers"]["c1"]
+    assert a["answer"] == "wait" and a["note"] == "After the backup"
+    with pytest.raises(pagefile.PageError, match="c1"):
+        pagefile.save_answers(path, {"c1": {"answer": "yes"}}, by="me", now=T1)
+
+
+def test_other_needs_its_text_and_keeps_it(path):
+    make(path, own_choices())
+    with pytest.raises(pagefile.PageError, match="Other needs"):
+        pagefile.save_answers(path, {"c1": {"answer": "other", "other": " "}}, by="me", now=T0)
+    pagefile.save_answers(path, {"c1": {"answer": "other", "other": "Restart at noon"}}, by="me", now=T0)
+    assert pagefile.load(path)["rounds"][-1]["answers"]["c1"]["other"] == "Restart at noon"
+
+
+def test_a_change_to_only_the_other_text_is_saved(path):
+    make(path, own_choices())
+    pagefile.save_answers(path, {"c1": {"answer": "other", "other": "Noon"}}, by="me", now=T0)
+    pagefile.save_answers(path, {"c1": {"answer": "other", "other": "Two"}}, by="me", now=T1)
+    assert pagefile.load(path)["rounds"][-1]["answers"]["c1"]["other"] == "Two"
+
+
+def test_one_pick_unless_the_item_is_multi_select(path):
+    make(path, own_choices())
+    with pytest.raises(pagefile.PageError, match="one"):
+        pagefile.save_answers(path, {"c1": {"answer": "now,wait"}}, by="me", now=T0)
+    pagefile.write_definition(path, own_choices(multi=True), now=T1)
+    pagefile.save_answers(path, {"c1": {"answer": "now,wait"}}, by="me", now=T1)
+    assert pagefile.load(path)["rounds"][-1]["answers"]["c1"]["answer"] == "now,wait"
+
+
+def test_an_item_with_its_own_choices_counts_as_open_until_picked(path):
+    make(path, own_choices())
+    assert pagefile.summary(pagefile.load(path))["open"] == 2
+    pagefile.save_answers(path, {"s1": {"answer": "yes"}, "c1": {"answer": "now"}}, by="me", now=T0)
+    s = pagefile.summary(pagefile.load(path))
+    assert s["open"] == 0 and s["approved"] is True
+
+
+def test_a_phase_closes_with_a_picked_choice(path):
+    d = phased()
+    d["items"][1] = {"id": "A2", "type": "choice", "title": "Which?", "choices": TWO}
+    make(path, d)
+    pagefile.save_answers(path, {"A1": {"answer": "yes"}}, by="me", now=T0)
+    assert pagefile.phase_states(pagefile.load(path))["A"]["closed"] is False
+    pagefile.save_answers(path, {"A2": {"answer": "wait"}}, by="me", now=T1)
+    assert pagefile.phase_states(pagefile.load(path))["A"]["closed"] is True
+
+
+def asks():
+    items = [{"id": "q1", "title": "One?"}, {"id": "q2", "title": "Two?"}]
+    return {"schema": schema.SCHEMA, "kind": "questions", "title": "Asks", "items": items}
+
+
+def test_an_answered_question_locks_on_send_and_stays_readable(path):
+    make(path, asks())
+    pagefile.save_answers(path, {"q1": {"answer": "Saturday"}}, by="me", now=T0)
+    sent(path, ["q1"])
+    pagefile.reply(path, "_page", "ops", "Taken.", now=T2)
+    states = pagefile.item_states(pagefile.load(path))
+    assert states["q1"] == {"answer": "Saturday", "hidden": True, "reopened": None, "round": 1}
+    assert states["q2"]["hidden"] is False
+    with_new_item = asks()
+    with_new_item["items"].append({"id": "f1", "title": "Follow-up to q1?"})
+    pagefile.write_definition(path, with_new_item, now=T2)
+    states = pagefile.item_states(pagefile.load(path))
+    assert states["q1"]["hidden"] is True and states["f1"]["hidden"] is False
+
+
+def test_a_question_answered_yes_keeps_its_text_like_any_other(path):
+    make(path, asks())
+    pagefile.save_answers(path, {"q1": {"answer": "yes"}}, by="me", now=T0)
+    sent(path, ["q1"])
+    pagefile.reply(path, "_page", "ops", "Taken.", now=T2)
+    assert pagefile.item_states(pagefile.load(path))["q1"]["answer"] == "yes"
+
+
+def test_an_answered_question_stays_locked_in_later_rounds(path):
+    make(path, asks())
+    pagefile.save_answers(path, {"q1": {"answer": "Saturday"}}, by="me", now=T0)
+    pagefile.new_round(path, now=T1)
+    state = pagefile.item_states(pagefile.load(path))["q1"]
+    assert state == {"answer": "Saturday", "hidden": True, "reopened": None, "round": 1}
+
+
+def test_a_picked_choice_of_its_own_locks_on_send(path):
+    make(path, own_choices())
+    pagefile.save_answers(path, {"c1": {"answer": "wait"}}, by="me", now=T0)
+    sent(path, ["c1"])
+    pagefile.reply(path, "_page", "ops", "Taken.", now=T2)
+    assert pagefile.item_states(pagefile.load(path))["c1"]["hidden"] is True
+
+
+def test_a_question_can_still_be_reopened_with_a_reason(path):
+    make(path, asks())
+    pagefile.save_answers(path, {"q1": {"answer": "Saturday"}}, by="me", now=T0)
+    sent(path, ["q1"])
+    pagefile.reply(path, "q1", "ops", "Which Saturday?", action="reopen", reason="Which Saturday?", now=T2)
+    state = pagefile.item_states(pagefile.load(path))["q1"]
+    assert state["reopened"] == "Which Saturday?" and state["hidden"] is False

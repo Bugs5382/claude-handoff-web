@@ -31,6 +31,8 @@ BLOCK_EXTRAS = {"code": ("lang",), "image": ("alt", "caption"), "note": ("tone",
 ID = re.compile(r"[a-z0-9][a-z0-9_-]{0,40}\Z")
 PHASE_ID = re.compile(r"[A-Z]{1,2}\Z")
 STEP_ID = re.compile(r"([A-Z]{1,2})[1-9][0-9]*\Z")
+CHOICE_VALUE = re.compile(r"[a-z0-9_-]+\Z")
+LISTED_OPTIONS = re.compile(r"\boption\s+(1|a)\b.*\boption\s+(2|b)\b", re.I | re.S)
 AGENT = re.compile(r"[a-z0-9][a-z0-9_-]{0,40}\Z")
 ID_RULE = "expected a-z, 0-9, _ and -, starting with a letter or digit, up to 41 characters"
 
@@ -46,7 +48,7 @@ TYPE_FIELDS = {
     "contract": ANSWERABLE + ("fields", "forms"),
     "diff": ANSWERABLE + ("old", "new", "code"),
     "question": ("suggested",),
-    "choice": ("blockedBy",),
+    "choice": ("blockedBy", "choices", "multi"),
     "info": (),
 }
 
@@ -270,8 +272,10 @@ def _item(v, it, p, kind, choices):
         return
     if kind in ("reference", "status") and typ != "info":
         v.err(_join(p, "type"), f"a {kind} page holds info items only")
-    if typ == "choice" and not choices:
-        v.err(_join(p, "type"), "a choice item needs the page's options")
+    if typ == "choice" and not choices and "choices" not in it:
+        v.err(_join(p, "type"), "a choice item needs its own choices or the page's options")
+    if typ == "choice":
+        _item_choices(v, it, p)
     allowed = COMMON + TYPE_FIELDS[typ]
     for k in it:
         if k not in allowed:
@@ -319,6 +323,62 @@ def _item(v, it, p, kind, choices):
                 v.string(f, "name", fp, required=True)
                 if "fields" in f:
                     _fields(v, f["fields"], _join(fp, "fields"))
+
+
+def _item_choices(v, it, p):
+    if "multi" in it:
+        if not isinstance(it["multi"], bool):
+            v.err(_join(p, "multi"), "expected true or false")
+        if "choices" not in it:
+            v.err(_join(p, "multi"), "only with the item's own choices")
+    if "choices" not in it:
+        return
+    raw = it["choices"]
+    cp = _join(p, "choices")
+    if not isinstance(raw, list) or not 2 <= len(raw) <= 4:
+        v.err(cp, "expected 2 to 4 options")
+        return
+    seen = set()
+    for i, c in enumerate(raw, 1):
+        op = f"{cp}[#{i}]"
+        if not isinstance(c, dict):
+            v.err(op, "expected an object")
+            continue
+        v.keys(c, op, ("value", "label", "description", "recommended"), ("value", "label"))
+        v.string(c, "label", op)
+        v.string(c, "description", op)
+        val = c.get("value")
+        if val == "other":
+            v.err(_join(op, "value"), "other is the built-in Other")
+        elif isinstance(val, str) and not CHOICE_VALUE.match(val):
+            v.err(_join(op, "value"), "expected a-z, 0-9, _ and -")
+        elif val in seen:
+            v.err(_join(op, "value"), "duplicate value")
+        elif isinstance(val, str):
+            seen.add(val)
+        if c.get("recommended") and i > 1:
+            v.err(_join(op, "recommended"), "the recommended option goes first")
+
+
+def _text_of(it):
+    parts = [it.get("title", "")]
+    for b in it.get("body", []) if isinstance(it.get("body"), list) else []:
+        if isinstance(b, dict):
+            for key in ("p", "note"):
+                parts.append(str(b.get(key, "")))
+            parts += [str(x) for x in b.get("list", []) + b.get("olist", [])]
+    return "\n".join(parts)
+
+
+def lint(doc):
+    """Likely mistakes that are still valid pages, so they warn and never block a write."""
+    out = []
+    for it in doc.get("items") or []:
+        if it.get("type", DEFAULT_TYPE.get(doc.get("kind"))) in ("choice", "info", "question"):
+            continue
+        if not it.get("answers") and LISTED_OPTIONS.search(_text_of(it)):
+            out.append(f"items[{it.get('id')}]: its text lists options, but it has no choices")
+    return out
 
 
 def _images(v, imgs, p):
@@ -406,9 +466,9 @@ def _entry(v, a, p, history):
     if not isinstance(a, dict):
         v.err(p, "expected an object")
         return
-    allowed = ("answer", "note", "by", "at") + (() if history else ("hash", "was"))
+    allowed = ("answer", "note", "other", "by", "at") + (() if history else ("hash", "was"))
     v.keys(a, p, allowed, ("answer", "at"))
-    for k in ("answer", "note", "by", "at", "hash"):
+    for k in ("answer", "note", "other", "by", "at", "hash"):
         v.string(a, k, p)
     if not history and "was" in a:
         if not isinstance(a["was"], list):

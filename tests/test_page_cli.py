@@ -309,3 +309,48 @@ def test_convert_keeps_a_reopen_reason_that_was_answered_since_as_a_reply(demo):
     assert states["s1"]["answer"] == "yes" and states["s1"]["reopened"] is None
     assert [(x["from"], x["action"], x["text"]) for x in doc["thread"]["s1"]] == [("ops", "info", "Reopened: Now in the top banner")]
     assert states["s2"]["reopened"] == "Tabs moved" and "s2" not in doc["thread"]
+
+
+def test_check_warns_about_listed_options_and_still_passes(tmp_path):
+    root = tmp_path / "site"
+    (root / "app").mkdir(parents=True)
+    page = root / "app" / "p.json"
+    page.write_text(json.dumps({"schema": "handoff.page/v1", "kind": "review", "title": "T", "items": [
+        {"id": "s1", "title": "Which?", "body": [{"list": ["Option 1: this", "Option 2: that"]}]}]}))
+    r = subprocess.run([sys.executable, str(ROOT / "template" / "_site" / "page.py"), "--root", str(root), "check", "app/p"],
+                       capture_output=True, text=True)
+    assert r.returncode == 0 and "lists options" in r.stderr
+
+
+def test_listen_stays_up_and_prints_each_delivery_once(root):
+    d = root / "_inbox" / "ops"
+    d.mkdir(parents=True)
+    (d / "5-first.json").write_text("{}")
+    proc = subprocess.Popen([sys.executable, str(PAGE), "--root", str(root), "listen", "ops", "--interval", "0.05"],
+                            stdout=subprocess.PIPE, text=True)
+    try:
+        assert proc.stdout.readline().strip().endswith("5-first.json"), "what's already there comes first"
+        assert (d / ".listening").read_text().strip() == str(proc.pid)
+        (d / "5-first.json").rename(d / "taken-first")
+        (d / "5-second.json").write_text("{}")
+        assert proc.stdout.readline().strip().endswith("5-second.json")
+        (d / "5-third.json").write_text("{}")
+        assert proc.stdout.readline().strip().endswith("5-third.json"), "it's still connected after two deliveries"
+        assert proc.poll() is None and (d / ".listening").exists()
+        again = run(root, "listen", "ops")
+        assert again.returncode == 1 and "already listening" in again.stderr
+    finally:
+        proc.terminate()
+        proc.wait(timeout=5)
+    assert not (d / ".listening").exists()
+
+
+def test_wait_leaves_the_agent_handling_and_a_new_wait_clears_it(root):
+    d = root / "_inbox" / "ops"
+    d.mkdir(parents=True)
+    (d / "5-first.json").write_text("{}")
+    run(root, "wait", "ops", "--timeout", "1")
+    assert (d / ".handling").exists() and not (d / ".listening").exists()
+    (d / "5-first.json").unlink()
+    r = run(root, "wait", "ops", "--timeout", "0.1")
+    assert r.returncode == 3 and not (d / ".handling").exists()

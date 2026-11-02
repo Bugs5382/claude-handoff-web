@@ -181,6 +181,10 @@ A subfolder with no `.html` file in it is never a page, so the index leaves it o
 
 A short glow marks what just happened on a page file: a Send, a reply landing, an item locking into history, Accept risk settling, a phase closing, or an email version arriving. They only change colour, so nothing moves. They skip while someone's typing, and under `prefers-reduced-motion`.
 
+## The green box
+
+A sent item has a green box and shows "Sent, waiting", and it's locked. The agent's next reply or update clears it.
+
 ## Guided tour
 
 Each page file has a Take the tour button in its header. It runs [driver.js](https://driverjs.com) over the page's real controls, one tour per page kind, and is bundled in the app with no CDN. It never starts by itself. Once it's been seen, the browser remembers and the button says See the tour again. `CUSTOM.md` shows how a custom page adds its steps.

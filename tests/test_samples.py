@@ -48,7 +48,7 @@ def test_the_round_that_came_back_shows_every_outcome(folder):
 
 
 def test_a_part_sent_page_holds_only_what_it_sent(folder):
-    assert pagefile.held_items(doc(folder, "part-sent")) == {"a"}
+    assert pagefile.held_items(doc(folder, "part-sent")) == {"a", "q1"}
 
 
 def test_loading_again_resets_the_samples_and_leaves_other_pages_alone(folder):

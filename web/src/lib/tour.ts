@@ -19,7 +19,7 @@ const ID: TourStep = { element: ".rvhead .rid", title: "Item ids", text: "Every 
 
 /** The built-in tours, by page kind, with round phases as its own. custom/custom.js can add one by template name. */
 export const tours: Record<string, TourStep[]> = {
-  review: [ANSWER, ID, ITEM_MORE, BLOCKER, COUNT, SEND, COPY, MORE],
+  review: [ANSWER, { element: ".rv-opts", title: "Pick an option", text: "Pick what fits. Other lets you write your own, and the note is optional." }, ID, ITEM_MORE, BLOCKER, COUNT, SEND, COPY, MORE],
   checklist: [ANSWER, { element: ".howto-btn", title: "How to test", text: "This opens the test steps in their own window." },
     { element: ".st.blk", title: "Blocked by", text: "A blocked item waits for the one it names. The link goes there." }, BLOCKER, COUNT, SEND, MORE],
   journey: [ANSWER, { element: ".rvrestart", title: "Restart from a checkpoint", text: "Go back to a checkpoint you've reached. The steps up to it stay Yes." }, COUNT, SEND, MORE],

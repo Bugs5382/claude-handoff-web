@@ -98,12 +98,24 @@ Answers are keyed by id, so reordering items never moves an answer.
 | `contract` | Yes / No / Changes | `fields`, `forms` (`[{name, fields}]`), `body` |
 | `diff` | Yes / No / Changes | `old`, `new`, `code` |
 | `question` | free text | `body`, `suggested` |
-| `choice` | the page's `options` | `body` |
+| `choice` | the page's `options`, or its own `choices` | `body`, `choices`, `multi` |
 | `info` | none | `body` |
 
 Answerable items also take `answers` (their own set, such as `["yes", "no"]`), `skip: true` (adds Skipped),
 `dependsOn` (ids on the same page) and `blockedBy` (free text), and any item can take `section`, a group
 heading.
+
+### An item's own choices
+
+A `choice` item can carry its own options, and then works like a question in a dialog: 2 to 4 options, one per line, each with a `label` and a short `description`. The recommended option goes first, with `"recommended": true`, and shows "(Recommended)". Other is always there at the bottom and opens a text box. There's an optional note. `"multi": true` lets the person pick several.
+
+```json
+{"id": "r1", "type": "choice", "title": "When do we restart?", "choices": [
+  {"value": "tonight", "label": "Tonight", "description": "Lowest traffic", "recommended": true},
+  {"value": "weekend", "label": "At the weekend", "description": "More people on hand"}]}
+```
+
+The answer is the value, comma-joined when it's `multi`. Other is `other`, with its text in the answer's `other` field. `page.py new`, `set` and `check` warn, without stopping, when an item's text lists options such as "Option 1" and "Option 2" but the item has no choices.
 
 ### Generating an email
 
@@ -173,7 +185,13 @@ Agents use `page.py`; it writes through `pagefile.py`, so it takes the same lock
 | `page.py samples demo --route app` | loads the sample pages into a folder as `sample-*`; run it again to reset them |
 | `page.py convert app/design.html` | turns a review.js page into a page file next to it (`--print` shows the definition only) |
 
-### Waiting for submissions
+### Listening for submissions
+
+There are two ways, and a session should use one of them all the time a page is open.
+
+**`page.py listen <agent>`** is the always-on one. It stays running, prints one line per new submission, and never exits on a delivery, so the page stays connected. Run it under whatever watches a command's output and wakes the session on each line. Starting it again after a restart lists what's still waiting. A second one for the same agent refuses to start.
+
+**`page.py wait <agent>`** exits on each delivery, which suits a background job that wakes the session when it ends:
 
 Run `page.py wait <agent>` as a background command and act when it exits:
 
@@ -182,7 +200,7 @@ Run `page.py wait <agent>` as a background command and act when it exits:
 3. Do the work and answer with `page.py reply`.
 4. Start `page.py wait <agent>` again.
 
-It exits at once when files are already waiting, and waits about 200 ms after the first file so a Send and a
+After a delivery, the page keeps showing the agent as listening for 15 minutes while it works, then says it isn't, if nothing has started waiting again. It exits at once when files are already waiting, and waits about 200 ms after the first file so a Send and a
 Blocker that land together are both listed. While it runs it keeps its pid in `_inbox/<agent>/.listening`, so
 the page can say whether the agent is listening. It uses kqueue where there is one, and otherwise checks the
 folder every 2 seconds (`--poll` forces that). `--timeout S` gives up after S seconds with exit code 3.
@@ -248,6 +266,7 @@ raises `PageError`, whose `errors` list says which item and why.
 - A round opens when the page is created, when `build` or `reset` changes, on Save round now and on Restart.
   Only the last round is open.
 - A Yes from an earlier round stays on the page as a collapsed row with Yes pressed and locked. Show opens the row.
+- An answered question and an item's own pick lock the same way once a Send has carried them and the agent has updated the page, with the answer still readable on the row. To ask more, add a new item that says which answer it follows from. Don't ask the same item again.
 - A Send locks the items it carried, and a banner says where it stands: in the agent's inbox, nobody listening, or
   picked up. Everything else stays open, and a later Send carries only what's new. The agent's next `page.py set`
   or `reply` unlocks them live, in the same round, and every Yes that Send carried is

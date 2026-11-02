@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { fetchPage, rel, saveAnswers } from "@/lib/api";
-import { toAnswer, toLocal } from "@/lib/model";
+import { toAnswer, toLocal, wantsOther } from "@/lib/model";
 import type { Local, Locals, PageData } from "@/lib/types";
 
 const POLL = 10000;
@@ -66,10 +66,11 @@ export function usePage(): PageState {
     const d = doc.current;
     if (!d) return true;
     const ids = [...dirty.current];
-    const out: Record<string, { answer: string; note: string }> = {};
+    const out: Record<string, { answer: string; note: string; other?: string }> = {};
     for (const id of ids) {
       const a = toAnswer(d.page, id, now.current[id]);
       if ((a.answer === "changes" || a.answer === "risk") && !a.note.trim()) continue;
+      if (a.other !== undefined && wantsOther(now.current[id]) && !a.other.trim()) continue;
       out[id] = a;
     }
     if (!Object.keys(out).length) return true;

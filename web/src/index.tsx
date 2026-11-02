@@ -17,12 +17,12 @@ import { Restart } from "@/elements/Restart";
 import { Round } from "@/elements/Round";
 import { Thread } from "@/elements/Thread";
 import { TourButton } from "@/elements/TourButton";
-import { itemActions, loadCustom, templates } from "@/lib/custom";
+import { itemActions, loadCustom, pageActions, templates } from "@/lib/custom";
 import { tours } from "@/lib/tour";
 
 /** htm bound to React: custom templates use this with no compile step. */
 export const html = htm.bind(createElement);
-export { itemActions, templates, tours };
+export { itemActions, pageActions, templates, tours };
 export { Answer, Blocks, Button, Chip, EmailDraft, Footer, History, Item, ItemMore, JumpBar, OpenIds, Page, Phase, Restart, Round, Thread, TourButton };
 
 const root = document.getElementById("app");

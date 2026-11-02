@@ -13,6 +13,9 @@ export interface TemplateProps {
 /** Extra per-item actions, added by custom/custom.js. Each gets the item and returns an action, or null to skip it. */
 export const itemActions: ((it: ItemDef, data: PageData) => ItemAction | null)[] = [];
 
+/** Extra actions in the bar's More menu, added by custom/custom.js. Each gets the page and returns an action, or null to skip it. */
+export const pageActions: ((data: PageData) => ItemAction | null)[] = [];
+
 /** Custom templates by name, added by custom/custom.js. */
 export const templates: Record<string, (props: TemplateProps) => ReactNode> = {};
 

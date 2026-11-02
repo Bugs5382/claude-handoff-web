@@ -109,10 +109,10 @@ export function deliveryOf(data: PageData, s: Submission): Delivery {
   const base = { kind: s.kind, to };
   if (reply) {
     const t = reply.text.length > 90 ? reply.text.slice(0, 89) + "\u2026" : reply.text;
-    return { ...base, state: "replied", text: `${reply.from} replied ${clock(reply.at)}: ${t}`, bar: `${reply.from} replied ${clock(reply.at)}`, full: reply.text };
+    return { ...base, state: "replied", text: `${reply.from} replied ${clock(reply.at)}: ${t}`, bar: `replied ${clock(reply.at)}`, full: reply.text };
   }
-  if (s.state === "failed") return { ...base, state: "failed", text: `${label} failed ${clock(s.at)} · it didn't reach ${to}.` };
-  if (s.state === "taken") return { ...base, state: "taken", text: (s.kind === "restart" ? `${label} ${clock(s.at)} · picked up by ` : "Picked up by ") + `${to} ${clock(s.takenAt)}` };
+  if (s.state === "failed") return { ...base, state: "failed", text: `${label} failed ${clock(s.at)} · it didn't reach ${to}.`, bar: `failed ${clock(s.at)}` };
+  if (s.state === "taken") return { ...base, state: "taken", text: (s.kind === "restart" ? `${label} ${clock(s.at)} · picked up by ` : "Picked up by ") + `${to} ${clock(s.takenAt)}`, bar: `picked up ${clock(s.takenAt)}` };
   const deaf = to === data.route.to && !data.listening;
-  return { ...base, state: deaf ? "deaf" : "sent", text: `${label} ${clock(s.at)}` + (deaf ? ` · ${to} isn't listening.` : "") };
+  return { ...base, state: deaf ? "deaf" : "sent", text: `${label} ${clock(s.at)}` + (deaf ? ` · ${to} isn't listening.` : ""), bar: deaf ? "not listening" : `sent ${clock(s.at)}` };
 }

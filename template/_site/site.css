@@ -402,8 +402,11 @@ body.site th { background: var(--soft-2); font-weight: 600; }
 .rvbar.two .rvbar-r1, .rvbar.two .rvbar-r2 { display: flex; align-items: center; gap: var(--bar-gap); min-width: 0; }
 .rvbar.two .rvbar-r2 { flex-wrap: wrap; }
 .rvbar.two .rvbar-r1 > *, .rvbar.two .rvbar-r2 > * { order: 0; }
-.rvbar.two .stat, .rvbar.two .dlv { flex: 1 1 40%; min-width: 0; }
-.rvbar.two .cnt, .rvbar.two .dlv-t { white-space: normal; overflow: visible; overflow-wrap: anywhere; max-width: none; }
+.rvbar.two .rvbar-r1 { flex-wrap: wrap; }
+.rvbar.two .stat { flex: 0 0 auto; max-width: 100%; }
+.rvbar.two .cnt { overflow: visible; }
+.rvbar.two .dlv { flex: 0 1 auto; min-width: 0; }
+.rvbar.two .dlv-t { overflow: visible; max-width: none; }
 .rvbar.two .svst { margin-left: auto; }
 .rvbar.two .dlv:not(:empty) + .svst:not(.bad), .rvbar.two .dlv-copy { display: none; }
 .rvbar.two .more { margin-left: auto; }
@@ -411,7 +414,9 @@ body.site th { background: var(--soft-2); font-weight: 600; }
 .rvbar-r2 > .copy, .rvbar-r2 > .clear { background: transparent; color: var(--on-bar); border: 1px solid var(--bar-line); }
 .rvbar-r2 > .copy:hover, .rvbar-r2 > .clear:hover:not(:disabled) { background: var(--bar-hover); }
 .rvbar-r2 > .clear:disabled { opacity: .6; cursor: default; }
-.rvbar .deck-btn { background: transparent; color: var(--on-bar); border: 1px solid var(--bar-line); }
+.rvbar .menu a { display: flex; align-items: center; font: 15px var(--font); min-height: var(--tap); padding: 0 14px; color: var(--ink); text-decoration: none; }
+.rvbar .menu a:hover { background: var(--soft); }
+.item-more-menu a { display: flex; align-items: center; min-height: var(--tap); padding: 0 14px; font: 15px var(--font); color: var(--ink); text-decoration: none; }
 .rvbar .prev, .rvbar .next { background: transparent; color: var(--on-bar); border: 1px solid var(--bar-line); }
 .rvbar .ids { display: inline-flex; align-items: center; gap: 6px; background: var(--bar-fill); color: var(--on-bar); border: 1px solid var(--bar-line); }
 .rvbar .ids .mono, .rvbar .mono { font-family: var(--mono); }
@@ -465,6 +470,7 @@ body:has(.rvbar.two) { padding-bottom: 8.5rem; }
   .rvbar.two .rvbar-in { gap: 8px; padding: 10px 12px 18px; }
   .rvbar.two .rvbar-r1, .rvbar.two .rvbar-r2 { gap: 6px; }
   .rvbar .stat { margin: 0; }
+  .rvbar .cnt { font-size: 13px; }
   .rvbar.two .rvbar-r2 > button, .rvbar.two .more { flex: 1 1 auto; margin-left: 0; }
   .rvbar button, .rvbar .more-btn { min-height: 48px; padding: 0 10px; justify-content: center; font-size: 15px; }
   .rvbar .more-btn { width: 100%; }

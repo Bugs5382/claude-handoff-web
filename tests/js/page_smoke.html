@@ -279,6 +279,13 @@ const seg = (doc, id, v) => card(doc, id).querySelector('.seg button[data-v="' +
     const ph = await pageFile("demo/sample-round-phases");
     const sub = ph.submissions[ph.submissions.length - 1]; eq(sub.kind, "email"); eq(sub.items[0], "A4"); eq(sub.recipient, "Whoever runs the Quay switches");
     const box2 = card(w().document, "A2").querySelector(".email");
+    const change = box2.querySelector(".email-actions .email-change"), copy = box2.querySelector(".copy-cmd");
+    eq(change.textContent, "Ask for changes");
+    const look = el => { const c = w().getComputedStyle(el); return [c.height, c.fontSize, c.fontWeight, c.fontFamily, c.borderRadius, c.borderTopWidth].join("|"); };
+    eq(look(change), look(copy), "the same button as Copy");
+    ok(parseFloat(w().getComputedStyle(change).borderRadius) > 0, "not a default control");
+    ok(parseFloat(w().getComputedStyle(card(w().document, "A1").querySelector(".settled-tg")).borderRadius) > 0, "nor is Show on a locked row");
+    for (const b of box2.querySelectorAll(".email-vers button")) ok(parseFloat(w().getComputedStyle(b).minHeight) === 32, "the version buttons are styled");
     click(box2.querySelector(".email-change"));
     typeIn(box2.querySelector(".email-form textarea"), "Name the freeze date");
     click(box2.querySelector(".email-form .email-send"));

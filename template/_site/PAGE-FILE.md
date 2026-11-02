@@ -111,7 +111,7 @@ Use this when someone outside the page needs telling: an inventory step was re-v
 
 With `"drafts": true`, every item has Generate an email in its More button, whatever its answer. The person says who it's to, what they need from them, and the tone. That goes to the agent's inbox the same way as a Send, as a submission of kind `email`, with a `context` holding the step: its title and body, what changed between rounds, and the comments and replies, so the person doesn't retype any of it. It doesn't answer the item or lock it.
 
-The agent answers with `page.py email`. The email appears in the step as To, Subject and Body, each with a copy button, as a new version. Earlier versions stay readable. Change this asks for another version, sending `change` and `basedOn`.
+The agent answers with `page.py email`. The email appears in the step as To, Subject and Body, each with a copy button, as a new version. Earlier versions stay readable. Ask for changes gets another version, sending `change` and `basedOn`.
 
 ### Building a deck
 

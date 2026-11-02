@@ -47,7 +47,7 @@ Northwind is moving its Harbor site to a new core. The `sample-round-phases` pag
    python3 _site/page.py email ops/migration A2 --from app --request 4 --subject "Access switch inventory changed" "Hi all, ..."
    ```
 
-   The email appears in A2 as To, Subject and Body, each with a copy button. The item isn't answered or locked. The person presses Change this, types "shorter", and a new version comes back. Earlier versions stay readable.
+   The email appears in A2 as To, Subject and Body, each with a copy button. The item isn't answered or locked. The person presses Ask for changes, types "shorter", and a new version comes back. Earlier versions stay readable.
 
 8. **A risk gets accepted.** A3 says rollback takes 25 minutes. The person presses Accept risk and says how it's presented. That note is required. Phase A closes once every step is Yes or Accept risk, and B and C unblock.
 

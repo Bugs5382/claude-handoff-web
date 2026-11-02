@@ -15,6 +15,7 @@ import { wireDiffs } from "@/lib/diffs";
 import { actToast, returnSoon } from "@/lib/finish";
 import { folder, folderPages, folderUrl } from "@/lib/howto";
 import { DONE, blockers, count, deliveryOf, heldBy, heldIds, openRound, typeOf, type CountItem } from "@/lib/model";
+import { templates } from "@/lib/custom";
 import { inline } from "@/lib/text";
 import { usePage } from "@/lib/usePage";
 import type { ItemDef, Locals, PageData } from "@/lib/types";
@@ -71,6 +72,7 @@ export function Page() {
 
   useLayoutEffect(() => {
     if (!data) return;
+    document.dispatchEvent(new CustomEvent("handoff:page", { detail: { data } }));
     wireDiffs();
     const toggle = document.querySelector(".theme-tg.floating"), header = document.querySelector("header.top");
     if (toggle && header) { toggle.classList.remove("floating"); header.appendChild(toggle); }
@@ -207,23 +209,18 @@ export function Page() {
   const flags = [c.allDone && "all-done", c.approved && "approved", c.blockers > 0 && "has-blocker", pg.bad && "save-bad"].filter(Boolean).join(" ");
   const pageReplies = (p.thread._page ?? []).map(replyEntry);
 
-  return <>
-    <header className="top"><div className="wrap">{folder && <a className="crumb" href={folderUrl}>{"← " + folderPages}</a>}<h1>{p.title}</h1>{p.summary && <p dangerouslySetInnerHTML={{ __html: inline(p.summary) }} />}</div></header>
-    <main className="wrap" id="page">
-      {sub && <Held data={data} sub={sub} onUnlock={async () => { await postPage("/unlock", {}); await redraw(); }} />}
-      {pageReplies.length > 0 && <section className="pthread" id="replies"><h2>Replies about this page</h2><Thread entries={pageReplies} label="Replies about this page" /></section>}
-      {p.kind === "journey" && <Restart data={data} onRestart={async cp => { await flush(); await postPage("/restart", { checkpoint: cp, results: results() }); await redraw(); }} />}
-      {hidden.size > 0 && <div className="rvdone">{hidden.size} approved and locked. They stay in Copy results.</div>}
-      <Round data={data} local={local} sends={sends} held={held} goTo={goTo} sendPhase={id => void sendPhase(id)} item={(it, n) => (
+  const renderItem = (it: ItemDef, n: number | string) => (
         <Item key={it.id} item={it} n={n} risk={p.kind === "round"} type={typeOf(p, it)} state={data.states[it.id]} value={local[it.id] ?? {}} blockedBy={blocked[it.id]} held={held.has(it.id)}
           handled={!!r.handled?.[it.id]} entries={itemEntries(data, it.id)} email={emailFor(it)} diffs={data.diffs} build={p.build} choices={p.options?.choices} defaultChoice={p.options?.default}
           blockerLabel={sends ? "Blocker: send now" : "Blocker: copy now"}
           blockerTitle={`Something stops you testing or using it: ${sends ? "send this one item to" : "copy this one item and paste it to"} ${to} straight away`}
           isItem={id => p.items.some(x => x.id === id) || !!data.phases[id]} goTo={goTo} onChange={next => set(it.id, next)} onBlocker={note => void blocker(it, note)} />
-      )} />
-      {!reference && <History rows={rows} />}
-    </main>
-    {!reference && <Footer alwaysTwo={!!p.deck} flags={flags} saved={pg.saved || ""} savedBad={pg.bad} delivery={delivery}
+  );
+  const custom = p.template ? templates[p.template] : undefined;
+  const body = (item: typeof renderItem) => custom
+    ? custom({ data, local, item, sendPhase: id => void sendPhase(id), goTo })
+    : <Round data={data} local={local} sends={sends} held={held} goTo={goTo} sendPhase={id => void sendPhase(id)} item={item} />;
+  const footer = reference ? null : (<Footer alwaysTwo={!!p.deck} flags={flags} saved={pg.saved || ""} savedBad={pg.bad} delivery={delivery}
       status={<span className="stat"><span className="dot" aria-hidden="true" />
         <svg className="tick" width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d="M3 9.5l4 4 8-9" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" /></svg>
         <span className="bkr" hidden={!c.blockers}>{c.blockers} BLOCKER{c.blockers === 1 ? "" : "S"}</span><span className="cnt" role="status" aria-live="polite">{text}</span></span>}
@@ -247,7 +244,19 @@ export function Page() {
         title={choicePage ? "Items you haven't picked yet" : "Find and jump to an open item"}><span className="ids-l">{choicePage ? "Not picked" : "Open IDs"}</span> <span className="mono ids-n">({openItems.length.toLocaleString("en-US")})</span> ▴</button>
       <a className="back" hidden={!(c.allDone && folder)} href={folderUrl}>{"← Back to " + folderPages}</a>
       <span className="more"><button className="more-btn" type="button" aria-haspopup="menu" aria-expanded={popup === "menu"} onClick={e => { e.stopPropagation(); setPopup(popup === "menu" ? "" : "menu"); }}>More ▾</button></span>
-    </Footer>}
+    </Footer>);
+
+  return <>
+    <header className="top"><div className="wrap">{folder && <a className="crumb" href={folderUrl}>{"← " + folderPages}</a>}<h1>{p.title}</h1>{p.summary && <p dangerouslySetInnerHTML={{ __html: inline(p.summary) }} />}</div></header>
+    <main className="wrap" id="page">
+      {sub && <Held data={data} sub={sub} onUnlock={async () => { await postPage("/unlock", {}); await redraw(); }} />}
+      {pageReplies.length > 0 && <section className="pthread" id="replies"><h2>Replies about this page</h2><Thread entries={pageReplies} label="Replies about this page" /></section>}
+      {p.kind === "journey" && <Restart data={data} onRestart={async cp => { await flush(); await postPage("/restart", { checkpoint: cp, results: results() }); await redraw(); }} />}
+      {hidden.size > 0 && <div className="rvdone">{hidden.size} approved and locked. They stay in Copy results.</div>}
+      {body(renderItem)}
+      {!reference && <History rows={rows} />}
+    </main>
+    {footer}
   </>;
 
   async function doCopy() {

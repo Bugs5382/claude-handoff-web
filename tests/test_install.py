@@ -62,3 +62,13 @@ def test_a_new_folder_gets_no_empty_manifest(tmp_path):
     install(site, "--owner", "Sam", "--folders", "ops:Operator:Coordination")
     assert (site / "ops").is_dir() and (site / "ops" / "index.html").is_file()
     assert not (site / "ops" / "_status.json").exists()
+
+
+def test_an_update_keeps_what_is_in_custom(tmp_path):
+    site = tmp_path / "site"
+    install(site, "--owner", "Sam")
+    assert (site / "custom" / ".gitkeep").exists() and (site / "custom" / "pages").is_dir()
+    mine = site / "custom" / "custom.js"
+    mine.write_text("// mine")
+    install(site, "--owner", "Sam", "--force")
+    assert mine.read_text() == "// mine"

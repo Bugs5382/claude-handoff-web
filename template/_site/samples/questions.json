@@ -1,0 +1,23 @@
+{
+  "definition": {
+    "schema": "handoff.page/v1",
+    "kind": "questions",
+    "title": "Sample: open questions",
+    "status": {
+      "state": "needs-you",
+      "priority": 65
+    },
+    "items": [
+      {
+        "id": "q1",
+        "title": "Which weekend suits the Harbor team?",
+        "suggested": "The second weekend of the month"
+      },
+      {
+        "id": "q2",
+        "title": "Who signs off the rollback plan?"
+      }
+    ]
+  },
+  "steps": []
+}

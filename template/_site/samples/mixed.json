@@ -1,0 +1,66 @@
+{
+  "definition": {
+    "schema": "handoff.page/v1",
+    "kind": "review",
+    "title": "Sample: screens, contracts and mixed items",
+    "status": {
+      "state": "needs-you",
+      "priority": 66
+    },
+    "options": {
+      "choices": [
+        {
+          "value": "start",
+          "label": "Start"
+        },
+        {
+          "value": "hold",
+          "label": "Hold"
+        }
+      ],
+      "default": "hold"
+    },
+    "items": [
+      {
+        "id": "m1",
+        "type": "contract",
+        "title": "The order record",
+        "fields": [
+          {
+            "name": "id",
+            "type": "uuid",
+            "rule": "required"
+          },
+          {
+            "name": "total",
+            "type": "money"
+          }
+        ]
+      },
+      {
+        "id": "m2",
+        "type": "check",
+        "title": "A check with a how-to",
+        "howto": [
+          {
+            "p": "Open the order page."
+          }
+        ]
+      },
+      {
+        "id": "m3",
+        "type": "choice",
+        "title": "Add the export"
+      },
+      {
+        "id": "m4",
+        "type": "step",
+        "title": "A single step",
+        "steps": [
+          "Run it"
+        ]
+      }
+    ]
+  },
+  "steps": []
+}

@@ -91,6 +91,7 @@ export function usePage(): PageState {
     now.current = { ...now.current, [id]: next };
     dirty.current.add(id);
     flushSync(() => setLocal(now.current));
+    document.dispatchEvent(new CustomEvent("handoff:answer", { detail: { id, value: next } }));
     window.clearTimeout(timer.current);
     timer.current = window.setTimeout(() => void flush(), SAVE_WAIT);
   }, [flush]);

@@ -55,6 +55,7 @@ export interface PageDoc {
   options?: { choices: { value: string; label: string }[]; default?: string };
   phases?: PhaseDef[];
   drafts?: boolean;
+  template?: string;
   deck?: boolean;
   emails?: Record<string, EmailVersion[]>;
   items: ItemDef[];

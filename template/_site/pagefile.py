@@ -20,7 +20,8 @@ from schema import DEFAULT_TYPE, SCHEMA, TYPE_ANSWERS, validate
 
 MAX_BYTES = 2 * 1024 * 1024
 SERVER_KEYS = ("rev", "rounds", "thread", "submissions", "route", "emails")
-DEFINITION_KEYS = ("schema", "kind", "title", "summary", "build", "reset", "status", "options", "items", "phases", "drafts", "deck")
+DEFINITION_KEYS = ("schema", "kind", "title", "summary", "build", "reset", "status", "options", "items", "phases", "drafts", "deck",
+                   "template")
 DONE = ("yes", "risk")
 
 

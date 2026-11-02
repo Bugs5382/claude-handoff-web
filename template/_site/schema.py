@@ -35,7 +35,7 @@ AGENT = re.compile(r"[a-z0-9][a-z0-9_-]{0,40}\Z")
 ID_RULE = "expected a-z, 0-9, _ and -, starting with a letter or digit, up to 41 characters"
 
 TOP = ("schema", "rev", "kind", "title", "summary", "build", "reset", "status", "route", "options", "items",
-       "rounds", "thread", "submissions", "phases", "drafts", "emails", "deck")
+       "rounds", "thread", "submissions", "phases", "drafts", "emails", "deck", "template")
 COMMON = ("id", "type", "title", "section", "body")
 ANSWERABLE = ("answers", "skip", "dependsOn", "blockedBy")
 TYPE_FIELDS = {
@@ -122,6 +122,7 @@ def validate(doc):
     kind = doc.get("kind") if doc.get("kind") in KINDS else "review"
     v.string(doc, "title", "", required="title" in doc)
     v.string(doc, "summary", "")
+    v.string(doc, "template", "")
     v.string(doc, "build", "", nullable=True)
     v.integer(doc, "reset", "", nullable=True, minimum=0)
     if kind == "checklist" and not doc.get("build"):

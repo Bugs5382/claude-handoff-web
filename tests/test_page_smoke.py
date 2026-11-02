@@ -184,8 +184,8 @@ def write_pages(root):
     w(demo / "pf-mixed.json", MIXED, now=T0)
 
 
-@pytest.fixture(scope="module")
-def smoke(tmp_path_factory):
+@pytest.fixture(scope="module", params=["old", "app"])
+def smoke(tmp_path_factory, request):
     chrome = find_chrome()
     if not chrome:
         pytest.skip("Chrome or Chromium is not installed")
@@ -197,6 +197,9 @@ def smoke(tmp_path_factory):
     shutil.copy(ROOT / "example" / "site.json", root / "site.json")
     shutil.copy(HARNESS, root / "harness.html")
     write_pages(root)
+    if request.param == "app":
+        config = json.loads((root / "site.json").read_text())
+        (root / "site.json").write_text(json.dumps({**config, "renderer": "app"}))
     port = free_port()
     proc = subprocess.Popen([sys.executable, str(root / "_site" / "serve.py"), str(port), "--bind", "127.0.0.1",
                              "--directory", str(root)], stderr=subprocess.DEVNULL)
@@ -219,6 +222,7 @@ def smoke(tmp_path_factory):
         proc.wait(timeout=5)
     assert "harness" not in data, data["harness"]
     data["_root"] = str(root)
+    data["_renderer"] = request.param
     return data
 
 

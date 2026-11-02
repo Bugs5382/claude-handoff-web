@@ -38,6 +38,12 @@ const saved = () => until(() => !w().siteReview.unsaved(), "the save");
 const pageFile = async rel => (await (await fetch("/_page/" + rel, { cache: "no-store" })).json()).page;
 const answers = async rel => { const p = await pageFile(rel); return p.rounds[p.rounds.length - 1].answers; };
 const card = (doc, id) => doc.querySelector('[data-review-question="' + id + '"]');
+// Types the way a person does, so React's own input handling sees it too.
+function typeIn(el, text) {
+  const win = el.ownerDocument.defaultView;
+  Object.getOwnPropertyDescriptor(win[el.tagName === "INPUT" ? "HTMLInputElement" : "HTMLTextAreaElement"].prototype, "value").set.call(el, text);
+  el.dispatchEvent(new win.Event("input", { bubbles: true }));
+}
 const seg = (doc, id, v) => card(doc, id).querySelector('.seg button[data-v="' + v + '"]');
 
 (async () => {
@@ -50,7 +56,7 @@ const seg = (doc, id, v) => card(doc, id).querySelector('.seg button[data-v="' +
     click(seg(doc, "r1", "no"));
     eq(cards[0].dataset.answer, "no"); eq(cards[0].querySelector(".rvhead .st").textContent, "No");
     ok(!cards[0].querySelector(".notel").hidden);
-    const ta = cards[0].querySelector("textarea"); ta.value = "Split it"; ta.dispatchEvent(new win.Event("input"));
+    const ta = cards[0].querySelector("textarea"); typeIn(ta, "Split it");
     await saved();
     ["r2", "r3", "r4"].forEach(id => click(seg(doc, id, "yes")));
     ok(bar.classList.contains("all-done")); ok(!bar.classList.contains("approved"));
@@ -100,7 +106,7 @@ const seg = (doc, id, v) => card(doc, id).querySelector('.seg button[data-v="' +
     ok(doc.activeElement.closest("[data-review-question]"), "n moved focus to an item");
     click(bar.querySelector(".ids"));
     const pick = bar.querySelector(".rvids"); ok(!pick.hidden);
-    const inp = pick.querySelector("input"); inp.value = "platform"; inp.dispatchEvent(new win.Event("input"));
+    const inp = pick.querySelector("input"); typeIn(inp, "platform");
     eq(pick.querySelectorAll(".rvids-list a").length, 1);
     inp.dispatchEvent(new win.KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
     ok(pick.hidden);
@@ -160,7 +166,7 @@ const seg = (doc, id, v) => card(doc, id).querySelector('.seg button[data-v="' +
     const segs = Array.from(doc.querySelectorAll(".rv.choice .seg"));
     segs.forEach((g, i) => click(g.querySelectorAll("button")[i === 0 ? 0 : 1]));
     ok(bar.classList.contains("all-done")); match(bar.querySelector(".cnt").textContent, /^All 3 picked · 1 start · 2 hold/);
-    const cta = card(doc, "b3").querySelector("textarea"); cta.value = "After the audit"; cta.dispatchEvent(new win.Event("input"));
+    const cta = card(doc, "b3").querySelector("textarea"); typeIn(cta, "After the audit");
     await saved();
     const a = await answers("demo/pf-backlog");
     eq(a.b1.answer, "start"); eq(a.b2.answer, "hold"); eq(a.b3.note, "After the audit");
@@ -495,7 +501,7 @@ const seg = (doc, id, v) => card(doc, id).querySelector('.seg button[data-v="' +
     const { win, doc } = await load("/demo/pf-live");
     win.__alive = true;
     click(seg(doc, "r2", "no"));
-    const ta = card(doc, "r2").querySelector("textarea"); ta.focus(); ta.value = "Half typed"; ta.dispatchEvent(new win.Event("input"));
+    const ta = card(doc, "r2").querySelector("textarea"); ta.focus(); typeIn(ta, "Half typed");
     await saved();
     win.scrollTo(0, 200); const y = win.scrollY;
     await fetch("/_page/demo/pf-live/answers", { method: "PUT", headers: { "Content-Type": "application/json" },

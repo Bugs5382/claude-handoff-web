@@ -14,8 +14,8 @@ export function Answer({ id, options, value, onChange, disabled }: AnswerProps) 
   return (
     <div className="seg" role="group" aria-label={"Answer for " + id}>
       {options.map(o => (
-        <button key={o.value} type="button" data-v={o.value === "changes" ? "chg" : o.value === "skipped" ? "skip" : o.value} aria-pressed={value === o.value}
-          disabled={disabled} onClick={() => onChange(value === o.value ? "" : o.value)}>{o.label}</button>
+        <button key={o.value} type="button" data-v={o.value} data-label={o.label} aria-pressed={value === o.value} disabled={disabled}
+          onClick={() => onChange(value === o.value ? "" : o.value)}>{o.label}</button>
       ))}
     </div>
   );

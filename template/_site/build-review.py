@@ -291,7 +291,7 @@ def main(folder):
 <main class="wrap">
 {"".join(out) or '<p class="empty">Nothing open.</p>'}
 </main>
-<script src="/_site/review.js?v=34"></script>
+<script src="/_site/review.js?v=35"></script>
 </body></html>
 '''
     (fdir / "review").mkdir(exist_ok=True)

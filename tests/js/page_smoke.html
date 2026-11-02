@@ -126,6 +126,7 @@ const seg = (doc, id, v) => card(doc, id).querySelector('.seg button[data-v="' +
     eq(card(doc, "c1").querySelector(".rvhead .st").textContent, "Yes (locked)");
     eq(doc.querySelector(".rvhist").offsetWidth, card(doc, "c2").offsetWidth, "History is as wide as the items");
     eq(card(doc, "c4").querySelector(".rvhead .st").textContent, "Blocked by c2");
+    eq(card(doc, "c4").querySelector(".rvhead .st a").getAttribute("href"), "#rv-c2");
     eq(card(doc, "c5").querySelector(".rvhead .st").textContent, "Reopened: fixed in #70");
     match(bar.querySelector(".cnt").textContent, /^0 of 3 answered · 1 blocked · 1 approved and locked · 1 question unanswered/);
     click(seg(doc, "c3", "skip"));

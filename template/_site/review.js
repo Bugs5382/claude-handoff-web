@@ -416,16 +416,25 @@ if (!window.siteTheme) { const t = document.createElement("script"); t.src = "/_
       const head = box.querySelector(".rvhead"); if (head) it.card.prepend(head);
     }
   }
+  // Go to an item from its id, or from a Blocked by pill, opening a locked row on the way.
+  function jump(it) {
+    const tg = it.card && !it.card.classList.contains("shown") && it.card.querySelector(".settled-tg");
+    if (tg) tg.click();
+    go(it);
+  }
+  function blockedPill(pill, who) {
+    setPill(pill, "Blocked by ", "blk");
+    const it = items.find(x => x.id === who);
+    if (!it) { pill.textContent = "Blocked by " + who; return; }
+    const a = document.createElement("a"); a.className = "rid"; a.href = "#rv-" + encodeURIComponent(who); a.textContent = who; a.title = "Go to " + who;
+    a.addEventListener("click", e => { e.preventDefault(); jump(it); });
+    pill.appendChild(a);
+  }
   function headEl(it) {
     const h = document.createElement("div"); h.className = "rvhead";
     h.innerHTML = '<a class="rid" href="#rv-' + encodeURIComponent(it.id) + '"></a><span class="sp"></span><span class="st2" data-pill="2"></span><span class="st" data-pill="1" role="status"></span>';
     const rid = h.querySelector(".rid"); rid.textContent = it.id; rid.title = "Go to " + it.id;
-    rid.addEventListener("click", e => {
-      e.preventDefault();
-      const tg = it.card && !it.card.classList.contains("shown") && it.card.querySelector(".settled-tg");
-      if (tg) tg.click();
-      go(it);
-    });
+    rid.addEventListener("click", e => { e.preventDefault(); jump(it); });
     return h;
   }
   function segEl(it, opts) {
@@ -448,7 +457,7 @@ if (!window.siteTheme) { const t = document.createElement("script"); t.src = "/_
     const st = head.querySelector("[data-pill='1']");
     if (isQ(it)) {
       box.classList.add("question");
-      if (blocked[it.id]) { st.classList.add("blk"); st.textContent = "Blocked by " + blocked[it.id]; }
+      if (blocked[it.id]) blockedPill(st, blocked[it.id]);
       else if (reopen[it.id]) { st.classList.add("reo"); st.textContent = "Reopened: " + reopen[it.id]; } else st.textContent = "Question";
       const qrow = document.createElement("div"); qrow.className = "qrow";
       qrow.innerHTML = '<span class="ask">Your answer:</span>' + (it.suggested ? '<button type="button" class="suggest-btn">Use suggestion</button>' : "");
@@ -748,7 +757,7 @@ if (!window.siteTheme) { const t = document.createElement("script"); t.src = "/_
         });
         const first = it.ch.opts[0][0];
         if (it.card) it.card.dataset.answer = v ? (v === first ? "pick-first" : "pick") : "default";
-        if (blocked[it.id]) setPill(pill, "Blocked by " + blocked[it.id], "blk");
+        if (blocked[it.id]) blockedPill(pill, blocked[it.id]);
         else if (reopen[it.id] && !v) setPill(pill, "Reopened: " + reopen[it.id], "reo");
         else setPill(pill, v ? labelOf(it, v) : it.ch.def ? "Not picked · " + labelOf(it, it.ch.def) + " (default)" : "Not chosen", v ? (v === first ? "a-yes" : "") : "");
         continue;
@@ -761,7 +770,7 @@ if (!window.siteTheme) { const t = document.createElement("script"); t.src = "/_
       if (noNote) it.box.classList.add("empty");
       if (it.card) { it.card.dataset.answer = v; it.card.classList.toggle("is-blocker", !!s.blocker); }
       if (!s.locked) setPressed(it, v);
-      if (blocked[it.id]) setPill(pill, "Blocked by " + blocked[it.id], "blk");
+      if (blocked[it.id]) blockedPill(pill, blocked[it.id]);
       else if (s.locked) setPill(pill, "Skipped (locked)", "skp");
       else if (SETTLED && hidden.has(it.id)) setPill(pill, "Yes (locked)", "a-yes");
       else if (v) setPill(pill, ANS[v] || v, "a-" + v);

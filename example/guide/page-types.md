@@ -285,7 +285,7 @@ file beside it, bringing its saved answers and round history along; see `PAGE-FI
 
 ## Rounds
 
-A `round` is for answering a set of items and sending them to an agent. It has two templates of the same element. Without `phases` it's **round single**: one set of items, sent together from the bar. With `phases` it's **round phases**: lettered phases with steps `A1`, `A2`, `B1`, each with its own goal and Send, so one phase can go before the others.
+A `round` is for answering a set of items and sending them to an agent. It has two templates of the same element. Without `phases` it's **round single**: one set of items, sent together from the bar. With `phases` it's **round phases**: lettered phases with steps `A1`, `A2`, `B1`, each with its own goal and Send, so one phase can go before the others. On any review, checklist or round page, Send this item in an answered item's More menu sends just that item.
 
 Every item also takes Accept risk, which needs a note on how the risk is presented. A round is done when every item is Yes or Accept risk.
 

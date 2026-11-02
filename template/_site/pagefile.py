@@ -157,6 +157,16 @@ def _open_blocker(doc, rnd, iid):
                  and iid in s["items"] and s.get("state") != "failed" and not s.get("handled")), None)
 
 
+def _release(doc, rnd, items=()):
+    """The agent updated the page: unlock every page Send, and an item Send only when its own item is in items."""
+    subs = doc["submissions"]
+    keep = [n for n in _held_sends(rnd) if subs[n - 1].get("scope") == "item" and subs[n - 1]["items"][0] not in items]
+    _clear_hold(rnd)
+    if keep:
+        rnd["held"] = keep
+        rnd["awaiting"] = keep[-1]
+
+
 def _settle(doc, iid, at, via):
     """A sent No or Changes, or a Blocker, the agent dealt with leaves the open answers for good, so its note
     can't be sent again. A dealt-with Blocker also stops flagging the item."""
@@ -189,7 +199,8 @@ def write_definition(path, definition, *, now=None):
             for k in DEFINITION_KEYS:
                 doc.pop(k, None)
             doc.update(definition)
-            _clear_hold(doc["rounds"][-1])
+            changed = [it["id"] for it in doc["items"] if it["id"] in old_items and item_hash(old_items[it["id"]]) != item_hash(it)]
+            _release(doc, doc["rounds"][-1], changed)
             for it in doc["items"]:
                 old = old_items.get(it["id"])
                 if old is not None and item_hash(old) != item_hash(it):
@@ -323,7 +334,7 @@ def reply(path, item_id, frm, text, *, action=None, reason=None, ref=None, now=N
         if item_id != "_page" and item_id not in _items_by_id(doc):
             raise PageError(f"{item_id}: no item {item_id} on this page")
         rnd = doc["rounds"][-1]
-        _clear_hold(rnd)
+        _release(doc, rnd, [item_id])
         replies = doc["thread"].setdefault(item_id, [])
         entry = {"n": len(replies) + 1, "from": frm, "at": at, "round": rnd["round"], "text": text}
         for k, val in (("action", action), ("reason", reason), ("ref", ref)):
@@ -392,7 +403,7 @@ def add_submission(path, record, *, now=None):
         sub = {"n": n, "kind": record["kind"], "at": now or now_iso(), "to": record["to"],
                "round": doc["rounds"][-1]["round"], "rev": doc["rev"], "items": list(record.get("items", [])),
                "file": record["file"].replace("{n}", str(n)), "state": "sent"}
-        for k in ("recipient", "ask", "tone", "change", "basedOn", "framing"):
+        for k in ("scope", "recipient", "ask", "tone", "change", "basedOn", "framing"):
             if record.get(k):
                 sub[k] = record[k]
         doc["submissions"].append(sub)
@@ -441,10 +452,11 @@ def mark_taken(path, n, *, at=None):
         return _commit(p, doc)
 
 
-def _sent(doc, cur, iid, answer):
-    """Did a Send in the open round carry this answer?"""
+def _sent(doc, cur, iid, answer, *, answered=False):
+    """Did a Send in the open round carry this answer? With answered, only a Send the agent has since dealt with."""
+    held = set(_held_sends(cur)) if answered else set()
     return any(s["kind"] == "send" and s["round"] == cur["round"] and s.get("state") != "failed" and not s.get("released")
-               and iid in s["items"] and _at(answer["at"]) <= _at(s["at"]) for s in doc["submissions"])
+               and iid in s["items"] and _at(answer["at"]) <= _at(s["at"]) and s["n"] not in held for s in doc["submissions"])
 
 
 def _settles(item, typ, answer):
@@ -472,7 +484,7 @@ def item_states(doc):
                 state["reopened"] = f"changed since round {cur['round']}"
             elif state["reopened"] is None:
                 state.update(answer=mine["answer"], round=cur["round"])
-                state["hidden"] = _settles(it, typ, mine["answer"]) and "awaiting" not in cur and _sent(doc, cur, iid, mine)
+                state["hidden"] = _settles(it, typ, mine["answer"]) and _sent(doc, cur, iid, mine, answered=True)
         elif state["reopened"] is None and not cur.get("restart") and iid not in cur.get("handled", {}):
             for r in reversed(rounds[:-1]):
                 if iid in r.get("handled", {}):
@@ -542,6 +554,27 @@ def _met(dep, states, phases):
 
 def _unblocked(doc, iid):
     return any(r.get("action") == "unblock" for r in doc["thread"].get(iid, []))
+
+
+def blocked_items(doc):
+    """Items that can't be answered yet: a dependsOn item isn't Yes (a journey step depends on the one before it
+    unless it says otherwise), its phase waits on another, or its blockedBy hasn't had an unblock reply."""
+    states, phases = item_states(doc), phase_states(doc)
+    out, prev_step = set(), None
+    for it in doc["items"]:
+        typ = item_type(doc, it)
+        if typ in ("info", "question", "choice"):
+            continue
+        deps = it.get("dependsOn")
+        if deps is None:
+            deps = [prev_step] if typ == "step" and prev_step else []
+        if typ == "step":
+            prev_step = it["id"]
+        phase = phases.get(phase_of(it["id"])) if phases else None
+        if (it.get("blockedBy") and not _unblocked(doc, it["id"])) or not all(
+                _met(d, states, phases) for d in deps) or (phase and phase["blocked"]):
+            out.add(it["id"])
+    return out
 
 
 def summary(doc):

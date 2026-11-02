@@ -272,6 +272,10 @@ raises `PageError`, whose `errors` list says which item and why.
   or `reply` unlocks them live, in the same round, and every Yes that Send carried is
   then a locked row and stays in Copy results. "Unlock to change an answer" takes the lock off sooner and takes that
   Send back, so its answers can change.
+- Send this item, in an answered item's More menu, sends that item on its own: a Send with `"scope": "item"`. It locks
+  only that item, and only a reply under it, a change to it, or "Unlock to change an answer" lifts it. A reply about the
+  whole page, or a change to other items, leaves it locked. Its Yes becomes a locked row once that reply comes, even
+  while another Send is still waiting. It isn't offered on a blocked, locked or unanswered item.
 - A sent No or Changes clears once the agent replies under the item or changes it. It moves to the round's `handled`
   list, so an old note can't go out again, shows in the item's thread with what the agent did, and the item is open
   again marked "Updated: answer again". A reply about the whole page clears nothing.

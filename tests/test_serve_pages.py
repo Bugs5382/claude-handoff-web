@@ -388,3 +388,39 @@ def test_a_handed_over_delivery_keeps_the_agent_listening_for_a_while(pages):
     old = time.time() - serve.HANDLING_GRACE - 1
     os.utime(d / ".handling", (old, old))
     assert serve.is_listening(str(root), "app") is False
+
+
+def test_one_item_can_be_sent_on_its_own(pages):
+    root, base = pages
+    put_json(base, "/_page/demo/design/answers", {"answers": {"s1": {"answer": "changes", "note": "Shorter"}, "s2": {"answer": "yes"}}})
+    status, body, _ = post(base, "/_page/demo/design/send", {"kind": "send", "scope": "item", "items": ["s1"], "results": "R"})
+    assert status == 200
+    doc = pagefile.load(root / "demo" / "design.json")
+    assert doc["submissions"][0]["scope"] == "item" and doc["submissions"][0]["items"] == ["s1"]
+    assert pagefile.held_items(doc) == {"s1"}, "s2 stays open"
+    sub = json.loads((root / "_inbox" / "ops" / inbox(root)[0]).read_text())
+    assert sub["scope"] == "item" and [i["id"] for i in sub["items"]] == ["s1"] and sub["items"][0]["note"] == "Shorter"
+    again = {"kind": "send", "scope": "item", "items": ["s1"], "results": "R"}
+    assert post(base, "/_page/demo/design/send", again)[0] == 400, "already sent"
+
+
+@pytest.mark.parametrize("body", [
+    {"kind": "send", "scope": "item", "items": ["s1", "s2"]},
+    {"kind": "send", "scope": "item"},
+    {"kind": "send", "scope": "item", "items": ["s2"]},
+    {"kind": "send", "scope": "page", "items": ["s1"]},
+    {"kind": "blocker", "scope": "item", "items": ["s1"]},
+], ids=["two-items", "no-items", "unanswered", "unknown-scope", "not-a-send"])
+def test_an_item_send_refuses(pages, body):
+    _, base = pages
+    put_json(base, "/_page/demo/design/answers", {"answers": {"s1": {"answer": "yes"}}})
+    assert post(base, "/_page/demo/design/send", {**body, "results": "R"})[0] == 400
+
+
+def test_an_item_whose_dependency_is_open_cannot_be_sent(pages):
+    root, base = pages
+    pagefile.write_definition(root / "demo" / "plan.json", {
+        "schema": "handoff.page/v1", "kind": "round", "title": "Plan",
+        "items": [{"id": "a1", "title": "a"}, {"id": "a2", "title": "b", "dependsOn": ["a1"]}]})
+    put_json(base, "/_page/demo/plan/answers", {"answers": {"a2": {"answer": "yes"}}})
+    assert post(base, "/_page/demo/plan/send", {"kind": "send", "scope": "item", "items": ["a2"], "results": "R"})[0] == 400

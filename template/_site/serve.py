@@ -18,7 +18,8 @@ Page files (<folder>/<slug>.json in handoff.page/v1, written only through pagefi
   POST /_page/<folder>/<slug>/restart    {"checkpoint": "...", "results": "..."}: restart a journey, send a restart
   POST /_page/<folder>/<slug>/unlock     {}: take the lock off a sent page without waiting for the agent
   POST /_page/<folder>/<slug>/send       {"kind": "send"|"blocker", "items": [ids], "results": "..."}: write the
-                                         submission to _inbox/<agent>/ for the page's route
+                                         submission to _inbox/<agent>/ for the page's route; "scope": "item"
+                                         sends one answered item on its own
   GET  /_index/ and /_index/<folder>     index cards built from the page files, merged with _status.json pages
   POST /_stale on a page file marks it done and moves it to <folder>/_old/ instead of deleting it.
 Nothing else is writable, and <root>/_saved/ and <root>/_inbox/ are never served directly (history is only
@@ -941,6 +942,21 @@ class Handler(SimpleHTTPRequestHandler):
             raise ValueError("items must be ids of items on this page")
         if kind == "blocker" and len(items) != 1:
             raise ValueError("a blocker sends exactly one item")
+        scope = req.get("scope")
+        if scope is not None:
+            if scope != "item" or kind != "send":
+                raise ValueError("scope can only be item, on a send")
+            if not isinstance(req.get("items"), list) or len(items) != 1:
+                raise ValueError("an item send carries exactly one item")
+            iid = items[0]
+            if iid in pagefile.held_items(doc):
+                raise ValueError(f"{iid} is already sent")
+            if iid in pagefile.blocked_items(doc):
+                raise ValueError(f"{iid} is blocked")
+            mine = doc["rounds"][-1]["answers"].get(iid) or {}
+            if not (mine.get("answer") or mine.get("note")) or pagefile.item_states(doc).get(iid, {}).get("hidden"):
+                raise ValueError(f"{iid} has no new answer to send")
+            extra = {"scope": "item"}
         detail = None
         if kind == "deck":
             if not doc.get("deck"):

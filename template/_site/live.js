@@ -2,7 +2,7 @@
 //   Index mode (default; pages with #live): swap the card lists in place and light up New/Updated.
 //   Page mode (<script data-mode="page">, review pages): soft-reload when the HTML changes, but
 //   only when nobody is typing and nothing was clicked for 5 s; scroll position is kept.
-//   File mode (<script data-mode="file">, pages drawn from a page file): no polling, render.js redraws
+//   File mode (<script data-mode="file">, pages drawn from a page file): no polling, the app redraws
 //   those itself; only the picture pop-out and the theme.
 // Index cards carry data-key, data-sig, data-mtime and data-first (epoch seconds); the "New" and
 // "Updated" chips are worked out here so they age without a rebuild.

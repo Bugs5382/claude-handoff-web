@@ -15,7 +15,7 @@ draws it. HTML pages keep working as they always have.
 
 ## Viewing a page
 
-A page file is shown at `/<folder>/<slug>`. The server answers with `_site/page.html`, and `_site/render.js`
+A page file is shown at `/<folder>/<slug>`. The server answers with `_site/app.html`, and the React app in `_site/app/` (built from `web/` in the repo)
 draws the page from `GET /_page/<folder>/<slug>` into the same markup an HTML page uses, so `site.css` and
 `review.js` work unchanged:
 
@@ -31,7 +31,7 @@ draws the page from `GET /_page/<folder>/<slug>` into the same markup an HTML pa
   are drawn by the server with `diff.py`, with the Diff | Final switch;
 - `reference` and `status` pages have no answer bar.
 
-`review.js` saves through the renderer (`PUT /_page/.../answers`, only the items this tab changed), and
+The app saves through `PUT /_page/.../answers` (, only the items this tab changed), and
 History lists the page's closed rounds. When the page's route sends, Blocker becomes "Blocker: send now" and
 the bar gains "Send to <agent>" with the latest send's delivery state: "Sent 07:42", "Picked up by app 07:43",
 "app replied 07:50: ..." (a link to the page's replies), or "app isn't listening." with a Copy results instead

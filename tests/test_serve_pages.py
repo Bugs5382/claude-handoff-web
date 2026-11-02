@@ -50,7 +50,7 @@ def inbox(root, agent="ops"):
 def test_a_page_url_serves_the_renderer_shell(pages):
     root, base = pages
     status, body, headers = request(base + "/demo/design")
-    assert status == 200 and body == (root / "_site" / "page.html").read_bytes()
+    assert status == 200 and body == (root / "_site" / "app.html").read_bytes()
     assert headers.get("Cache-Control") == "no-store"
     assert request(base + "/demo/journeys/first-order")[0] == 200
     assert request(base + "/demo/missing")[0] == 404

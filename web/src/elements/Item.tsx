@@ -3,6 +3,7 @@ import { flushSync } from "react-dom";
 import { Answer, type AnswerOption } from "@/elements/Answer";
 import { Blocks, ItemExtras } from "@/elements/Blocks";
 import { Chip } from "@/elements/Chip";
+import { ItemMore, type ItemAction } from "@/elements/ItemMore";
 import { Thread, type Entry } from "@/elements/Thread";
 import { openHowto } from "@/lib/howto";
 import type { ItemDef, ItemState, Local } from "@/lib/types";
@@ -36,8 +37,12 @@ export interface ItemProps {
   /** A sent No or Changes the agent dealt with. */
   handled?: boolean;
   entries: Entry[];
-  /** The email element, when the page takes drafts. */
-  email?: ReactNode;
+  /** The email element, when the page takes drafts: given whether its form is open and how to close it. */
+  email?: (asking: boolean, close: () => void) => ReactNode;
+  /** What this item's More button offers, besides its email draft. */
+  actions?: ItemAction[];
+  /** The label of the email action, when the page takes drafts. */
+  emailLabel?: string;
   diffs?: Record<string, string>;
   build?: string | null;
   choices?: { value: string; label: string }[];
@@ -56,6 +61,7 @@ export function Item(p: ItemProps) {
   const heading = (p.n === "" ? "" : p.n + ". ") + it.title;
   const [noteOpen, setNoteOpen] = useState(false);
   const [shown, setShown] = useState(false);
+  const [asking, setAsking] = useState(false);
   const how = useRef<HTMLDivElement>(null);
   const ta = useRef<HTMLTextAreaElement>(null);
   const qa = useRef<HTMLTextAreaElement>(null);
@@ -66,9 +72,11 @@ export function Item(p: ItemProps) {
     <Blocks blocks={it.body} id={it.id} diffs={p.diffs} />
     {it.howto && <div hidden ref={how}><Blocks blocks={it.howto} id={it.id} part="howto" diffs={p.diffs} /></div>}
     <Thread entries={p.entries} label={"History of " + it.id} />
-    {p.email}
+    {p.email?.(asking, () => flushSync(() => setAsking(false)))}
   </>;
-  if (type === "info") return <>{group}<section className="info" data-item={it.id}><h2>{heading}</h2>{content}</section></>;
+  const actions: ItemAction[] = [...(p.emailLabel ? [{ name: "draft-email", label: p.emailLabel, onSelect: () => flushSync(() => { setShown(true); setAsking(true); }) }] : []), ...(p.actions ?? [])];
+  const more = <ItemMore id={it.id} actions={actions} />;
+  if (type === "info") return <>{group}<section className="info" data-item={it.id}>{actions.length > 0 && <div className="rvhead"><span className="sp" />{more}</div>}<h2>{heading}</h2>{content}</section></>;
 
   const settled = !!state?.hidden;
   const locked = !!value.locked || !!blockedBy || !!held || settled;
@@ -80,7 +88,7 @@ export function Item(p: ItemProps) {
 
   if (type === "question") return <>{group}
     <section data-item={it.id} data-review-question={it.id} data-title={it.title} data-review-type="question" className={"rvcard" + (blockedBy ? " is-blocked" : "")}>
-      <div className="rvhead">{rid}<span className="sp" /><span className="st2" />{blocked ?? (state?.reopened ? <Chip tone="reo">Reopened: {state.reopened}</Chip> : <Chip>Question</Chip>)}</div>
+      <div className="rvhead">{rid}<span className="sp" /><span className="st2" />{blocked ?? (state?.reopened ? <Chip tone="reo">Reopened: {state.reopened}</Chip> : <Chip>Question</Chip>)}{more}</div>
       <h2>{heading}</h2>{content}
       <div className={"rv in-card question" + (blockedBy ? " blocked" : "")} id={"rv-" + it.id}>
         <div className="qrow"><span className="ask">Your answer:</span>{it.suggested ? <button type="button" className="suggest-btn" onClick={() => p.onChange({ ...value, a: it.suggested })}>Use suggestion</button> : null}</div>
@@ -95,7 +103,7 @@ export function Item(p: ItemProps) {
       : <Chip tone={v === first ? "a-yes" : ""}>{v ? label(v) : def ? `Not picked · ${label(def)} (default)` : "Not chosen"}</Chip>);
     return <>{group}
       <section data-item={it.id} data-review-question={it.id} data-title={it.title} data-answer={v ? (v === first ? "pick-first" : "pick") : "default"} className={"rvcard is-choice" + (blockedBy ? " is-blocked" : "")}>
-        <div className="rvhead">{rid}<span className="sp" /><span className="st2" />{pill}</div>
+        <div className="rvhead">{rid}<span className="sp" /><span className="st2" />{pill}{more}</div>
         <h2>{heading}</h2>{content}
         <div className={"rv in-card choice" + (blockedBy ? " blocked" : "")} id={"rv-" + it.id} data-choice={v || def}>
           <div className="rvrow"><span className="ask">Your answer:</span>
@@ -123,7 +131,7 @@ export function Item(p: ItemProps) {
         {settled && <button type="button" className="settled-tg" aria-expanded={shown} onClick={() => flushSync(() => setShown(!shown))}>{shown ? "Hide" : "Show"}</button>}
         <span className="sp" />
         {value.blocker ? <span className="st bkr">Blocker</span> : state?.reopened && v && !blockedBy ? <span className="st reo">Reopened: {state.reopened}</span> : <span className="st2" />}
-        {pill}{howBtn}
+        {pill}{howBtn}{more}
       </div>
       <h2>{heading}</h2>{content}
       <div className={`rv in-card ${v}` + (locked ? " locked" : "") + (blockedBy ? " blocked" : "") + (value.blocker ? " blocker" : "") + ((v === "chg" || v === "risk") && !note.trim() ? " empty" : "")} id={"rv-" + it.id}>

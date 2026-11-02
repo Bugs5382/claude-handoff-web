@@ -28,6 +28,17 @@ A template gets `{ data, local, item, sendPhase, goTo }` and returns what goes i
 - `sendPhase(id)`: sends one phase of a round.
 - `goTo(id)`: scrolls to an item or a phase.
 
+## Per-item actions
+
+Each item has a More button that pops up its actions, such as Draft email. `custom.js` can add its own. An entry gets the item and the page, and returns `{ name, label, onSelect, disabled }`, or `null` to skip that item.
+
+```js
+window.HandoffSite.itemActions.push(it => ({
+  name: "copy-title", label: "Copy this step's title",
+  onSelect: () => navigator.clipboard.writeText(it.title),
+}));
+```
+
 ## Elements
 
 `window.HandoffSite` holds `html` (htm bound to React) and these elements. Their inputs are in `web/src/elements/` in the repo.
@@ -38,6 +49,7 @@ A template gets `{ data, local, item, sendPhase, goTo }` and returns what goes i
 | `Round` | a round, single or with phases |
 | `Phase` | one phase, with its goal and Send |
 | `Item` | one card |
+| `ItemMore` | an item's More button and the actions it pops up |
 | `Answer` | the segmented answer buttons |
 | `Button` | a named button, such as `send-btn` or `copy` |
 | `Chip` | a status pill |

@@ -260,7 +260,10 @@ const seg = (doc, id, v) => card(doc, id).querySelector('.seg button[data-v="' +
     match(box.textContent, /Asked for: Make it shorter/); match(box.querySelector("pre").textContent, /No network changes/);
     click(vers[0]);
     match(box.textContent, /Asked for: Tell the branch managers/); match(box.querySelector("pre").textContent, /Hello all,\n\nWe're moving/);
-    click(card(doc, "A2").querySelector(".email-open"));
+    ok(!card(doc, "A2").querySelector(".email"), "no draft control until it's asked for");
+    const more = card(doc, "A2").querySelector(".item-more-btn"), menu = card(doc, "A2").querySelector(".item-more-menu");
+    ok(menu.hidden, "the menu starts closed"); click(more); ok(!menu.hidden, "More pops it up");
+    click(menu.querySelector('[data-action="draft-email"]')); ok(menu.hidden, "picking closes it");
     const form = card(doc, "A2").querySelector(".email-form");
     ok(form.querySelector(".email-send").disabled, "it needs instructions");
     typeIn(form.querySelector("textarea"), "Explain why the staging matters");
@@ -289,6 +292,11 @@ const seg = (doc, id, v) => card(doc, id).querySelector('.seg button[data-v="' +
     const { doc } = await load("/demo/sample-custom");
     ok(doc.querySelector(".draft-intro"), "the template ran"); ok(card(doc, "s1").querySelector(".email pre"), "the same email element");
     eq(win_css(doc), "4px", "custom.css loaded after the base");
+    const menu = card(doc, "s2").querySelector(".item-more-menu");
+    ok(menu.querySelector('[data-action="copy-title"]'), "a custom action joins the same menu");
+    click(card(doc, "s2").querySelector(".item-more-btn"));
+    click(menu.querySelector('[data-action="copy-title"]')); await tick(30);
+    eq(doc.defaultView.__clip, "Warn the service desk about the cutover");
   });
 
   await t("round single: Accept risk on one set of items, sent from the bar", async () => {

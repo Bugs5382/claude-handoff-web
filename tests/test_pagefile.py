@@ -867,3 +867,14 @@ def test_blocked_items_follow_depends_on_steps_phases_and_blocked_by(path):
     assert pagefile.blocked_items(pagefile.load(path)) == {"A2", "A3", "B1"}
     pagefile.save_answers(path, {"A1": {"answer": "yes"}}, by="me", now=T0)
     assert pagefile.blocked_items(pagefile.load(path)) == {"A3", "B1"}
+
+
+@pytest.mark.parametrize(("answer", "blocked"), [("yes", False), ("changes", False), ("risk", False), ("no", True), ("", True)])
+def test_a_dependency_is_met_by_yes_changes_or_accept_risk(path, answer, blocked):
+    make(path, {"schema": "handoff.page/v1", "kind": "round", "title": "Plan",
+                "items": [{"id": "s1", "title": "a"}, {"id": "s2", "title": "b", "dependsOn": ["s1"]}]})
+    if answer:
+        pagefile.save_answers(path, {"s1": {"answer": answer, "note": "why"}}, by="me", now=T0)
+    doc = pagefile.load(path)
+    assert ("s2" in pagefile.blocked_items(doc)) is blocked
+    assert pagefile.summary(doc)["blocked"] == (1 if blocked else 0)

@@ -100,11 +100,11 @@ export function Page() {
   const model = useMemo(() => {
     if (!data) return null;
     const p = data.page, r = openRound(p);
-    const blocked = blockers(data);
+    const blocked = blockers(data, local);
     const hidden = new Set(p.items.filter(it => data.states[it.id]?.hidden && (typeOf(p, it) !== "choice" || it.choices)).map(it => it.id));
     const kinds: CountItem[] = p.items.filter(it => typeOf(p, it) !== "info").map(it => { const t = typeOf(p, it); return { id: it.id, kind: t === "question" ? "question" : t === "choice" ? "choice" : "ync", own: !!it.choices }; });
     return { p, r, blocked, hidden, kinds, held: new Set(heldIds(p)), sub: heldBy(p) };
-  }, [data]);
+  }, [data, local]);
 
   const results = useCallback(() => (data && model ? resultsOf(data, live.current, model.blocked) : ""), [data, model]);
   useEffect(() => {

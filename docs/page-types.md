@@ -81,7 +81,7 @@ locked in the next one (hidden on an HTML page) and stay in Copy results.
 
 One item per feature or fix, in test order. Each check can carry a `howto`, shown inline under it as a collapsed
 How to test row that opens in place, with a Copy button on every code block. `dependsOn` keeps an item greyed and uncounted until the items it names
-are Yes; `blockedBy` holds it until an agent replies with `--action unblock`.
+are answered Yes, Changes or Accept risk, as soon as they're answered on the page; No or no answer keeps it blocked. `blockedBy` holds it until an agent replies with `--action unblock`.
 
 ```json
 {

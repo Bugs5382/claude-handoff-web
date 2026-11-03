@@ -75,7 +75,7 @@ Everything custom goes in `custom/`, which no update touches, with `htm` templat
   No or Changes clears once you reply under the item or change it, so answer item by item; your note stays in its
   thread. A Yes comes back only when its
   content changes ("changed since round N") or you reopen it with `page.py reply ... --reopen "reason"`.
-- `dependsOn` greys an item until the items it names are Yes; `blockedBy` holds it until you reply with
+- `dependsOn` greys an item until the items it names are answered Yes, Changes or Accept risk (No or no answer keeps it blocked); `blockedBy` holds it until you reply with
   `--action unblock`.
 - Never ask twice: when a checklist already answered something a review asks, close the review item from that
   answer.

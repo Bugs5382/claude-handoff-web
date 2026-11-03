@@ -23,6 +23,7 @@ SERVER_KEYS = ("rev", "rounds", "thread", "submissions", "route", "emails", "rev
 DEFINITION_KEYS = ("schema", "kind", "title", "summary", "build", "reset", "status", "options", "items", "phases", "drafts", "deck",
                    "template")
 DONE = ("yes", "risk")
+DEPENDENCY_MET = ("yes", "changes", "risk")
 
 
 class PageError(Exception):
@@ -549,7 +550,7 @@ def phase_states(doc):
 
 
 def _met(dep, states, phases):
-    return phases[dep]["closed"] if dep in phases else states.get(dep, {}).get("answer") in DONE
+    return phases[dep]["closed"] if dep in phases else states.get(dep, {}).get("answer") in DEPENDENCY_MET
 
 
 def _unblocked(doc, iid):
@@ -557,8 +558,9 @@ def _unblocked(doc, iid):
 
 
 def blocked_items(doc):
-    """Items that can't be answered yet: a dependsOn item isn't Yes (a journey step depends on the one before it
-    unless it says otherwise), its phase waits on another, or its blockedBy hasn't had an unblock reply."""
+    """Items that can't be answered yet: a dependsOn item isn't answered Yes, Changes or Accept risk (a journey
+    step depends on the one before it unless it says otherwise), its phase waits on another, or its blockedBy
+    hasn't had an unblock reply."""
     states, phases = item_states(doc), phase_states(doc)
     out, prev_step = set(), None
     for it in doc["items"]:
@@ -580,7 +582,7 @@ def blocked_items(doc):
 def summary(doc):
     """The bar's counts for the open round: what's open, blocked, Yes and reopened, and a backlog's tally.
 
-    An item is blocked while a dependsOn item isn't Yes (a journey step depends on the one before it unless
+    An item is blocked while a dependsOn item isn't answered Yes, Changes or Accept risk (a journey step depends on the one before it unless
     it says otherwise) or while its blockedBy hasn't had an unblock reply.
     """
     states = item_states(doc)

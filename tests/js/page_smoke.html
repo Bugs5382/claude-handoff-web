@@ -125,6 +125,21 @@ const seg = (doc, id, v) => card(doc, id).querySelector('.seg button[data-v="' +
     eq(win.siteReview.unsaved(), true);
   });
 
+  await t("checklist: answering an item Yes unblocks the items that depend on it at once, no reload", async () => {
+    const { doc } = await load("/demo/pf-unblock");
+    eq(card(doc, "c4").querySelector(".rvhead .st").textContent, "Blocked by c2");
+    click(seg(doc, "c2", "yes"));
+    await tick(60);
+    ok(!card(doc, "c4").classList.contains("is-blocked"), "c4 unblocked straight away");
+    ok(!seg(doc, "c4", "yes").disabled, "c4 can be answered");
+    click(seg(doc, "c2", "no"));
+    await tick(60);
+    ok(card(doc, "c4").classList.contains("is-blocked"), "a No blocks it again");
+    click(seg(doc, "c2", "chg"));
+    await tick(60);
+    ok(!card(doc, "c4").classList.contains("is-blocked"), "Changes meets the dependency");
+  });
+
   await t("checklist: skip locks, earlier Yes locked, blocked by a dependency, reopened with its reason, question", async () => {
     const { win, doc, bar } = await load("/demo/pf-check");
     ok(doc.querySelector(".rvdone"), "approved and locked note");
@@ -140,9 +155,11 @@ const seg = (doc, id, v) => card(doc, id).querySelector('.seg button[data-v="' +
     eq(card(doc, "c3").querySelector(".rvhead .st").textContent, "Skipped (locked)");
     ok(seg(doc, "c3", "yes").disabled);
     ["c2", "c5"].forEach(id => click(seg(doc, id, "yes")));
+    await tick(60);
+    click(seg(doc, "c4", "yes"));
     ok(bar.classList.contains("approved"), bar.querySelector(".cnt").textContent);
     const r = win.siteReview.results();
-    match(r, /- \[c1\] YES: One/); match(r, /- \[c3\] SKIPPED \(locked\): Three/); match(r, /- \[c4\] BLOCKED by c2, NOT ANSWERED: Four/);
+    match(r, /- \[c1\] YES: One/); match(r, /- \[c3\] SKIPPED \(locked\): Three/); match(r, /- \[c4\] YES: Four/);
     match(r, /Q q1: \(no answer\)/);
     await saved();
     const a = await answers("demo/pf-check");

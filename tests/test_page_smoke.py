@@ -33,6 +33,7 @@ SCENARIOS = [
     "jump bar: Next and the n key walk open items; the picker filters and Enter jumps",
     "saved answers load from the page file; a failed save shows amber",
     "checklist: skip locks, earlier Yes locked, blocked by a dependency, reopened with its reason, question",
+    "checklist: answering an item Yes unblocks the items that depend on it at once, no reload",
     "question: Use suggestion fills the answer and saves it",
     "backlog: default choice, picking every item turns the bar green, saved",
     "theme toggle works on a rendered page",
@@ -131,6 +132,7 @@ def write_pages(root):
     w(demo / "pf-saved.json", review("Saved"), now=T0)
     pagefile.save_answers(demo / "pf-saved.json", {"r1": {"answer": "yes", "note": ""}}, by="Alex", now=T0)
     w(demo / "pf-check.json", CHECKLIST, now=T0)
+    w(demo / "pf-unblock.json", CHECKLIST, now=T0)
     pagefile.save_answers(demo / "pf-check.json", {"c1": {"answer": "yes", "note": ""}, "c5": {"answer": "yes", "note": ""}},
                           by="Alex", now=T0)
     pagefile.new_round(demo / "pf-check.json", results="Round 1 text", now=T0)

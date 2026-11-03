@@ -8,6 +8,8 @@ export const openRound = (p: PageDoc): Round => p.rounds[p.rounds.length - 1];
 const IN: Record<string, string> = { yes: "yes", no: "no", changes: "chg", skipped: "skip", risk: "risk" };
 const OUT: Record<string, string> = { yes: "yes", no: "no", chg: "changes", skip: "skipped", risk: "risk" };
 export const DONE = ["yes", "risk"];
+/** The answers that let an item depending on this one be answered: No or no answer keeps it blocked. */
+export const DEPENDENCY_MET = ["yes", "changes", "risk"];
 export const answerIn = (a: string): string => IN[a] ?? a;
 
 export const phaseOf = (id: string): string => /^[A-Z]+/.exec(id)?.[0] ?? "";
@@ -49,7 +51,8 @@ export function toAnswer(p: PageDoc, id: string, s: Local | undefined): { answer
   return { answer: OUT[s?.v ?? ""] ?? "", note: s?.n ?? "" };
 }
 
-export function blockers(data: PageData): Record<string, string> {
+/** What blocks each item. An answer given on the page counts at once, before the server has it back. */
+export function blockers(data: PageData, local?: Locals): Record<string, string> {
   const out: Record<string, string> = {};
   let prev: string | null = null;
   for (const it of data.page.items) {
@@ -59,7 +62,8 @@ export function blockers(data: PageData): Record<string, string> {
     if (t === "step") prev = it.id;
     if (it.blockedBy && !(data.page.thread[it.id] ?? []).some(r => r.action === "unblock")) out[it.id] = it.blockedBy;
     else {
-      const met = (x: string) => (data.phases[x] ? data.phases[x].closed : DONE.includes(data.states[x]?.answer ?? ""));
+      const met = (x: string) => (data.phases[x] ? data.phases[x].closed
+        : DEPENDENCY_MET.includes(local && x in local ? OUT[local[x].v ?? ""] ?? "" : data.states[x]?.answer ?? ""));
       const held = data.page.phases ? data.phases[phaseOf(it.id)]?.blocked : null;
       const d = deps.find(x => !met(x)) ?? held;
       if (d) out[it.id] = d;

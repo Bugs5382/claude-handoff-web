@@ -137,7 +137,7 @@ the `build` under test, and every code block in it has a Copy button. No window 
 
 | Block | Shape |
 |---|---|
-| `p` | `{"p": "text"}`, inline `**bold**`, `*em*`, `` `code` `` and `[text](url)` only |
+| `p` | `{"p": "text"}`, inline `**bold**`, `*em*`, `` `code` `` and `[text](url)` only. A code span, an `http(s)` link and a bare `http(s)` address are each followed by a small Copy button, so a step needs no separate copy block for them |
 | `list`, `olist` | `{"list": ["a", "b"]}` |
 | `code` | `{"code": "...", "lang": "sh"}` |
 | `image` | `{"image": "img/a.png", "alt": "...", "caption": "..."}`, a file next to the page, never a `data:` URI |

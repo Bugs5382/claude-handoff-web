@@ -1,7 +1,7 @@
 import { inline } from "@/lib/text";
 import type { Block, Field, ItemDef } from "@/lib/types";
 
-const Inline = ({ text }: { text: unknown }) => <span dangerouslySetInnerHTML={{ __html: inline(text) }} />;
+const Inline = ({ text }: { text: unknown }) => <span dangerouslySetInnerHTML={{ __html: inline(text, { copy: true }) }} />;
 
 function CopyBlock({ text }: { text: string }) {
   return <div className="copyblk"><pre>{text}</pre>

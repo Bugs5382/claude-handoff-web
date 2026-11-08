@@ -75,3 +75,15 @@ def test_a_blocker_the_agent_replied_to_clears_in_the_browser(site):
     assert "is-blocker" not in dom, "a handled blocker is no longer flagged"
     assert ">Vendor contract missing</textarea>" not in dom, "the note box is empty again"
     assert "Updated: answer again" in dom and "Added the contract." in dom
+
+
+def test_inline_copy_buttons_draw_in_a_browser(site):
+    chrome = find_chrome()
+    if not chrome:
+        pytest.skip("no Chrome")
+    dom = subprocess.run([chrome, "--headless", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=4000", "--dump-dom",
+                          f"http://{site}/demo/sample-review"], capture_output=True, text=True, timeout=60).stdout
+    assert 'aria-label="Copy kubectl get pods"' in dom and "ci-copy" in dom and 'data-copy="kubectl get pods"' in dom, dom[:400]
+    assert 'aria-label="Copy https://status.example.test/billing"' in dom
+    assert 'aria-label="Copy https://docs.example.test/runbook"' in dom
+    assert "copy-inline" not in dom.split("</h1>")[0], "no button on the page title"

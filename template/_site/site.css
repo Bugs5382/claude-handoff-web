@@ -755,6 +755,16 @@ body.site .rvrestart > h2 { font-size: 16px; margin: 0 0 4px; }
 .tour-btn { color: var(--link); align-self: flex-start; }
 .settled-tg { margin-left: 8px; min-height: 28px; padding: 0 10px; }
 details.howto .howto-body > .copy-cmd { margin: 0 0 .8rem; }
+/* The inline Copy button after a code span, link or address: a small square icon button sized to the text line (no layout jump). */
+.copy-inline { box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; margin: -4px 0 -4px 4px; padding: 0;
+  vertical-align: middle; color: var(--ink); background: var(--card); border: 1.5px solid var(--line-2); border-radius: 6px; cursor: pointer; }
+.copy-inline svg { width: 14px; height: 14px; pointer-events: none; }
+.copy-inline .ci-ok, .copy-inline[data-state="copied"] .ci-copy { display: none; }
+.copy-inline[data-state="copied"] .ci-ok { display: block; }
+.copy-inline:hover { border-color: var(--muted); background: var(--soft-2); }
+.copy-inline:active { background: var(--soft); }
+.copy-inline:disabled { border-style: dashed; color: var(--muted); cursor: default; }
+.copy-inline:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
 .copyblk { display: flex; align-items: flex-start; gap: 8px; }
 .copyblk pre { flex: 1 1 auto; min-width: 0; margin: 0; }
 .email-part-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 4px; }

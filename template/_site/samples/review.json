@@ -24,6 +24,9 @@
           },
           {
             "p": "The plan is in the [guide](/guide/page-types)."
+          },
+          {
+            "p": "Check the move with `kubectl get pods` or at https://status.example.test/billing, or read the [runbook](https://docs.example.test/runbook)."
           }
         ]
       },

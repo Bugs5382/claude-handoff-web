@@ -13,7 +13,7 @@ export interface Entry { kind: string; at: string; who: string; round?: number; 
 
 export const replyEntry = (x: Reply): Entry => ({
   kind: "reply", at: x.at, who: x.from, action: x.action ?? "info", tag: ACTION_LABEL[x.action ?? ""] ?? "", tagClass: "t-" + (x.action ?? "info"),
-  html: inline(x.text), raw: x.text, reason: x.action === "reopen" ? x.reason : "", ref: x.ref,
+  html: inline(x.text, { copy: true }), raw: x.text, reason: x.action === "reopen" ? x.reason : "", ref: x.ref,
 });
 
 /** An item's answers from past rounds, what the agent handled, and the replies. */

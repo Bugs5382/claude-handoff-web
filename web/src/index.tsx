@@ -19,6 +19,7 @@ import { Round } from "@/elements/Round";
 import { Thread } from "@/elements/Thread";
 import { TourButton } from "@/elements/TourButton";
 import { itemActions, loadCustom, pageActions, templates } from "@/lib/custom";
+import { copyInline } from "@/lib/copy";
 import { momentsFor } from "@/lib/moments";
 import { tours } from "@/lib/tour";
 
@@ -27,6 +28,7 @@ export const html = htm.bind(createElement);
 export { itemActions, momentsFor, pageActions, templates, tours };
 export { Answer, Blocks, Button, Chip, Choices, EmailDraft, Footer, History, Item, ItemMore, JumpBar, OpenIds, Page, Phase, Restart, Round, Thread, TourButton };
 
+document.addEventListener("click", copyInline);
 const root = document.getElementById("app");
 // After this script finishes, so custom.js finds window.HandoffSite.
 if (root) setTimeout(() => void loadCustom().then(() => createRoot(root).render(createElement(Page))));

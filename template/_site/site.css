@@ -755,6 +755,8 @@ body.site .rvrestart > h2 { font-size: 16px; margin: 0 0 4px; }
 .tour-btn { color: var(--link); align-self: flex-start; }
 .settled-tg { margin-left: 8px; min-height: 28px; padding: 0 10px; }
 details.howto .howto-body > .copy-cmd { margin: 0 0 .8rem; }
+/* The inline Copy button after a code span, link or address: same look, sized to the text line so the line does not grow. */
+.copy-inline { min-height: 0; margin-left: 4px; padding: 0 6px; font-size: .75em; line-height: 1.4; vertical-align: baseline; }
 .copyblk { display: flex; align-items: flex-start; gap: 8px; }
 .copyblk pre { flex: 1 1 auto; min-width: 0; margin: 0; }
 .email-part-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 4px; }

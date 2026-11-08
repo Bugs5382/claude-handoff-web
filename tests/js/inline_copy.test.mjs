@@ -6,7 +6,13 @@ import { pathToFileURL } from "node:url";
 const { inline } = await import(pathToFileURL(process.argv[2]).href);
 let fails = 0;
 function t(name, fn) { try { fn(); console.log("ok   " + name); } catch (e) { fails++; console.log("FAIL " + name + "\n     " + e.message); } }
-const btn = (v) => `<button type="button" class="copy-cmd copy-inline" data-copy="${v}" aria-label="Copy ${v}">Copy</button>`;
+const btn = (v) => `<button type="button" class="copy-inline" data-copy="${v}" aria-label="Copy ${v}">` + ICONS + "</button>";
+const ICONS = (inline("`x`", { copy: true }).match(/<button[^>]*>(.*)<\/button>/) ?? [])[1];
+t("the button holds the copy icon and a check, both hidden from readers", () => {
+  assert.ok(ICONS.includes('<rect width="8" height="4" x="8" y="2"') && ICONS.includes("M20 6 9 17l-5-5"), ICONS);
+  assert.strictEqual((ICONS.match(/aria-hidden="true"/g) ?? []).length, 2);
+  assert.ok(!/>Copy</.test(ICONS), "icon only, no word");
+});
 
 t("without the option the markup is unchanged", () => {
   assert.strictEqual(inline("run `ls -l` or https://a.example/x or [t](https://b.example)"),

@@ -28,13 +28,13 @@ await t("when nothing can copy, the source text is selected", async () => {
   const log = stub({ secure: false, clip: false, exec: false });
   assert.strictEqual(await copyText("x", {}), "selected"); assert.ok(log.selected);
 });
-await t("a click on a Copy button shows Copied, then Copy again", async () => {
+await t("a click on a Copy button shows the check, then the icon again", async () => {
   stub({ secure: true, clip: true, exec: false });
-  const b = { dataset: { copy: "z" }, textContent: "Copy", previousElementSibling: null };
+  const b = { dataset: { copy: "z" }, title: "", removeAttribute() { this.title = ""; }, previousElementSibling: null };
   await copyInline({ target: { closest: () => b } });
-  assert.strictEqual(b.textContent, "Copied");
+  assert.strictEqual(b.dataset.state, "copied"); assert.strictEqual(b.title, "Copied");
   await new Promise(r => setTimeout(r, 1600));
-  assert.strictEqual(b.textContent, "Copy");
+  assert.strictEqual(b.dataset.state, undefined);
 });
 await t("a click elsewhere does nothing", async () => {
   await copyInline({ target: { closest: () => null } });

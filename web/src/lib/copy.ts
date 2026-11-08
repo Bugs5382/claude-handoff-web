@@ -23,7 +23,7 @@ export async function copyInline(e: Event): Promise<void> {
   const b = (e.target as Element | null)?.closest?.("button.copy-inline") as HTMLButtonElement | null;
   if (!b) return;
   const done = await copyText(b.dataset.copy ?? "", b.previousElementSibling);
-  b.textContent = done === "copied" ? "Copied" : done === "selected" ? "Selected" : "Copy";
+  b.dataset.state = done; b.title = done === "copied" ? "Copied" : done === "selected" ? "Selected, press Ctrl+C" : "";
   const t = timers.get(b); if (t) clearTimeout(t);
-  timers.set(b, window.setTimeout(() => { b.textContent = "Copy"; }, 1500));
+  timers.set(b, window.setTimeout(() => { delete b.dataset.state; b.removeAttribute("title"); }, 1500));
 }

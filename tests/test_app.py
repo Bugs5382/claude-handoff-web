@@ -83,7 +83,7 @@ def test_inline_copy_buttons_draw_in_a_browser(site):
         pytest.skip("no Chrome")
     dom = subprocess.run([chrome, "--headless", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=4000", "--dump-dom",
                           f"http://{site}/demo/sample-review"], capture_output=True, text=True, timeout=60).stdout
-    assert 'aria-label="Copy kubectl get pods"' in dom and 'data-copy="kubectl get pods"' in dom, dom[:400]
+    assert 'aria-label="Copy kubectl get pods"' in dom and "ci-copy" in dom and 'data-copy="kubectl get pods"' in dom, dom[:400]
     assert 'aria-label="Copy https://status.example.test/billing"' in dom
     assert 'aria-label="Copy https://docs.example.test/runbook"' in dom
     assert "copy-inline" not in dom.split("</h1>")[0], "no button on the page title"

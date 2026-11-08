@@ -8,8 +8,13 @@ export interface InlineOpts { copy?: boolean }
 
 const TOKEN = /\[([^\]]+)\]\(([^)\s]+)\)|https?:\/\/[^\s<>"]+/g;
 
+// The clipboard-copy icon (lucide, 16px) and a check shown for a moment after a copy; both inherit the text colour.
+const SVG = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"';
+const ICONS = SVG + ' class="ci-copy"><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M8 4H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/><path d="M16 4h2a2 2 0 0 1 2 2v4"/><path d="M21 14H11"/><path d="m15 10-4 4 4 4"/></svg>'
+  + SVG + ' class="ci-ok"><path d="M20 6 9 17l-5-5"/></svg>';
+
 export function inline(s: unknown, o: InlineOpts = {}): string {
-  const button = (v: string) => `<button type="button" class="copy-cmd copy-inline" data-copy="${esc(v)}" aria-label="Copy ${esc(v)}">Copy</button>`;
+  const button = (v: string) => `<button type="button" class="copy-inline" data-copy="${esc(v)}" aria-label="Copy ${esc(v)}">${ICONS}</button>`;
   return String(s ?? "").split(/(`[^`]*`)/).map(part => {
     if (/^`[^`]*`$/.test(part)) {
       const c = part.slice(1, -1);

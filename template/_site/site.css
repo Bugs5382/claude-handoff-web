@@ -24,38 +24,39 @@
   --line-dash: #b8bec4;
   --soft: #eef0f2;
   --soft-2: #f3f4f5;
-  --link: #1f4f8a;
-  --link-hover: #133763;
-  --accent: #2f5d8a;
-  --accent-dark: #23476b;
-  --accent-soft: #e8eff6;
-  --focus: #8fb3cf;
-  --yes: #1d6b44;  --yes-bg: #e7f3ec;  --yes-edge: #9fcdb2;
-  --chg: #8a4b00;  --chg-bg: #fff1dd;  --chg-edge: #e8c48f;
-  --no: #a8261f;   --no-bg: #fbe9e7;   --no-edge: #e4b6b2;
-  --info: #1f56a8; --info-bg: #ecf2fc;
-  --upd: #5d3a96;  --upd-bg: #f2edfa;
-  --blk: #6b5300;  --blk-bg: #fff4cc;
-  --bar: #1c2228;
-  --bar-done: #1d6b44;
+  --link: #3f6a2c;
+  --link-hover: #2f5221;
+  --accent: #4f7a3a;
+  --accent-dark: #2f5221;
+  --accent-soft: #e6ece3;
+  --focus: #8a6a4a;
+  --yes: #3f6a2c;  --yes-bg: #e6ece3;  --yes-edge: #a9c49a;
+  --chg: #664a00;  --chg-bg: #fbf3e3;  --chg-edge: #e0a93a;
+  --no: #9d3f14;   --no-bg: #f7e9e2;   --no-edge: #c4622d;
+  --info: #6a4f32; --info-bg: #efeae6;
+  --upd: #854a00;  --upd-bg: #faefe1;
+  --blk: #664a00;  --blk-bg: #f6e3b0;
+  --bar: #262219;
+  --bar-done: #3f6a2c;
   --bar-line: rgba(255, 255, 255, .45);
   --bar-fill: rgba(255, 255, 255, .12);
-  --dot-open: #e8c48f;
-  --dot-done: #bfe3cd;
-  --ring-blocker: #e06b62;
-  --yes-solid: #1d6b44; --chg-solid: #8a4b00; --no-solid: #a8261f; --skip-solid: #56616a; --other-solid: #3d4750;
+  --dot-open: #e0a93a;
+  --dot-done: #a9c49a;
+  --ring-blocker: #c4622d;
+  --yes-solid: #3f6a2c; --chg-solid: #7d5600; --no-solid: #9d3f14; --skip-solid: #56616a; --other-solid: #6a4f32;
   --on-solid: #ffffff;
   --on-bar: #ffffff;
   --bar-hover: rgba(255, 255, 255, .2);
-  --bar-btn-done-bg: #ffffff; --bar-btn-done-ink: #1d6b44;
-  --no-bg-hover: #f7d9d5;
-  --flash-ring: #c9daf4;
-  --glow: rgba(31, 86, 168, .25);
-  --toast-bg: #1c2228; --toast-ink: #ffffff;
-  --icon: #2f5d8a;
+  --bar-btn-done-bg: #ffffff; --bar-btn-done-ink: #3f6a2c;
+  --no-bg-hover: #f1d6c9;
+  --flash-ring: #d3e0cb;
+  --glow: rgba(79, 122, 58, .25);
+  --toast-bg: #262219; --toast-ink: #ffffff;
+  --icon: #4f7a3a;
+  --mark: url("/_site/warren-mark-light.svg");
   --hover-shadow: 0 2px 10px rgba(28, 34, 40, .07);
   --bar-shadow: 0 -2px 10px rgba(28, 34, 40, .12);
-  --bar-done-shadow: 0 -2px 10px rgba(29, 107, 68, .25);
+  --bar-done-shadow: 0 -2px 10px rgba(63, 106, 44, .25);
   --pic-bg: #1b1b1b; --pic-ink: #eeeeee; --pic-line: #333333;
   --diff-ins: #0f5a32; --diff-ins-bg: #d5f0de; --diff-del: #9b1c15; --diff-del-bg: #fbe0dd;
   --radius: 14px;
@@ -79,35 +80,36 @@
     --line-dash: #4a535b;
     --soft: #252b32;
     --soft-2: #20262c;
-    --link: #8db8e8;
-    --link-hover: #b5d0f0;
-    --accent: #6f9fd0;
-    --accent-dark: #a9c7e8;
-    --accent-soft: #1f3347;
-    --focus: #5e8db8;
-    --yes: #6cc79a;  --yes-bg: #16342a;  --yes-edge: #2f6b4d;
-    --chg: #e8b060;  --chg-bg: #3a2a12;  --chg-edge: #7a5524;
-    --no: #f08a82;   --no-bg: #3e1d1b;   --no-edge: #7e3530;
-    --info: #8fb4f0; --info-bg: #1a2a44;
-    --upd: #c3a6f0;  --upd-bg: #2c2240;
-    --blk: #e2c666;  --blk-bg: #3a3112;
-    --yes-solid: #237a50; --chg-solid: #9a5a10; --no-solid: #b4352d; --skip-solid: #5c6770; --other-solid: #4a555f;
+    --link: #7fb069;
+    --link-hover: #a3cf90;
+    --accent: #7fb069;
+    --accent-dark: #a3cf90;
+    --accent-soft: #223019;
+    --focus: #c9a27a;
+    --yes: #7fb069;  --yes-bg: #1c2e18;  --yes-edge: #3f6a2c;
+    --chg: #f5c25a;  --chg-bg: #3a2c0c;  --chg-edge: #8a6a1a;
+    --no: #e07a45;   --no-bg: #3a1f12;   --no-edge: #8a4524;
+    --info: #c9a27a; --info-bg: #2e251a;
+    --upd: #f0a640;  --upd-bg: #3a280c;
+    --blk: #f5c25a;  --blk-bg: #443411;
+    --yes-solid: #3f6a2c; --chg-solid: #7d5600; --no-solid: #9d3f14; --skip-solid: #5c6770; --other-solid: #6a4f32;
     --on-solid: #ffffff;
-    --bar: #262d35;
-    --bar-done: #1d6b44;
+    --bar: #2a261d;
+    --bar-done: #3f6a2c;
     --on-bar: #ffffff;
     --bar-line: rgba(255, 255, 255, .4);
     --bar-fill: rgba(255, 255, 255, .1);
     --bar-hover: rgba(255, 255, 255, .18);
-    --bar-btn-done-bg: #e7f3ec; --bar-btn-done-ink: #1d6b44;
-    --dot-open: #e8c48f;
-    --dot-done: #bfe3cd;
-    --ring-blocker: #f08a82;
-    --no-bg-hover: #522622;
-    --flash-ring: #2a4670;
-    --glow: rgba(143, 180, 240, .3);
+    --bar-btn-done-bg: #e6ece3; --bar-btn-done-ink: #3f6a2c;
+    --dot-open: #f5c25a;
+    --dot-done: #7fb069;
+    --ring-blocker: #e07a45;
+    --no-bg-hover: #4a2818;
+    --flash-ring: #2f4a25;
+    --glow: rgba(127, 176, 105, .3);
     --toast-bg: #e6e8ea; --toast-ink: #14181c;
-    --icon: #8db8e8;
+    --icon: #7fb069;
+    --mark: url("/_site/warren-mark-dark.svg");
     --shadow: 0 1px 2px rgba(0, 0, 0, .3);
     --hover-shadow: 0 2px 10px rgba(0, 0, 0, .35);
     --pop-shadow: 0 8px 24px rgba(0, 0, 0, .5);
@@ -129,35 +131,36 @@
   --line-dash: #4a535b;
   --soft: #252b32;
   --soft-2: #20262c;
-  --link: #8db8e8;
-  --link-hover: #b5d0f0;
-  --accent: #6f9fd0;
-  --accent-dark: #a9c7e8;
-  --accent-soft: #1f3347;
-  --focus: #5e8db8;
-  --yes: #6cc79a;  --yes-bg: #16342a;  --yes-edge: #2f6b4d;
-  --chg: #e8b060;  --chg-bg: #3a2a12;  --chg-edge: #7a5524;
-  --no: #f08a82;   --no-bg: #3e1d1b;   --no-edge: #7e3530;
-  --info: #8fb4f0; --info-bg: #1a2a44;
-  --upd: #c3a6f0;  --upd-bg: #2c2240;
-  --blk: #e2c666;  --blk-bg: #3a3112;
-  --yes-solid: #237a50; --chg-solid: #9a5a10; --no-solid: #b4352d; --skip-solid: #5c6770; --other-solid: #4a555f;
+  --link: #7fb069;
+  --link-hover: #a3cf90;
+  --accent: #7fb069;
+  --accent-dark: #a3cf90;
+  --accent-soft: #223019;
+  --focus: #c9a27a;
+  --yes: #7fb069;  --yes-bg: #1c2e18;  --yes-edge: #3f6a2c;
+  --chg: #f5c25a;  --chg-bg: #3a2c0c;  --chg-edge: #8a6a1a;
+  --no: #e07a45;   --no-bg: #3a1f12;   --no-edge: #8a4524;
+  --info: #c9a27a; --info-bg: #2e251a;
+  --upd: #f0a640;  --upd-bg: #3a280c;
+  --blk: #f5c25a;  --blk-bg: #443411;
+  --yes-solid: #3f6a2c; --chg-solid: #7d5600; --no-solid: #9d3f14; --skip-solid: #5c6770; --other-solid: #6a4f32;
   --on-solid: #ffffff;
-  --bar: #262d35;
-  --bar-done: #1d6b44;
+  --bar: #2a261d;
+  --bar-done: #3f6a2c;
   --on-bar: #ffffff;
   --bar-line: rgba(255, 255, 255, .4);
   --bar-fill: rgba(255, 255, 255, .1);
   --bar-hover: rgba(255, 255, 255, .18);
-  --bar-btn-done-bg: #e7f3ec; --bar-btn-done-ink: #1d6b44;
-  --dot-open: #e8c48f;
-  --dot-done: #bfe3cd;
-  --ring-blocker: #f08a82;
-  --no-bg-hover: #522622;
-  --flash-ring: #2a4670;
-  --glow: rgba(143, 180, 240, .3);
+  --bar-btn-done-bg: #e6ece3; --bar-btn-done-ink: #3f6a2c;
+  --dot-open: #f5c25a;
+  --dot-done: #7fb069;
+  --ring-blocker: #e07a45;
+  --no-bg-hover: #4a2818;
+  --flash-ring: #2f4a25;
+  --glow: rgba(127, 176, 105, .3);
   --toast-bg: #e6e8ea; --toast-ink: #14181c;
-  --icon: #8db8e8;
+  --icon: #7fb069;
+  --mark: url("/_site/warren-mark-dark.svg");
   --shadow: 0 1px 2px rgba(0, 0, 0, .3);
   --hover-shadow: 0 2px 10px rgba(0, 0, 0, .35);
   --pop-shadow: 0 8px 24px rgba(0, 0, 0, .5);
@@ -169,15 +172,19 @@
 
 body.site {
   margin: 0; padding: 0 0 5rem;
-  font: 16px/1.6 var(--font);
+  font: 16px/1.65 var(--font);
+  font-feature-settings: "kern", "liga";
   color: var(--ink); background: var(--paper);
   -webkit-font-smoothing: antialiased;
 }
 body.site .wrap { max-width: 920px; margin: 0 auto; padding: 0 24px; box-sizing: border-box; }
-body.site header.top { background: var(--card); color: var(--ink); border-bottom: 1px solid var(--line); padding: 22px 0 20px; margin-bottom: 24px; }
+body.site header.top { background: var(--card); color: var(--ink); border-bottom: 1px solid var(--line); border-top: 4px solid var(--accent); padding: 24px 0 22px; margin-bottom: 32px; }
 body.site header.top .wrap { display: flex; flex-direction: column; gap: 8px; }
-body.site header.top h1 { margin: 0; font-size: 26px; line-height: 1.25; font-weight: 700; letter-spacing: -.01em; }
-body.site header.top p { margin: 0; color: var(--muted); font-size: 15px; }
+body.site header.top h1 { margin: 0; font-size: 28px; line-height: 1.25; font-weight: 700; letter-spacing: -.012em; text-wrap: balance; }
+/* The warren mark leads every title block. It follows the theme through --mark. */
+body.site header.top h1::before { content: ""; display: inline-block; width: 36px; height: 36px; margin-right: 12px; vertical-align: -9px; background: var(--mark) center / contain no-repeat; }
+body.site header.top p { max-width: 68ch; }
+body.site header.top p { margin: 0; color: var(--muted); font-size: 15px; line-height: 1.55; }
 body.site header.top a { color: var(--link); }
 body.site header.top .crumb { font-size: 14px; text-decoration: none; }
 body.site header.top .crumb:hover { text-decoration: underline; }
@@ -187,8 +194,11 @@ body.site header.top .htitle { display: flex; align-items: center; gap: 10px; }
 body.site header.top .hside { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 body.site header.top .hside .lbl { font: 13px var(--mono); color: var(--muted); }
 .mono-pill { font: 13px var(--mono); padding: 4px 10px; border-radius: 999px; background: var(--accent-soft); color: var(--accent-dark); white-space: nowrap; }
-body.site h1 { font-size: 26px; line-height: 1.25; }
-body.site h2 { font-size: 19px; line-height: 1.3; font-weight: 600; margin: 2rem 0 .7rem; color: var(--ink); }
+body.site h1 { font-size: 28px; line-height: 1.25; }
+body.site h2 { font-size: 20px; line-height: 1.3; font-weight: 600; margin: 2.25rem 0 .8rem; color: var(--ink); letter-spacing: -.005em; }
+body.site h3 { font-size: 17px; line-height: 1.35; font-weight: 600; margin: 1.5rem 0 .5rem; }
+/* Long review pages: keep prose to a comfortable line length. */
+.rvcard p, .rvcard li, .rv p { max-width: 72ch; }
 body.site a { color: var(--link); text-underline-offset: 2px; }
 body.site a:hover { color: var(--link-hover); }
 body.site a:focus-visible, body.site button:focus-visible, body.site summary:focus-visible, .rv input:focus-visible, .rv textarea:focus-visible, .rvbar input:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
@@ -293,12 +303,12 @@ body.site th { background: var(--soft-2); font-weight: 600; }
 
 /* Review items. A [data-review-question] section becomes the card itself (.rvcard); an <h2> item
    or a unified-page item keeps the controls in their own .rv card. Border and pill follow the answer. */
-.rvcard { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px 22px; margin: 0 0 16px; scroll-margin-top: 16px; transition: border-color .15s; }
+.rvcard { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 22px 26px; margin: 0 0 20px; scroll-margin-top: 16px; transition: border-color .15s; }
 .rvcard > h2:first-of-type, .rvcard > .rvhead + h2 { margin-top: 0; }
 .rvcard[data-answer="yes"], .rv.yes { border-color: var(--yes-edge); }
 .rvcard[data-answer="chg"], .rv.chg { border-color: var(--chg-edge); }
 .rvcard[data-answer="no"], .rv.no { border-color: var(--no-edge); }
-.rvcard.settled { padding: 10px 22px; background: var(--soft); }
+.rvcard.settled { padding: 10px 26px; background: var(--soft); }
 .rvcard.settled > h2 { font-size: 1em; margin: 6px 0 0; }
 .rvcard.settled:not(.shown) > :not(.rvhead, h2, .locked-answer) { display: none; }
 .locked-answer { margin: 6px 0 2px; white-space: pre-wrap; overflow-wrap: anywhere; }
@@ -763,6 +773,7 @@ details.howto .howto-body > .copy-cmd { margin: 0 0 .8rem; }
 .copy-inline[data-state="copied"] .ci-ok { display: block; }
 .copy-inline:hover { border-color: var(--muted); background: var(--soft-2); }
 .copy-inline:active { background: var(--soft); }
+.copy-inline[data-state="copied"] { color: var(--yes); border-color: var(--yes-edge); background: var(--yes-bg); }
 .copy-inline:disabled { border-style: dashed; color: var(--muted); cursor: default; }
 .copy-inline:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
 .copyblk { display: flex; align-items: flex-start; gap: 8px; }
@@ -792,3 +803,7 @@ details.howto .howto-body > .copy-cmd { margin: 0 0 .8rem; }
 
 /* Green box: sent, and waiting on the agent. A reply or a follow-up clears it. */
 .rvcard.is-sent { border-color: var(--yes-solid); box-shadow: 0 0 0 2px var(--yes-solid); }
+
+/* Buttons: every secondary button shares one radius, weight and height; the solid ones (answer, send, bar) keep their state colours. */
+.hist-copy, .filter .fact button, .tour-btn, .restart-confirm button { border-radius: var(--radius-sm); font: 600 14px var(--font); min-height: 40px; padding: 0 14px; }
+.hist-copy:hover:not(:disabled), .filter .fact button:hover { background: var(--soft-2); }

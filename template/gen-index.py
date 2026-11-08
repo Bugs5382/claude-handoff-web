@@ -305,11 +305,6 @@ def section(sid, label, pages, show_folder=False):
             f'{body}</section>')
 
 
-ICON = ('<svg width="28" height="28" viewBox="0 0 28 28" aria-hidden="true"><rect x="3" y="5" width="22" height="18" rx="4" '
-        'fill="none" stroke="currentColor" stroke-width="2"></rect><path d="M8 12l4 4 8-8" fill="none" stroke="currentColor" '
-        'stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"></path></svg>')
-
-
 def shell(title, sub, live, extra="", crumb="", root=False):
     """The white header (crumb, title, subtitle; on the root the icon, review windows and the
     Projects filter on the right), then the live-updating content."""
@@ -319,11 +314,11 @@ def shell(title, sub, live, extra="", crumb="", root=False):
         side = ('<div class="hside">' + (f'<span class="lbl">Review windows</span>{wins}' if wins else "") + f'{extra}</div>')
     head = ('<div class="hrow"><div class="hmain">'
             + (f"<a class=crumb href='{crumb[0]}'>&larr; {esc(crumb[1])}</a>" if crumb else "")
-            + f'<div class="htitle">{ICON if root else ""}<h1>{esc(title)}</h1></div>'
+            + f'<div class="htitle"><h1>{esc(title)}</h1></div>'
             + (f'<p>{sub}</p>' if sub else "") + f'</div>{side}</div>')
     return ("<!doctype html><html lang=en><head><meta charset=utf-8>"
             "<meta name=viewport content='width=device-width,initial-scale=1'>"
-            f"<title>{esc(title)}</title><link rel=stylesheet href='{asset('site.css')}'><script src='{asset('theme.js')}'></script></head>"
+            f"<title>{esc(title)}</title><link rel=icon type=image/svg+xml href=/_site/warren-mark.svg><link rel=stylesheet href='{asset('site.css')}'><script src='{asset('theme.js')}'></script></head>"
             f"<body class=site><header class=top><div class=wrap>{head}</div></header>"
             f"<main class=wrap id=live>{live}</main>"
             f"<script src='{asset('live.js')}'></script>" + (f"<script src='{asset('filter.js')}'></script>" if extra else "") + "</body></html>\n")

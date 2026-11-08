@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none" stroke-linecap="round" stroke-width="3.5" role="img" aria-label="warren">
+  <style>
+    .g{stroke:#4f7a3a}.t{stroke:#8a6a4a}.c1{fill:#d98c2b}.c2{fill:#e0a93a}.c3{fill:#c4622d}
+    @media (prefers-color-scheme: dark){.g{stroke:#7fb069}.t{stroke:#c9a27a}.c1{fill:#f0a640}.c2{fill:#f5c25a}.c3{fill:#e07a45}}
+  </style>
+  <path class="g" d="M6 14h52"/>
+  <path class="t" d="M32 14v12M32 26c-8 0-14 4-16 12M32 26c8 0 14 4 16 12M32 26v20"/>
+  <circle class="c1" cx="14" cy="44" r="5.5"/><circle class="c2" cx="32" cy="51" r="5.5"/><circle class="c3" cx="50" cy="44" r="5.5"/>
+</svg>

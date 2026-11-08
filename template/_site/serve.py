@@ -527,9 +527,25 @@ class Handler(SimpleHTTPRequestHandler):
             return self._get_index()
         if self._blocked():
             return self._plain(HTTPStatus.NOT_FOUND, "Not found")
+        if p in ("/favicon.ico", "/favicon.svg") and not os.path.exists(self.translate_path(p)):
+            return self._favicon()
         if self._page_url() or self._index_page():
             return
         return super().do_GET()
+
+    def _favicon(self):
+        """Browsers ask for /favicon.ico before any page says otherwise; answer with the warren mark."""
+        try:
+            with open(os.path.join(self.root, "_site", "warren-mark.svg"), "rb") as f:
+                data = f.read()
+        except OSError:
+            return self._plain(HTTPStatus.NOT_FOUND, "Not found")
+        self.send_response(HTTPStatus.OK)
+        self.send_header("Content-Type", "image/svg+xml")
+        self.send_header("Cache-Control", "max-age=86400")
+        self.send_header("Content-Length", str(len(data)))
+        self.end_headers()
+        self.wfile.write(data)
 
     def do_HEAD(self):
         if self._path().startswith(("/_save/", "/_history/", "/_page/", "/_index/")) or self._blocked():

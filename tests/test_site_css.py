@@ -91,3 +91,76 @@ def test_final_view_hides_removed_text_and_plains_the_rest():
     ins = rule(".site .rvdiff.final ins")
     assert "text-decoration: none" in ins and "background: none" in ins and "color: inherit" in ins
     assert "color: inherit" in rule(".site .rvdiff.final .same")
+
+
+# WCAG 2.2 AA, measured per theme: 4.5:1 for text, 3:1 for non-text parts of controls.
+TEXT_PAIRS = [
+    ("--ink", "--paper"), ("--ink", "--card"), ("--ink-2", "--card"), ("--ink-2", "--soft"),
+    ("--muted", "--paper"), ("--muted", "--card"), ("--muted", "--soft"), ("--muted", "--soft-2"),
+    ("--link", "--paper"), ("--link", "--card"), ("--link", "--soft"), ("--link", "--accent-soft"),
+    ("--link-hover", "--card"), ("--accent-dark", "--accent-soft"), ("--accent-dark", "--card"),
+    ("--yes", "--yes-bg"), ("--yes", "--card"), ("--chg", "--chg-bg"), ("--chg", "--card"),
+    ("--no", "--no-bg"), ("--no", "--card"), ("--info", "--info-bg"), ("--info", "--card"),
+    ("--upd", "--upd-bg"), ("--upd", "--card"), ("--blk", "--blk-bg"),
+    ("--on-solid", "--yes-solid"), ("--on-solid", "--chg-solid"), ("--on-solid", "--no-solid"),
+    ("--on-solid", "--skip-solid"), ("--on-solid", "--other-solid"),
+    ("--on-bar", "--bar"), ("--on-bar", "--bar-done"), ("--bar-btn-done-ink", "--bar-btn-done-bg"),
+    ("--toast-ink", "--toast-bg"), ("--pic-ink", "--pic-bg"),
+]
+NON_TEXT_PAIRS = [
+    ("--focus", "--paper"), ("--focus", "--card"), ("--icon", "--card"), ("--accent", "--card"),
+    ("--ring-blocker", "--card"),
+]
+
+
+def theme_tokens():
+    light = tokens(LIGHT)
+    return {"light": light, "dark (system)": {**light, **tokens(MEDIA)}, "dark (toggle)": {**light, **tokens(DARK)}}
+
+
+def test_text_pairs_meet_aa_in_light_and_dark():
+    bad = []
+    for theme, t in theme_tokens().items():
+        for fg, bg in TEXT_PAIRS:
+            r = contrast(t[fg], t[bg])
+            if r < 4.5:
+                bad.append((theme, fg, bg, t[fg], t[bg], round(r, 2)))
+    assert bad == []
+
+
+def test_non_text_parts_meet_3_to_1_in_light_and_dark():
+    bad = []
+    for theme, t in theme_tokens().items():
+        for fg, bg in NON_TEXT_PAIRS:
+            r = contrast(t[fg], t[bg])
+            if r < 3:
+                bad.append((theme, fg, bg, t[fg], t[bg], round(r, 2)))
+    assert bad == []
+
+
+def test_no_blue_is_left_in_the_palette():
+    for theme, t in theme_tokens().items():
+        for name in ("--link", "--accent", "--focus", "--icon", "--info"):
+            h = t[name].lstrip("#")
+            r, g, b = (int(h[i:i + 2], 16) for i in (0, 2, 4))
+            assert not (b > r + 20 and b > g), (theme, name, t[name])
+
+
+def test_warren_mark_files_match_the_repo_asset_and_follow_the_theme_tokens():
+    site = ROOT / "template" / "_site"
+    asset = ROOT.parent.parent / "assets" / "warren-mark.svg"
+    if asset.exists():  # absent when the adapter is checked out on its own
+        assert (site / "warren-mark.svg").read_text() == asset.read_text()
+    light, dark = tokens(LIGHT), tokens(DARK)
+    assert "warren-mark-light.svg" in light["--mark"] and "warren-mark-dark.svg" in dark["--mark"]
+    for name, cols in (("light", ("#4f7a3a", "#8a6a4a", "#d98c2b", "#e0a93a", "#c4622d")),
+                       ("dark", ("#7fb069", "#c9a27a", "#f0a640", "#f5c25a", "#e07a45"))):
+        text = (site / f"warren-mark-{name}.svg").read_text().lower()
+        assert all(c in text for c in cols), name
+
+
+def test_every_page_shell_links_the_favicon_and_the_header_mark_is_css():
+    for f in ("app.html", "build-review.py"):
+        assert 'rel="icon"' in (ROOT / "template" / "_site" / f).read_text(), f
+    assert "rel=icon" in (ROOT / "template" / "gen-index.py").read_text()
+    assert "header.top h1::before" in CSS and "var(--mark)" in CSS

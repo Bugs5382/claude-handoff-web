@@ -280,7 +280,8 @@ def main(folder):
     page = f'''<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{html.escape(name)}: everything open for review</title>
-<link rel="stylesheet" href="/_site/site.css?v=45">
+<link rel="icon" type="image/svg+xml" href="/_site/warren-mark.svg">
+<link rel="stylesheet" href="/_site/site.css?v=46">
 <script src="/_site/theme.js?v=20"></script>
 </head>
 <body class="site unified" data-tz="{html.escape(SITE.get("timezone", ""), quote=True)}" data-review-page="/{folder}/review/" data-review-h2="off" data-review-reset="{html.escape("|".join(resets), quote=True)}" data-review-approved="{",".join(approved)}" data-review-reopen="{html.escape("|".join(reopen), quote=True)}"{extra_attrs}>

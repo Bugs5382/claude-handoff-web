@@ -278,7 +278,7 @@ def test_convert_makes_a_page_without_review_js_a_reference_page(demo):
     assert got["kind"] == "reference" and pagefile.allowed_answers(got, got["items"][0]) == ()
 
 
-def test_convert_keeps_approved_items_from_the_last_round_hidden(demo):
+def test_convert_keeps_approved_and_refused_items_from_the_last_round_locked(demo):
     page = demo / "demo" / "again.html"
     page.write_text(_review_page(' data-review-approved="s1,s2"', "<h2>One</h2><p>a</p><h2>Two</h2><p>b</p><h2>Three</h2>"))
     key = "review-demo-again.html"
@@ -294,7 +294,7 @@ def test_convert_keeps_approved_items_from_the_last_round_hidden(demo):
     states = pagefile.item_states(doc)
     assert states["s1"] == {"answer": "yes", "hidden": True, "reopened": None, "round": 1}
     assert states["s2"]["answer"] == "yes" and not states["s2"]["hidden"]
-    assert states["s3"]["answer"] == ""
+    assert states["s3"] == {"answer": "no", "hidden": True, "reopened": None, "round": 1}
 
 
 def test_convert_keeps_a_reopen_reason_that_was_answered_since_as_a_reply(demo):

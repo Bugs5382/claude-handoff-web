@@ -8,6 +8,8 @@ export const openRound = (p: PageDoc): Round => p.rounds[p.rounds.length - 1];
 const IN: Record<string, string> = { yes: "yes", no: "no", changes: "chg", skipped: "skip", risk: "risk" };
 const OUT: Record<string, string> = { yes: "yes", no: "no", chg: "changes", skip: "skipped", risk: "risk" };
 export const DONE = ["yes", "risk"];
+/** What locks once it has gone back: a Yes, Accept risk or No. Only a Yes or Accept risk counts as approved. */
+export const SETTLING = [...DONE, "no"];
 /** The answers that let an item depending on this one be answered: No or no answer keeps it blocked. */
 export const DEPENDENCY_MET = ["yes", "changes", "risk"];
 export const answerIn = (a: string): string => IN[a] ?? a;
@@ -20,7 +22,7 @@ function settledLocal(p: PageDoc, id: string, answer: string, open: Local | unde
   const given = [...p.rounds].reverse().map(r => r.answers[id]).find(a => a?.answer);
   if (it && typeOf(p, it) === "question") return { a: answer };
   if (it?.choices) return { v: answer, n: given?.note ?? "", o: given?.other ?? "" };
-  return { v: answer === "risk" ? "risk" : "yes", n: open?.n ?? "" };
+  return { v: answer === "risk" || answer === "no" ? answer : "yes", n: open?.n ?? (answer === "no" ? given?.note ?? "" : "") };
 }
 
 export function toLocal(data: PageData): Locals {
@@ -31,7 +33,7 @@ export function toLocal(data: PageData): Locals {
     const t = typeOf(p, it);
     if (t === "question") out[id] = { a: a.answer ?? "" };
     else if (t === "choice") out[id] = { v: a.answer ?? "", n: a.note ?? "", o: a.other ?? "" };
-    else if (DONE.includes(a.answer) && data.states[id]?.reopened) out[id] = { v: "", n: a.note ?? "" };
+    else if (SETTLING.includes(a.answer) && data.states[id]?.reopened) out[id] = { v: "", n: a.note ?? "" };
     else { out[id] = { v: IN[a.answer] ?? "", n: a.note ?? "" }; if (a.answer === "skipped") out[id].locked = true; }
   }
   for (const [id, s] of Object.entries(data.states)) if (s.hidden) out[id] = settledLocal(p, id, s.answer, out[id]);
@@ -89,16 +91,17 @@ export function count(items: CountItem[], s: Locals, hidden: Set<string>, blocke
   const cCounted = choice.filter(it => !blocked[it.id]);
   const open = counted.filter(unanswered), cOpen = cCounted.filter(it => !S(it.id).v || (!!it.own && wantsOther(S(it.id)) && !(S(it.id).o ?? "").trim()));
   const total = counted.length + cCounted.length, answered = total - open.length - cOpen.length;
-  const hiddenN = ync.filter(it => hidden.has(it.id)).length;
+  const refusedN = ync.filter(it => hidden.has(it.id) && S(it.id).v === "no").length;
+  const hiddenN = ync.filter(it => hidden.has(it.id)).length - refusedN;
   const blockedN = ync.concat(choice).filter(it => !hidden.has(it.id) && blocked[it.id]).length;
   const yesAll = counted.every(it => DONE.includes(S(it.id).v ?? ""));
-  const allHidden = total === 0 && hiddenN > 0 && !blockedN;
+  const allHidden = total === 0 && hiddenN + refusedN > 0 && !blockedN;
   const allDone = (total > 0 && answered === total) || allHidden;
   return {
-    total, answered, allDone, approved: allDone && (counted.length > 0 || allHidden) && yesAll,
+    total, answered, allDone, approved: allDone && (counted.length > 0 || allHidden) && yesAll && !refusedN,
     yncTotal: counted.length, choiceTotal: cCounted.length,
     openIds: items.filter(it => open.includes(it) || cOpen.includes(it)).map(it => it.id),
-    hidden: hiddenN, blocked: blockedN,
+    hidden: hiddenN, refused: refusedN, blocked: blockedN,
     skipped: ync.filter(it => !hidden.has(it.id) && S(it.id).locked).length,
     blockers: ync.filter(it => !hidden.has(it.id) && S(it.id).blocker).length,
     qOpen: items.filter(it => it.kind === "question" && !(S(it.id).a ?? "").trim()).length,

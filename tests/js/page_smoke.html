@@ -125,6 +125,24 @@ const seg = (doc, id, v) => card(doc, id).querySelector('.seg button[data-v="' +
     eq(win.siteReview.unsaved(), true);
   });
 
+  await t("checklist: a No locks like a Yes, shows No (locked), is listed NO (locked), and reopens when its item changes", async () => {
+    const { win, doc, bar } = await load("/demo/pf-nolock");
+    ok(card(doc, "c2").classList.contains("settled"), "c2 is a locked row");
+    eq(card(doc, "c2").querySelector(".rvhead .st").textContent, "No (locked)");
+    eq(seg(doc, "c2", "no").getAttribute("aria-pressed"), "true"); ok(seg(doc, "c2", "no").disabled, "the No can't be pressed again");
+    ok(card(doc, "c2").querySelector("textarea").disabled, "its note is locked");
+    eq(card(doc, "c1").querySelector(".rvhead .st").textContent, "Yes (locked)");
+    match(card(doc, "c3").querySelector(".rvhead .st").textContent, /^Reopened: changed since round 1/);
+    ok(!card(doc, "c3").classList.contains("settled"), "a changed item is open again");
+    ok(!bar.classList.contains("approved"), "a locked No is never approved");
+    match(bar.querySelector(".cnt").textContent, /1 approved and locked · 1 No locked/);
+    match(doc.querySelector(".rvdone").textContent, /^1 approved, 1 No and locked\./);
+    const r = win.siteReview.results();
+    match(r, /- \[c1\] YES: One/); match(r, /- \[c2\] NO \(locked\): Two\n    Note: Wrong/);
+    ok(!/APPROVED/.test(r), "results never say APPROVED");
+    const a = await answers("demo/pf-nolock");
+    ok(!a.c2, "a locked No isn't written into the new round");
+  });
   await t("checklist: answering an item Yes unblocks the items that depend on it at once, no reload", async () => {
     const { doc } = await load("/demo/pf-unblock");
     eq(card(doc, "c4").querySelector(".rvhead .st").textContent, "Blocked by c2");

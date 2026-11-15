@@ -150,13 +150,13 @@ def test_save_round_now_closes_the_round_with_its_results(path):
     assert rounds[1]["openedBy"] == "saved"
 
 
-def test_a_yes_from_an_earlier_round_is_hidden_and_others_stay_open(path):
+def test_a_yes_and_a_no_from_an_earlier_round_are_both_locked(path):
     make(path)
     pagefile.save_answers(path, {"s1": {"answer": "yes", "note": ""}, "s2": {"answer": "no", "note": ""}}, by="Alex", now=T0)
     pagefile.new_round(path, now=T1)
     states = pagefile.item_states(pagefile.load(path))
     assert states["s1"] == {"answer": "yes", "hidden": True, "reopened": None, "round": 1}
-    assert states["s2"] == {"answer": "", "hidden": False, "reopened": None, "round": None}
+    assert states["s2"] == {"answer": "no", "hidden": True, "reopened": None, "round": 1}
 
 
 def test_a_changed_item_reopens(path):
@@ -878,3 +878,38 @@ def test_a_dependency_is_met_by_yes_changes_or_accept_risk(path, answer, blocked
     doc = pagefile.load(path)
     assert ("s2" in pagefile.blocked_items(doc)) is blocked
     assert pagefile.summary(doc)["blocked"] == (1 if blocked else 0)
+
+
+def test_a_sent_no_locks_once_the_agent_updates_the_page_like_a_yes(path):
+    make(path)
+    answers = {"s1": {"answer": "no", "note": "Wrong port"}, "s2": {"answer": "changes", "note": "Move it"}}
+    pagefile.save_answers(path, answers, by="me", now=T0)
+    sent(path, ["s1", "s2"])
+    assert pagefile.item_states(pagefile.load(path))["s1"]["hidden"] is False, "stays on screen until the update"
+    pagefile.reply(path, "s2", "ops", "Moved.", now=T2)
+    states = pagefile.item_states(pagefile.load(path))
+    assert states["s1"] == {"answer": "no", "hidden": True, "reopened": None, "round": 1}
+    assert states["s2"]["hidden"] is False and states["s2"]["answer"] == "", "Changes keeps its behaviour"
+
+
+def test_a_locked_no_reopens_only_when_the_item_changes(path):
+    make(path)
+    pagefile.save_answers(path, {"s1": {"answer": "no", "note": "Wrong"}}, by="me", now=T0)
+    pagefile.new_round(path, now=T1)
+    assert pagefile.item_states(pagefile.load(path))["s1"]["hidden"] is True
+    changed = review()
+    changed["items"][0]["body"] = [{"p": "Why, with the port."}]
+    pagefile.write_definition(path, changed, now=T2)
+    state = pagefile.item_states(pagefile.load(path))["s1"]
+    assert state == {"answer": "", "hidden": False, "reopened": "changed since round 1", "round": None}
+
+
+def test_a_locked_no_is_never_approved_and_does_not_unblock_or_close(path):
+    make(path, phased())
+    pagefile.save_answers(path, {"A1": {"answer": "yes"}, "A2": {"answer": "no"}}, by="me", now=T0)
+    pagefile.new_round(path, now=T1)
+    doc = pagefile.load(path)
+    assert pagefile.item_states(doc)["A2"] == {"answer": "no", "hidden": True, "reopened": None, "round": 1}
+    assert pagefile.summary(doc)["approved"] is False
+    assert pagefile.phase_states(doc)["A"]["closed"] is False
+    assert {"B1", "C1"} <= pagefile.blocked_items(doc)

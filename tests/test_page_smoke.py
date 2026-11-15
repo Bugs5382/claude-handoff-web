@@ -33,6 +33,7 @@ SCENARIOS = [
     "jump bar: Next and the n key walk open items; the picker filters and Enter jumps",
     "saved answers load from the page file; a failed save shows amber",
     "checklist: skip locks, earlier Yes locked, blocked by a dependency, reopened with its reason, question",
+    "checklist: a No locks like a Yes, shows No (locked), is listed NO (locked), and reopens when its item changes",
     "checklist: answering an item Yes unblocks the items that depend on it at once, no reload",
     "question: Use suggestion fills the answer and saves it",
     "backlog: default choice, picking every item turns the bar green, saved",
@@ -137,6 +138,13 @@ def write_pages(root):
                           by="Alex", now=T0)
     pagefile.new_round(demo / "pf-check.json", results="Round 1 text", now=T0)
     pagefile.reply(demo / "pf-check.json", "c5", "app", "Fixed in #70.", action="reopen", reason="fixed in #70", now=T0)
+    w(demo / "pf-nolock.json", CHECKLIST, now=T0)
+    pagefile.save_answers(demo / "pf-nolock.json", {"c1": {"answer": "yes", "note": ""}, "c2": {"answer": "no", "note": "Wrong"},
+                                                    "c3": {"answer": "no", "note": "Also wrong"}}, by="Alex", now=T0)
+    pagefile.new_round(demo / "pf-nolock.json", results="Round 1 text", now=T0)
+    changed = json.loads(json.dumps(CHECKLIST))
+    changed["items"][2]["body"] = [{"p": "Now with the port."}]
+    pagefile.write_definition(demo / "pf-nolock.json", changed, now=T0)
     w(demo / "pf-question.json", CHECKLIST, now=T0)
     w(demo / "pf-backlog.json", BACKLOG, now=T0)
     w(demo / "pf-theme.json", review("Theme"), now=T0)

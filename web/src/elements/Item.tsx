@@ -135,7 +135,7 @@ export function Item(p: ItemProps) {
   }
 
   const showNote = v === "chg" || v === "no" || v === "risk" || !!note.trim() || !!value.blocker || noteOpen || !!value.locked;
-  const pill = blocked ?? (value.locked ? <Chip tone="skp">{PILL.skip}</Chip> : held ? <Chip tone="a-yes">Sent, waiting</Chip> : settled ? <Chip tone={v === "risk" ? "a-risk" : "a-yes"}>{v === "risk" ? "Accept risk" : "Yes"} (locked)</Chip> : v ? <Chip tone={TONE[v]}>{PILL[v]}</Chip>
+  const pill = blocked ?? (value.locked ? <Chip tone="skp">{PILL.skip}</Chip> : held ? <Chip tone="a-yes">Sent, waiting</Chip> : settled ? <Chip tone={v === "risk" ? "a-risk" : v === "no" ? "a-no" : "a-yes"}>{v === "risk" ? "Accept risk" : v === "no" ? "No" : "Yes"} (locked)</Chip> : v ? <Chip tone={TONE[v]}>{PILL[v]}</Chip>
     : state?.reopened ? <Chip tone="reo">Reopened: {state.reopened}</Chip> : handled ? <Chip tone="reo">Updated: answer again</Chip> : <Chip>Open</Chip>);
   const pick = (a: string) => {
     if (a === "skip") { if (!confirm("Skip this item? Once skipped it's locked and can't be changed.")) return; p.onChange({ v: "skip", n: note, locked: true }); return; }

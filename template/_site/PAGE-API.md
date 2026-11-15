@@ -45,8 +45,8 @@ curl -s http://127.0.0.1:8000/_page/demo/try | python3 -m json.tool | head -20
 The body is `{"page", "states", "summary", "route", "listening", "diffs"}`:
 
 - `page`: the page file as stored, including `rev`, `rounds`, `thread` and `submissions`.
-- `states`: per answerable item, `{"answer", "hidden", "reopened", "round"}`. `hidden` (drawn as a locked row) is a Yes from an earlier
-  round; `reopened` is the reason it came back, or `null`.
+- `states`: per answerable item, `{"answer", "hidden", "reopened", "round"}`. `hidden` (drawn as a locked row) is a Yes, Accept risk or No from an earlier
+  round or one a Send carried (a locked No shows "No (locked)", is listed "NO (locked)" in Copy results and never counts as approved); `reopened` is the reason it came back, or `null`.
 - `summary`: the bar's counts, `open`, `blocked`, `counted`, `yes`, `reopened`, `approved`, and a backlog's
   `tally`.
 - `route`: where Send goes, `{"to": agent, "mode": "send" | "copy" | "both"}`. It's the page's own `route`, else

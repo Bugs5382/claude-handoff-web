@@ -23,6 +23,7 @@ SERVER_KEYS = ("rev", "rounds", "thread", "submissions", "route", "emails", "rev
 DEFINITION_KEYS = ("schema", "kind", "title", "summary", "build", "reset", "status", "options", "items", "phases", "drafts", "deck",
                    "template")
 DONE = ("yes", "risk")
+SETTLING = DONE + ("no",)
 DEPENDENCY_MET = ("yes", "changes", "risk")
 
 
@@ -461,14 +462,14 @@ def _sent(doc, cur, iid, answer, *, answered=False):
 
 
 def _settles(item, typ, answer):
-    """An answer that locks once it's gone back: a Yes or Accept risk, any answered question, an item's own pick."""
-    return bool(answer) and (answer in DONE and typ != "question" or typ == "question" or bool(item.get("choices")))
+    """An answer that locks once it's gone back: a Yes, No or Accept risk, any answered question, an item's own pick."""
+    return bool(answer) and (answer in SETTLING and typ != "question" or typ == "question" or bool(item.get("choices")))
 
 
 def item_states(doc):
     """Where each answerable item stands in the open round.
 
-    {id: {"answer", "hidden", "reopened", "round"}}: a Yes from an earlier round, or one a Send carried once the
+    {id: {"answer", "hidden", "reopened", "round"}}: a Yes or No from an earlier round, or one a Send carried once the
     agent has updated the page, is hidden; a reopen, or a definition change since the item's last Yes, makes it
     open again with the reason.
     """

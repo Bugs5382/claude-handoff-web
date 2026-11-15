@@ -39,9 +39,9 @@ export function resultsOf(data: PageData, s: Locals, blocked: Record<string, str
   const label = (v: string) => p.options?.choices.find(c => c.value === v)?.label ?? v;
   let out = `Review: ${p.title} (/${rel})\n`;
   for (const it of answerable.filter(x => t(x) !== "question")) {
-    const l = s[it.id] ?? {}, pick = l.v || p.options?.default || "";
+    const l = s[it.id] ?? {}, pick = l.v || p.options?.default || "", refused = l.v === "no" && !!data.states[it.id]?.hidden;
     const own = (x: string) => (x === "other" ? `OTHER (${(l.o ?? "").replace(/\n/g, " ")})` : (it.choices?.find(c => c.value === x)?.label ?? x).toUpperCase());
-    const ans = it.choices ? (l.v ? l.v.split(",").map(own).join(", ") : "NOT ANSWERED") : t(it) === "choice" ? (pick ? label(pick).toUpperCase() : "NOT ANSWERED") : (LOUD[l.v ?? ""] ?? "NOT ANSWERED");
+    const ans = it.choices ? (l.v ? l.v.split(",").map(own).join(", ") : "NOT ANSWERED") : t(it) === "choice" ? (pick ? label(pick).toUpperCase() : "NOT ANSWERED") : (LOUD[l.v ?? ""] ?? "NOT ANSWERED") + (refused ? " (locked)" : "");
     out += `- [${it.id}] ${blocked[it.id] ? `BLOCKED by ${blocked[it.id]}, ` : ""}${l.blocker ? "BLOCKER, " : ""}${ans}: ${it.title}${l.n ? `\n    Note: ${l.n.replace(/\n/g, " ")}` : ""}\n`;
   }
   const ync = answerable.filter(it => t(it) !== "question" && t(it) !== "choice");
@@ -217,7 +217,7 @@ export function Page() {
   const choices = p.items.filter(it => typeOf(p, it) === "choice");
   const tl = choices.length ? tally(data, choices, local) : "";
   const qTail = c.qOpen ? ` · ${c.qOpen} question${c.qOpen === 1 ? "" : "s"} unanswered` : "";
-  const tails = (c.blocked ? ` · ${c.blocked} blocked` : "") + (c.skipped ? ` · ${c.skipped} skipped` : "") + (c.hidden ? ` · ${c.hidden} approved and locked` : "") + (tl && !c.choiceOnly ? " · " + tl : "") + qTail;
+  const tails = (c.blocked ? ` · ${c.blocked} blocked` : "") + (c.skipped ? ` · ${c.skipped} skipped` : "") + (c.hidden ? ` · ${c.hidden} approved and locked` : "") + (c.refused ? ` · ${c.refused} No locked` : "") + (tl && !c.choiceOnly ? " · " + tl : "") + qTail;
   const text = c.choiceOnly ? (c.allDone ? `All ${c.total} picked` : `${c.answered} of ${c.total} picked`) + (tl ? " · " + tl : "") + qTail
     : c.approved ? `APPROVED · all ${c.yncTotal || c.hidden} Yes` + (c.yncTotal && c.hidden ? ` · ${c.hidden} approved and locked` : "") + (tl ? " · " + tl : "") + qTail
       : c.allDone ? `All ${c.total} answered · ready to copy` + tails : `${c.answered} of ${c.total} answered` + tails;
@@ -281,7 +281,7 @@ export function Page() {
       {sub && <Held data={data} sub={sub} onUnlock={async () => { await postPage("/unlock", {}); await redraw(); }} />}
       {pageReplies.length > 0 && <section className="pthread" id="replies"><h2>Replies about this page</h2><Thread entries={pageReplies} label="Replies about this page" /></section>}
       {p.kind === "journey" && <Restart data={data} onRestart={async cp => { await flush(); await postPage("/restart", { checkpoint: cp, results: results() }); await redraw(); }} />}
-      {hidden.size > 0 && <div className="rvdone">{[c.hidden ? `${c.hidden} approved` : "", hidden.size > c.hidden ? `${hidden.size - c.hidden} answered` : ""].filter(Boolean).join(", ")} and locked. They stay in Copy results.</div>}
+      {hidden.size > 0 && <div className="rvdone">{[c.hidden ? `${c.hidden} approved` : "", c.refused ? `${c.refused} No` : "", hidden.size > c.hidden + c.refused ? `${hidden.size - c.hidden - c.refused} answered` : ""].filter(Boolean).join(", ")} and locked. They stay in Copy results.</div>}
       {body(renderItem)}
       {!reference && <History rows={rows} />}
     </main>

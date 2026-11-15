@@ -204,7 +204,7 @@ links, `mailto:` and other non-web links, and any link that sets its own `target
   chosen label, or `<label> (default)`.
 - Buttons: Copy results, Copy (one unified-page group), Mark unanswered Yes, Mark unanswered No, Clear my answers (never clears approved or locked items), Blocker: copy now,
   Stale: remove this page.
-- Progress: `<n> of <m> answered`, plus ` · <b> blocked`, ` · <s> skipped`, ` · <k> approved and hidden` (`approved and locked` on a page file); each item's id links to the item, and so does a Blocked by pill that names one
+- Progress: `<n> of <m> answered`, plus ` · <b> blocked`, ` · <s> skipped`, ` · <k> approved and hidden` (`approved and locked` on a page file, plus ` · <n> No locked` for a No that has been sent); each item's id links to the item, and so does a Blocked by pill that names one
   when above 0, plus ` · <j> questions unanswered` when j > 0 (open questions never count toward `<n>` or
   `<m>`). Choice items count toward `<n>` and `<m>` and add ` · <n> <label> · <n> <label>`; a page with only
   choice items shows `<n> of <m> picked · <counts>`.

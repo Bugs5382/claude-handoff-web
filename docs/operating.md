@@ -43,7 +43,7 @@ This repository holds only the generic template and the fake `example/`. Never c
 | `POST` | `/_round-close` | `{name, results_text?}`: close a round by hand |
 | `GET` | `/<folder>/<slug>` | a page file, drawn by the app in the `_site/app.html` shell; a converted page's old `.html` URL redirects here |
 | `GET` | `/_page/<folder>/<slug>` | the page file with its item states, counts, route, whether the route's agent is listening, and server-drawn diffs; send `If-None-Match` with the last `ETag` for a cheap 304 |
-| `PUT` | `/_page/<folder>/<slug>/answers` | `{base, answers: {id: {answer, note}}}`: merge one tab's answers; returns `{rev}` |
+| `PUT` | `/_page/<folder>/<slug>/answers` | `{base, answers: {id: {answer, note}}}`: merge one tab's answers; returns `{rev}`. On a gated page (`"gate": "yes"`) a blocked item is refused and a Yes needs `"confirmed": true` |
 | `POST` | `/_page/<folder>/<slug>/round` | `{results?}`: Save round now; returns `{round}` |
 | `POST` | `/_page/<folder>/<slug>/restart` | `{checkpoint, results?}`: restart a journey and send a `restart` submission |
 | `POST` | `/_page/<folder>/<slug>/send` | `{kind: send or blocker, items?, results?}`: send to the page's route; `409` when the route only copies; a send locks the page once the inbox has the file |

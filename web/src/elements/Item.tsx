@@ -32,6 +32,10 @@ export interface ItemProps {
   value: Local;
   /** Who or what is holding it, for Blocked by. */
   blockedBy?: string;
+  /** The page is gated: a Yes needs a second press to confirm, and the next item waits for it. */
+  gated?: boolean;
+  /** Held only by the gate, so the pill reads Waiting for <id> to be Yes. */
+  waiting?: boolean;
   /** Sent, and waiting on the agent. */
   held?: boolean;
   /** A sent No or Changes the agent dealt with. */
@@ -62,6 +66,7 @@ export function Item(p: ItemProps) {
   const [noteOpen, setNoteOpen] = useState(false);
   const [shown, setShown] = useState(false);
   const [asking, setAsking] = useState(false);
+  const [confirming, setConfirming] = useState(false);
   const ta = useRef<HTMLTextAreaElement>(null);
   const qa = useRef<HTMLTextAreaElement>(null);
   useEffect(() => { if (qa.current) { qa.current.style.height = "auto"; qa.current.style.height = qa.current.scrollHeight + 2 + "px"; } });
@@ -80,12 +85,13 @@ export function Item(p: ItemProps) {
   const more = <ItemMore id={it.id} actions={actions} />;
   if (type === "info") return <>{group}<section className="info" data-item={it.id}>{actions.length > 0 && <div className="rvhead"><span className="sp" />{more}</div>}<h2>{heading}</h2>{content}</section></>;
 
-  const settled = !!state?.hidden;
+  const confirmed = !!p.gated && state?.answer === "yes" && !!state.confirmed && !state.reopened;
+  const settled = !!state?.hidden || confirmed;
   const sent = held ? " is-sent" : "";
   const locked = !!value.locked || !!blockedBy || !!held || settled;
   const v = value.v ?? "", note = value.n ?? "";
-  const blocked = blockedBy ? <span className="st blk">Blocked by {p.isItem(blockedBy)
-    ? <a className="rid" href={"#rv-" + encodeURIComponent(blockedBy)} title={"Go to " + blockedBy} onClick={e => { e.preventDefault(); p.goTo(blockedBy); }}>{blockedBy}</a> : blockedBy}</span> : null;
+  const blocked = blockedBy ? <span className="st blk">{p.waiting ? "Waiting for " : "Blocked by "}{p.isItem(blockedBy)
+    ? <a className="rid" href={"#rv-" + encodeURIComponent(blockedBy)} title={"Go to " + blockedBy} onClick={e => { e.preventDefault(); p.goTo(blockedBy); }}>{blockedBy}</a> : blockedBy}{p.waiting ? " to be Yes" : ""}</span> : null;
   const rid = <a className="rid" href={"#rv-" + encodeURIComponent(it.id)} title={"Go to " + it.id} onClick={e => { e.preventDefault(); flushSync(() => setShown(true)); p.goTo(it.id); }}>{it.id}</a>;
 
   const showBtn = settled && <button type="button" className="settled-tg" aria-expanded={shown} onClick={() => flushSync(() => setShown(!shown))}>{shown ? "Hide" : "Show"}</button>;
@@ -135,9 +141,11 @@ export function Item(p: ItemProps) {
   }
 
   const showNote = v === "chg" || v === "no" || v === "risk" || !!note.trim() || !!value.blocker || noteOpen || !!value.locked;
-  const pill = blocked ?? (value.locked ? <Chip tone="skp">{PILL.skip}</Chip> : held ? <Chip tone="a-yes">Sent, waiting</Chip> : settled ? <Chip tone={v === "risk" ? "a-risk" : "a-yes"}>{v === "risk" ? "Accept risk" : "Yes"} (locked)</Chip> : v ? <Chip tone={TONE[v]}>{PILL[v]}</Chip>
+  const pill = blocked ?? (value.locked ? <Chip tone="skp">{PILL.skip}</Chip> : held ? <Chip tone="a-yes">Sent, waiting</Chip> : settled ? <Chip tone={v === "risk" ? "a-risk" : "a-yes"}>{v === "risk" ? "Accept risk" : confirmed ? "Yes, confirmed" : "Yes"} (locked)</Chip> : v ? <Chip tone={TONE[v]}>{PILL[v]}</Chip>
     : state?.reopened ? <Chip tone="reo">Reopened: {state.reopened}</Chip> : handled ? <Chip tone="reo">Updated: answer again</Chip> : <Chip>Open</Chip>);
   const pick = (a: string) => {
+    if (p.gated && a === "yes") { setConfirming(true); return; }
+    if (confirming) { setConfirming(false); if (a === "") return; }
     if (a === "skip") { if (!confirm("Skip this item? Once skipped it's locked and can't be changed.")) return; p.onChange({ v: "skip", n: note, locked: true }); return; }
     p.onChange({ ...value, v: a, n: note });
     if (a === "chg" && !note.trim()) setTimeout(() => ta.current?.focus());
@@ -155,7 +163,7 @@ export function Item(p: ItemProps) {
       <div className={`rv in-card ${v}` + (locked ? " locked" : "") + (blockedBy ? " blocked" : "") + (value.blocker ? " blocker" : "") + ((v === "chg" || v === "risk") && !note.trim() ? " empty" : "")} id={"rv-" + it.id}>
         <div className="rvrow">
           <span className="ask">Your answer:</span>
-          <Answer id={it.id} options={optionsFor(it, type, !!p.risk)} value={v} disabled={locked} onChange={pick} />
+          <Answer id={it.id} options={optionsFor(it, type, !!p.risk)} value={confirming ? "yes" : v} disabled={locked} onChange={pick} />
           {!showNote && !blockedBy && <button type="button" className="add-note" disabled={locked} onClick={() => { setNoteOpen(true); setTimeout(() => ta.current?.focus()); }}>Add a note</button>}
           <span className="sp" />
           <button type="button" className="blocker-btn" disabled={!!held || settled} title={p.blockerTitle} onClick={() => {
@@ -163,6 +171,11 @@ export function Item(p: ItemProps) {
             if (typed) p.onBlocker(typed);
           }}>{p.blockerLabel}</button>
         </div>
+        {confirming && !locked && <div className="confirm-yes" role="group" aria-label={"Confirm Yes for " + it.id}>
+          <span className="confirm-note">This unlocks the next step and locks this one.</span>
+          <button type="button" className="confirm-btn" data-act="confirm-yes" onClick={() => { setConfirming(false); p.onChange({ ...value, v: "yes", n: note }); }}>Confirm Yes</button>
+          <button type="button" className="cancel-btn" data-act="cancel-yes" onClick={() => setConfirming(false)}>Cancel</button>
+        </div>}
         <label className="notel" hidden={!showNote}>
           <span><span className="nlt">{v === "chg" ? "What should change (required)" : v === "risk" ? "How the risk is presented (required)" : v === "no" ? "Why (optional)" : "Note"}</span> <span className="need">{v === "risk" ? "Please say how the risk is presented." : "Please say what to change."}</span></span>
           <textarea ref={ta} rows={3} placeholder="Notes (required for Changes and Accept risk)" value={note} disabled={locked} onChange={e => p.onChange({ ...value, v, n: e.target.value })} />

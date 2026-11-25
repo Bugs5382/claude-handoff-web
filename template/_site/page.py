@@ -73,6 +73,8 @@ def cmd_new(a):
     if os.path.exists(path):
         raise CliError(f"{a.page} already exists; use set")
     definition = read_definition(a.source)
+    if a.gate:
+        definition["gate"] = a.gate
     os.makedirs(os.path.dirname(path), exist_ok=True)
     pagefile.write_definition(path, definition)
     print(f"created {a.page}")
@@ -699,6 +701,9 @@ def build_parser():
         p = sub.add_parser(name)
         p.add_argument("page")
         p.add_argument("--from", dest="source", help="the definition file (default: stdin)")
+        if name == "new":
+            p.add_argument("--gate", choices=schema.GATES,
+                           help="yes: each item opens only once the one before it is a confirmed Yes or Skipped")
         p.set_defaults(fn=fn)
     p = sub.add_parser("reply")
     p.add_argument("page")

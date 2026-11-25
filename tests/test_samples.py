@@ -79,3 +79,9 @@ def test_samples_use_only_documentation_addresses():
     text = "".join(json.dumps(samples.read(n)) for n in samples.names())
     for ip in re.findall(r"\b\d{1,3}(?:\.\d{1,3}){3}\b", text):
         assert ip.startswith(("192.0.2.", "198.51.100.", "203.0.113.")), ip
+
+
+def test_the_gated_samples_show_what_unlocks_the_next_step(folder):
+    assert pagefile.blocked_items(doc(folder, "gate")) == {"g2", "g3"}
+    assert pagefile.blocked_items(doc(folder, "gate-changes")) == {"g2", "g3"}
+    assert pagefile.blocked_items(doc(folder, "gate-skipped")) == {"g3"}

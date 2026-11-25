@@ -1,5 +1,8 @@
 # Save API: keeping answers on the server
 
+Gated pages (`"gate": "yes"`) are page files, so they use the page API (`PAGE-API.md`), not this store: a blocked item's answer is refused
+and a Yes is recorded only with `"confirmed": true`. See "Gated pages" in `PAGE-FILE.md`.
+
 This is the store HTML pages use. Page files (`<folder>/<slug>.json`) keep their answers in the file itself,
 through the page API in `PAGE-API.md`; new pages are page files. This store stays for HTML pages until they
 are converted with `page.py convert`.

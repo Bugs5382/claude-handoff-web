@@ -20,8 +20,8 @@ from schema import DEFAULT_TYPE, SCHEMA, TYPE_ANSWERS, validate
 
 MAX_BYTES = 2 * 1024 * 1024
 SERVER_KEYS = ("rev", "rounds", "thread", "submissions", "route", "emails", "revisions")
-DEFINITION_KEYS = ("schema", "kind", "title", "summary", "build", "reset", "status", "options", "items", "phases", "drafts", "deck",
-                   "template")
+DEFINITION_KEYS = ("schema", "kind", "title", "summary", "build", "reset", "gate", "status", "options", "items", "phases", "drafts",
+                   "deck", "template")
 DONE = ("yes", "risk")
 DEPENDENCY_MET = ("yes", "changes", "risk")
 
@@ -244,7 +244,10 @@ def save_answers(path, answers, *, by, base=None, now=None):
         held = held_items(doc)
         errors = []
         changed = False
-        for iid, new in answers.items():
+        gated = doc.get("gate") == "yes"
+        order = {it["id"]: n for n, it in enumerate(doc["items"])}
+        prevs = gate_prev(doc)
+        for iid, new in sorted(answers.items(), key=lambda kv: order.get(kv[0], -1)):
             item = items.get(iid)
             if item is None:
                 errors.append(f"{iid}: no item {iid} on this page")
@@ -266,6 +269,9 @@ def save_answers(path, answers, *, by, base=None, now=None):
             if ok is not None and answer and answer not in ok:
                 errors.append(f"{iid}: expected one of " + ", ".join(ok))
                 continue
+            if gated and answer == "yes" and new.get("confirmed") is not True:
+                errors.append(f"{iid}: a Yes on this page has to be confirmed")
+                continue
             if answer == "changes" and not note.strip():
                 errors.append(f"{iid}: Changes needs a note")
                 continue
@@ -279,7 +285,18 @@ def save_answers(path, answers, *, by, base=None, now=None):
             current = iid not in rnd.get("reopened", {}) and (old or {}).get("hash") in (None, item_hash(item))
             if current and old is not None and old["answer"] == answer and old.get("note", "") == note and old.get("other", "") == other:
                 continue
+            if gated:
+                states = item_states(doc)
+                waiting = gate_blocker(doc, iid, states, prevs)
+                if waiting:
+                    errors.append(f"{iid}: Waiting for {waiting} to be Yes")
+                    continue
+                if states[iid]["answer"] == "yes" and states[iid]["confirmed"]:
+                    errors.append(f"{iid}: this Yes is confirmed and locked; it opens again when it is reopened")
+                    continue
             entry = {"answer": answer, "note": note, "by": by, "at": at, "hash": item_hash(item)}
+            if answer == "yes" and gated:
+                entry["confirmed"] = True
             if other:
                 entry["other"] = other
             if old is not None:
@@ -322,7 +339,8 @@ def restart(path, checkpoint, *, by, results=None, now=None):
         nxt["checkpoints"] = {cp: t for cp, t in reached.items() if cp in keep}
         for it in doc["items"][: upto + 1]:
             if allowed_answers(doc, it):
-                nxt["answers"][it["id"]] = {"answer": "yes", "note": "", "by": by, "at": at, "hash": item_hash(it)}
+                nxt["answers"][it["id"]] = {"answer": "yes", "note": "", "by": by, "at": at, "hash": item_hash(it),
+                                            **({"confirmed": True} if doc.get("gate") == "yes" else {})}
         _commit(p, doc)
         return nxt["round"]
 
@@ -473,18 +491,23 @@ def item_states(doc):
     open again with the reason.
     """
     items = [it for it in doc["items"] if allowed_answers(doc, it) != ()]
+    gated = doc.get("gate") == "yes"
     rounds = doc["rounds"]
     cur = rounds[-1]
     out = {}
     for it in items:
         iid, h, typ = it["id"], item_hash(it), item_type(doc, it)
         state = {"answer": "", "hidden": False, "reopened": cur.get("reopened", {}).get(iid), "round": None}
+        if gated:
+            state["confirmed"] = False
         mine = cur["answers"].get(iid)
         if mine and mine["answer"]:
             if _settles(it, typ, mine["answer"]) and mine.get("hash") not in (None, h):
                 state["reopened"] = f"changed since round {cur['round']}"
             elif state["reopened"] is None:
                 state.update(answer=mine["answer"], round=cur["round"])
+                if gated:
+                    state["confirmed"] = bool(mine.get("confirmed"))
                 state["hidden"] = _settles(it, typ, mine["answer"]) and _sent(doc, cur, iid, mine, answered=True)
         elif state["reopened"] is None and not cur.get("restart") and iid not in cur.get("handled", {}):
             for r in reversed(rounds[:-1]):
@@ -497,6 +520,8 @@ def item_states(doc):
                             state["reopened"] = f"changed since round {r['round']}"
                         else:
                             state.update(answer=a["answer"], hidden=True, round=r["round"])
+                            if gated:
+                                state["confirmed"] = bool(a.get("confirmed"))
                     break
                 if r.get("restart"):
                     break
@@ -553,6 +578,35 @@ def _met(dep, states, phases):
     return phases[dep]["closed"] if dep in phases else states.get(dep, {}).get("answer") in DEPENDENCY_MET
 
 
+def gate_prev(doc):
+    """{item id: the answerable items before it, in order} on a page with `"gate": "yes"`, else {}.
+
+    Info, question and choice items sit outside the chain.
+    """
+    if doc.get("gate") != "yes":
+        return {}
+    out, before = {}, []
+    for it in doc["items"]:
+        if item_type(doc, it) in ("info", "question", "choice") or allowed_answers(doc, it) == ():
+            continue
+        if before:
+            out[it["id"]] = list(before)
+        before.append(it["id"])
+    return out
+
+
+def gate_met(state):
+    """On a gated page only a confirmed Yes or a Skip lets the next item be answered."""
+    return bool(state) and (state["answer"] == "skipped" or (state["answer"] == "yes" and state.get("confirmed", False)))
+
+
+def gate_blocker(doc, iid, states, prevs):
+    """The nearest earlier item an open gated item is waiting on, or None. An item that already has an answer keeps it."""
+    if states.get(iid, {}).get("answer"):
+        return None
+    return next((x for x in reversed(prevs.get(iid, [])) if not gate_met(states.get(x))), None)
+
+
 def _unblocked(doc, iid):
     return any(r.get("action") == "unblock" for r in doc["thread"].get(iid, []))
 
@@ -562,6 +616,7 @@ def blocked_items(doc):
     step depends on the one before it unless it says otherwise), its phase waits on another, or its blockedBy
     hasn't had an unblock reply."""
     states, phases = item_states(doc), phase_states(doc)
+    gate = gate_prev(doc)
     out, prev_step = set(), None
     for it in doc["items"]:
         typ = item_type(doc, it)
@@ -574,7 +629,7 @@ def blocked_items(doc):
             prev_step = it["id"]
         phase = phases.get(phase_of(it["id"])) if phases else None
         if (it.get("blockedBy") and not _unblocked(doc, it["id"])) or not all(
-                _met(d, states, phases) for d in deps) or (phase and phase["blocked"]):
+                _met(d, states, phases) for d in deps) or (phase and phase["blocked"]) or gate_blocker(doc, it["id"], states, gate):
             out.add(it["id"])
     return out
 
@@ -587,6 +642,7 @@ def summary(doc):
     """
     states = item_states(doc)
     phases = phase_states(doc)
+    gate = gate_prev(doc)
     out = {"open": 0, "blocked": 0, "counted": 0, "yes": 0, "reopened": 0, "approved": False, "tally": None}
     choices = doc.get("options") or {}
     tally = {c["value"]: 0 for c in choices.get("choices", [])}
@@ -617,7 +673,7 @@ def summary(doc):
             out["reopened"] += 1
         phase = phases.get(phase_of(it["id"])) if phases else None
         blocked = (it.get("blockedBy") and not _unblocked(doc, it["id"])) or not all(
-            _met(d, states, phases) for d in deps) or (phase and phase["blocked"])
+            _met(d, states, phases) for d in deps) or (phase and phase["blocked"]) or gate_blocker(doc, it["id"], states, gate)
         if blocked:
             out["blocked"] += 1
         elif st["answer"] in DONE:

@@ -103,6 +103,10 @@ are answered Yes, Changes or Accept risk, as soon as they're answered on the pag
 
 ### journey
 
+For a strictly ordered test, set `"gate": "yes"` on the page (or `page.py new ... --gate yes`): every step waits for the step before it, and only a
+confirmed Yes or a Skip opens the next one. Changes, No and Accept risk do not. Pressing Yes asks for a second press ("Confirm Yes"), and a confirmed
+Yes is locked until it is reopened. The server refuses answers to a blocked step, not only the page.
+
 Steps run in order: each step depends on the one before it unless it sets its own `dependsOn` (`[]` for none).
 A Yes on a step with a `checkpoint` records that checkpoint. "Restart from a checkpoint" offers each checkpoint
 reached and asks before it acts: the steps up to it carry over as Yes, later steps start open, and the restart is

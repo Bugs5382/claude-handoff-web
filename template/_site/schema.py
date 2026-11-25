@@ -36,9 +36,10 @@ LISTED_OPTIONS = re.compile(r"\boption\s+(1|a)\b.*\boption\s+(2|b)\b", re.I | re
 AGENT = re.compile(r"[a-z0-9][a-z0-9_-]{0,40}\Z")
 ID_RULE = "expected a-z, 0-9, _ and -, starting with a letter or digit, up to 41 characters"
 
-TOP = ("schema", "rev", "kind", "title", "summary", "build", "reset", "status", "route", "options", "items",
+TOP = ("schema", "rev", "kind", "title", "summary", "build", "reset", "gate", "status", "route", "options", "items",
        "rounds", "thread", "submissions", "phases", "drafts", "emails", "deck", "template", "revisions")
 COMMON = ("id", "type", "title", "section", "body")
+GATES = ("yes",)
 ANSWERABLE = ("answers", "skip", "dependsOn", "blockedBy")
 TYPE_FIELDS = {
     "section": ANSWERABLE,
@@ -127,6 +128,7 @@ def validate(doc):
     v.string(doc, "template", "")
     v.string(doc, "build", "", nullable=True)
     v.integer(doc, "reset", "", nullable=True, minimum=0)
+    v.choice(doc, "gate", "", GATES)
     if kind == "checklist" and not doc.get("build"):
         v.err("build", "required on a checklist")
     _status(v, doc.get("status"))
@@ -466,10 +468,12 @@ def _entry(v, a, p, history):
     if not isinstance(a, dict):
         v.err(p, "expected an object")
         return
-    allowed = ("answer", "note", "other", "by", "at") + (() if history else ("hash", "was"))
+    allowed = ("answer", "note", "other", "by", "at") + (() if history else ("hash", "was", "confirmed"))
     v.keys(a, p, allowed, ("answer", "at"))
     for k in ("answer", "note", "other", "by", "at", "hash"):
         v.string(a, k, p)
+    if "confirmed" in a and a["confirmed"] is not True:
+        v.err(_join(p, "confirmed"), "expected true")
     if not history and "was" in a:
         if not isinstance(a["was"], list):
             v.err(_join(p, "was"), "expected a list of earlier answers")

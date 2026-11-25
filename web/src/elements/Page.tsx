@@ -16,7 +16,7 @@ import { postPage, rel } from "@/lib/api";
 import { wireDiffs } from "@/lib/diffs";
 import { actToast, returnSoon } from "@/lib/finish";
 import { folder, folderPages, folderUrl } from "@/lib/howto";
-import { DONE, blockers, count, deliveryOf, heldBy, heldIds, openRound, typeOf, type CountItem } from "@/lib/model";
+import { DONE, blockers, count, deliveryOf, heldBy, heldIds, openRound, typeOf, waitsOnGate, type CountItem } from "@/lib/model";
 import { itemActions, pageActions, templates } from "@/lib/custom";
 import { momentsFor, play } from "@/lib/moments";
 import { inline } from "@/lib/text";
@@ -237,7 +237,7 @@ export function Page() {
   const pageReplies = (p.thread._page ?? []).map(replyEntry);
 
   const renderItem = (it: ItemDef, n: number | string) => (
-        <Item key={it.id} item={it} n={n} risk={p.kind === "round"} type={typeOf(p, it)} state={data.states[it.id]} value={local[it.id] ?? {}} blockedBy={blocked[it.id]} held={held.has(it.id)}
+        <Item key={it.id} item={it} n={n} risk={p.kind === "round"} type={typeOf(p, it)} state={data.states[it.id]} value={local[it.id] ?? {}} blockedBy={blocked[it.id]} gated={p.gate === "yes"} waiting={!!blocked[it.id] && waitsOnGate(p, it, blocked[it.id])} held={held.has(it.id)}
           handled={!!r.handled?.[it.id]} entries={itemEntries(data, it.id)} email={emailFor(it)} emailLabel={p.drafts ? (p.emails?.[it.id]?.length ? "Generate another email" : "Generate an email") : undefined}
           actions={[...(sendable(it) ? [{ name: "send-item", label: "Send this item", onSelect: () => void sendItem(it) }] : []), ...itemActions.map(make => make(it, data)).filter(a => a !== null)]} diffs={data.diffs} build={p.build} choices={p.options?.choices} defaultChoice={p.options?.default}
           blockerLabel={sends ? "Blocker: send now" : "Blocker: copy now"}

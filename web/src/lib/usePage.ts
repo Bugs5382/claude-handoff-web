@@ -66,7 +66,7 @@ export function usePage(): PageState {
     const d = doc.current;
     if (!d) return true;
     const ids = [...dirty.current];
-    const out: Record<string, { answer: string; note: string; other?: string }> = {};
+    const out: Record<string, { answer: string; note: string; other?: string; confirmed?: boolean }> = {};
     for (const id of ids) {
       const a = toAnswer(d.page, id, now.current[id]);
       if ((a.answer === "changes" || a.answer === "risk") && !a.note.trim()) continue;

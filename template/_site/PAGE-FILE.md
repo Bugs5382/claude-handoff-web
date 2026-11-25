@@ -64,6 +64,7 @@ The definition keys sit at the top level, and the server keys are managed by `pa
 | `kind` | definition | `review`, `checklist`, `journey`, `backlog`, `questions`, `reference`, `status` or `round` |
 | `title`, `summary` | definition | the heading and the line under it |
 | `build`, `reset` | definition | the build under test and a reset counter; changing either opens a new round |
+| `gate` | definition | `"yes"` makes the page strictly ordered: every answerable item (not info, question or choice) waits for the one before it, and only a confirmed Yes or a Skip releases the next. See "Gated pages" below |
 | `status` | definition | the index card: `{"state": "needs-you", "note": "...", "chips": [...], "priority": 20}` |
 | `options` | definition | a backlog's choices: `{"choices": [{"value": "start", "label": "Start"}, ...], "default": "hold"}` |
 | `items` | definition | the content, in order |
@@ -174,7 +175,7 @@ Agents use `page.py`; it writes through `pagefile.py`, so it takes the same lock
 
 | Command | What it does |
 |---|---|
-| `page.py new app/design --from design.json` | creates a page (the definition comes from stdin without `--from`) |
+| `page.py new app/design --from design.json` | creates a page (the definition comes from stdin without `--from`); `--gate yes` sets the page's `gate` |
 | `page.py set app/design --from design.json` | replaces the definition; a `build` or `reset` change opens a round |
 | `page.py reply app/design s1 --from app --reopen "fixed in #70" "Fixed in #70."` | a reply under an item, or `_page`; `--action` takes `filed`, `fixed`, `reopen`, `unblock`, `wontfix` or `info`, with `--reason` and `--ref` |
 | `page.py status app/design done --note "Shipped" --chip Shipped --priority 10` | the index card |
@@ -288,3 +289,17 @@ raises `PageError`, whose `errors` list says which item and why.
   ("changed since round N"). A reopen nobody has answered carries into the next round. A reopened Yes shows
   unanswered, and one Yes clears it.
 - A Yes on a step with a `checkpoint` records the time the checkpoint was reached.
+
+## Gated pages
+
+A definition with `"gate": "yes"` (or `page.py new ... --gate yes`) makes a journey or test page strictly ordered. Pages without it behave as before.
+
+- Every answerable item depends on the answerable items before it. Only a **confirmed Yes** or a **Skip** releases the next one;
+  Changes, No, Accept risk and no answer keep it blocked. The blocked card reads "Waiting for <id> to be Yes".
+- A Yes has to be **confirmed**. Pressing Yes shows "Confirm Yes" and Cancel with the line "This unlocks the next step and locks this one";
+  only Confirm records it. The answer API takes `"confirmed": true` with a Yes and refuses a Yes without it. A confirmed Yes is locked
+  (the item's state carries `"confirmed": true`); it opens again only through a reopen reply or an edit of the item's text.
+- The server refuses a `PUT .../answers` for a blocked item (`400`, "Waiting for g1 to be Yes") and a blocked item cannot be Sent.
+  Answers are checked in item order, so a Yes and the answer after it can arrive in one `PUT`.
+- Reopening an item re-blocks the later items that are still open. Later items that already have an answer keep it.
+- Yes items carried by Restart from a checkpoint count as confirmed.

@@ -23,7 +23,7 @@ their inbox from disk. HTML pages that aren't converted yet keep using `/_save/`
 |---|---|---|---|
 | `GET` | `/<page>` | none | the page, drawn by the app in `_site/app.html`; a converted page's old `.html` URL answers `301` to it |
 | `GET` | `/_page/<page>` | none | `200` with the page as JSON (below) and an `ETag`; `304` when `If-None-Match` matches |
-| `PUT` | `/_page/<page>/answers` | `{"base": rev, "answers": {id: {"answer": "...", "note": "..."}}}` | `200` with `{"rev": n}` |
+| `PUT` | `/_page/<page>/answers` | `{"base": rev, "answers": {id: {"answer": "...", "note": "..."}}}`; on a gated page a Yes also carries `"confirmed": true` | `200` with `{"rev": n}` |
 | `POST` | `/_page/<page>/round` | `{"results": "..."}` | `200` with `{"round": n}`: Save round now; `n` is the round just opened |
 | `POST` | `/_page/<page>/unlock` | `{}` | `200` with `{"rev": n}`: takes the lock off a sent page without waiting for the agent |
 | `POST` | `/_page/<page>/restart` | `{"checkpoint": "...", "results": "..."}` | `200` with `{"round": n, ...}` and a `restart` submission |

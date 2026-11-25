@@ -32,6 +32,7 @@ export function toLocal(data: PageData): Locals {
     if (t === "question") out[id] = { a: a.answer ?? "" };
     else if (t === "choice") out[id] = { v: a.answer ?? "", n: a.note ?? "", o: a.other ?? "" };
     else if (DONE.includes(a.answer) && data.states[id]?.reopened) out[id] = { v: "", n: a.note ?? "" };
+    else if (p.gate === "yes" && a.answer === "yes" && !a.confirmed) out[id] = { v: "", n: a.note ?? "" };
     else { out[id] = { v: IN[a.answer] ?? "", n: a.note ?? "" }; if (a.answer === "skipped") out[id].locked = true; }
   }
   for (const [id, s] of Object.entries(data.states)) if (s.hidden) out[id] = settledLocal(p, id, s.answer, out[id]);
@@ -44,16 +45,21 @@ export function toLocal(data: PageData): Locals {
 
 export const wantsOther = (s: Local | undefined): boolean => (s?.v ?? "").split(",").includes("other");
 
-export function toAnswer(p: PageDoc, id: string, s: Local | undefined): { answer: string; note: string; other?: string } {
+export function toAnswer(p: PageDoc, id: string, s: Local | undefined): { answer: string; note: string; other?: string; confirmed?: boolean } {
   const it = p.items.find(x => x.id === id) as ItemDef, t = typeOf(p, it);
   if (t === "question") return { answer: s?.a ?? "", note: "" };
   if (t === "choice") return { answer: s?.v ?? "", note: s?.n ?? "", ...(it.choices ? { other: s?.o ?? "" } : {}) };
-  return { answer: OUT[s?.v ?? ""] ?? "", note: s?.n ?? "" };
+  return { answer: OUT[s?.v ?? ""] ?? "", note: s?.n ?? "", ...(p.gate === "yes" && s?.v === "yes" ? { confirmed: true } : {}) };
 }
 
 /** What blocks each item. An answer given on the page counts at once, before the server has it back. */
 export function blockers(data: PageData, local?: Locals): Record<string, string> {
   const out: Record<string, string> = {};
+  const gated = data.page.gate === "yes", before: string[] = [];
+  /** On a gated page only a confirmed Yes or a Skip lets the next item be answered. */
+  const gateMet = (x: string) => local && x in local ? ["yes", "skip"].includes(local[x].v ?? "")
+    : data.states[x]?.answer === "skipped" || (data.states[x]?.answer === "yes" && !!data.states[x]?.confirmed);
+  const answered = (x: string) => local && x in local ? !!local[x].v : !!data.states[x]?.answer;
   let prev: string | null = null;
   for (const it of data.page.items) {
     const t = typeOf(data.page, it);
@@ -65,9 +71,11 @@ export function blockers(data: PageData, local?: Locals): Record<string, string>
       const met = (x: string) => (data.phases[x] ? data.phases[x].closed
         : DEPENDENCY_MET.includes(local && x in local ? OUT[local[x].v ?? ""] ?? "" : data.states[x]?.answer ?? ""));
       const held = data.page.phases ? data.phases[phaseOf(it.id)]?.blocked : null;
-      const d = deps.find(x => !met(x)) ?? held;
+      const gate = gated && !answered(it.id) ? [...before].reverse().find(x => !gateMet(x)) : undefined;
+      const d = deps.find(x => !met(x)) ?? held ?? gate;
       if (d) out[it.id] = d;
     }
+    if (gated && t !== "question" && t !== "choice") before.push(it.id);
   }
   return out;
 }
@@ -131,3 +139,6 @@ export function deliveryOf(data: PageData, s: Submission): Delivery {
   const deaf = to === data.route.to && !data.listening;
   return { ...base, state: deaf ? "deaf" : "sent", text: `${label} ${clock(s.at)}` + (deaf ? ` · ${to} isn't listening.` : ""), bar: deaf ? "not listening" : `sent ${clock(s.at)}` };
 }
+
+/** True when an item is held only by a gated page's rule, so its pill says what it waits for. */
+export const waitsOnGate = (p: PageDoc, it: ItemDef, by: string): boolean => p.gate === "yes" && !it.blockedBy && !(it.dependsOn ?? []).includes(by);

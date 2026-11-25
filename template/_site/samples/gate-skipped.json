@@ -1,0 +1,56 @@
+{
+  "definition": {
+    "schema": "handoff.page/v1",
+    "kind": "checklist",
+    "title": "Sample: a gated test, step 1 skipped",
+    "build": "gate 1",
+    "gate": "yes",
+    "status": {
+      "state": "needs-you",
+      "priority": 21
+    },
+    "items": [
+      {
+        "id": "g1",
+        "title": "Step 1: Open the app",
+        "skip": true,
+        "body": [
+          {
+            "p": "Answer Yes, then press Confirm Yes. Or Skip, with a reason."
+          }
+        ]
+      },
+      {
+        "id": "g2",
+        "title": "Step 2: Add a record",
+        "skip": true,
+        "body": [
+          {
+            "p": "Opens only when step 1 is a confirmed Yes or Skipped."
+          }
+        ]
+      },
+      {
+        "id": "g3",
+        "title": "Step 3: Check the result",
+        "skip": true,
+        "body": [
+          {
+            "p": "Opens only when step 2 is a confirmed Yes or Skipped."
+          }
+        ]
+      }
+    ]
+  },
+  "steps": [
+    {
+      "answers": {
+        "g1": {
+          "answer": "skipped",
+          "note": "Not part of this build"
+        }
+      },
+      "at": "2026-01-05T09:00:00+00:00"
+    }
+  ]
+}

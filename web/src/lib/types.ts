@@ -25,7 +25,7 @@ export interface ItemDef {
   forms?: { name: string; fields?: Field[] }[];
 }
 
-export interface Answer { answer: string; note?: string; other?: string; at?: string; by?: string }
+export interface Answer { answer: string; note?: string; other?: string; confirmed?: boolean; at?: string; by?: string }
 export interface Handled extends Answer { handled: string; via: string; blocker?: boolean }
 
 export interface Round {
@@ -56,6 +56,8 @@ export interface PageDoc {
   title: string;
   summary?: string;
   build?: string | null;
+  /** "yes": each item opens only on the previous one's confirmed Yes or Skip. */
+  gate?: "yes";
   options?: { choices: { value: string; label: string }[]; default?: string };
   phases?: PhaseDef[];
   drafts?: boolean;
@@ -68,7 +70,7 @@ export interface PageDoc {
   thread: Record<string, Reply[]>;
 }
 
-export interface ItemState { answer: string; hidden: boolean; reopened: string | null; round: number | null }
+export interface ItemState { answer: string; hidden: boolean; reopened: string | null; round: number | null; confirmed?: boolean }
 
 export interface PageData {
   page: PageDoc;

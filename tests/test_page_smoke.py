@@ -27,6 +27,7 @@ import pagefile  # noqa: E402
 import samples  # noqa: E402
 
 SCENARIOS = [
+    "gated page: Yes needs Confirm, only Yes or Skip opens the next step, and the server holds the rest",
     "review: answers, notes, card follows answer, green then approved, saved to the page file",
     "review: Changes needs a note; Blocker: send now writes a blocker to the inbox; copy blockers",
     "copy route: Blocker: copy now copies, and there is no Send button",
@@ -133,6 +134,8 @@ def write_pages(root):
     pagefile.save_answers(demo / "pf-saved.json", {"r1": {"answer": "yes", "note": ""}}, by="Alex", now=T0)
     w(demo / "pf-check.json", CHECKLIST, now=T0)
     w(demo / "pf-unblock.json", CHECKLIST, now=T0)
+    w(demo / "pf-gate.json", {"schema": "handoff.page/v1", "kind": "checklist", "title": "Gate", "build": "1", "gate": "yes", "items": [
+        {"id": f"g{n}", "title": f"Step {n}", "skip": True} for n in (1, 2, 3)]}, now=T0)
     pagefile.save_answers(demo / "pf-check.json", {"c1": {"answer": "yes", "note": ""}, "c5": {"answer": "yes", "note": ""}},
                           by="Alex", now=T0)
     pagefile.new_round(demo / "pf-check.json", results="Round 1 text", now=T0)

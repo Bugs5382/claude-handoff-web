@@ -800,6 +800,34 @@ const seg = (doc, id, v) => card(doc, id).querySelector('.seg button[data-v="' +
     click(bar.querySelector(".all-no"));
     eq(alerted, "Every item already has an answer.");
   });
+  await t("gated page: Yes needs Confirm, only Yes or Skip opens the next step, and the server holds the rest", async () => {
+    const { win, doc } = await load("/demo/pf-gate");
+    const pill = id => card(doc, id).querySelector(".rvhead .st").textContent;
+    eq(pill("g2"), "Waiting for g1 to be Yes"); ok(seg(doc, "g2", "yes").disabled, "g2 can't be answered yet");
+    click(seg(doc, "g1", "chg"));
+    typeIn(card(doc, "g1").querySelector("textarea"), "Wrong label");
+    await tick(60);
+    ok(card(doc, "g2").classList.contains("is-blocked"), "Changes keeps g2 blocked");
+    click(seg(doc, "g1", "yes"));
+    const panel = card(doc, "g1").querySelector(".confirm-yes");
+    ok(panel, "Yes asks to confirm"); match(panel.textContent, /This unlocks the next step and locks this one/);
+    ok(card(doc, "g2").classList.contains("is-blocked"), "an unconfirmed Yes keeps g2 blocked");
+    click(panel.querySelector('[data-act="cancel-yes"]'));
+    await tick(60);
+    ok(!card(doc, "g1").querySelector(".confirm-yes"), "Cancel closes it"); eq(card(doc, "g1").dataset.answer, "chg");
+    click(seg(doc, "g1", "yes"));
+    click(card(doc, "g1").querySelector('[data-act="confirm-yes"]'));
+    await tick(60);
+    ok(!card(doc, "g2").classList.contains("is-blocked"), "a confirmed Yes opens g2");
+    await saved();
+    const a = await answers("demo/pf-gate");
+    eq(a.g1.answer, "yes"); eq(a.g1.confirmed, true);
+    click(seg(doc, "g2", "skip"));
+    await tick(60);
+    ok(!card(doc, "g3").classList.contains("is-blocked"), "a Skip opens g3");
+    const r = await fetch("/_page/demo/pf-gate/answers", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ answers: { g3: { answer: "yes" } } }) });
+    eq(r.status, 400, "an unconfirmed Yes is refused by the server");
+  });
   await t("example pages: every page in example/demo renders, and the answerable ones answer", async () => {
     const want = { "design-review": 4, "signoff-checklist": 3, "backlog": 3, "first-order": 4 };
     for (const [slug, n] of Object.entries(want)) {
